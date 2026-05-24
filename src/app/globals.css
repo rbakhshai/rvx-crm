@@ -1,0 +1,36 @@
+@import "tailwindcss";
+
+@theme {
+  --color-background: oklch(99% 0 0);
+  --color-foreground: oklch(15% 0 0);
+  --color-muted: oklch(55% 0 0);
+  --color-border: oklch(92% 0 0);
+  --color-primary: oklch(48% 0.18 250);
+  --color-primary-foreground: oklch(99% 0 0);
+  --color-accent: oklch(70% 0.16 60);
+  --font-sans: ui-sans-serif, system-ui, -apple-system, "SF Pro Display", "Segoe UI", Roboto, "Helvetica Neue", sans-serif;
+  --font-mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+}
+
+html {
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+}
+
+html, body {
+  background: var(--color-background);
+  color: var(--color-foreground);
+  font-family: var(--font-sans);
+}
+
+/* Tighten default focus rings */
+*:focus-visible {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+::selection {
+  background: color-mix(in oklch, var(--color-primary) 25%, transparent);
+}
