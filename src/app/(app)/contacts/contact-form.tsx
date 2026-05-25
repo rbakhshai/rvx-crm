@@ -31,6 +31,7 @@ import {
   TWELVE_MONTH_GOAL_BUCKETS,
   US_STATES,
 } from "@/lib/options";
+import type { SelectOption } from "@/components/form-field";
 import type { Contact } from "@/db/schema";
 import type { FormState } from "./actions";
 
@@ -39,11 +40,13 @@ const initialState: FormState = { ok: false };
 export function ContactForm({
   action,
   contact,
+  ownerOptions,
   cancelHref,
   submitLabel = "Save buyer",
 }: {
   action: (prev: FormState, formData: FormData) => Promise<FormState>;
   contact?: Contact | null;
+  ownerOptions: SelectOption[];
   cancelHref: string;
   submitLabel?: string;
 }) {
@@ -187,6 +190,16 @@ export function ContactForm({
         <TextAreaField label="Notes — contact" name="internalNotesBuyerContact" defaultValue={contact?.internalNotesBuyerContact} rows={2} />
         <TextAreaField label="Notes — buy-box criteria" name="internalNotesBuyerCriteria" defaultValue={contact?.internalNotesBuyerCriteria} rows={2} />
         <TextAreaField label="Notes — qualification / credibility" name="internalNotesQualifyCredibility" defaultValue={contact?.internalNotesQualifyCredibility} rows={2} />
+      </Section>
+
+      <Section title="Ownership" description="Who on the team owns this record?">
+        <SelectField
+          label="Owner"
+          name="ownerId"
+          options={ownerOptions}
+          defaultValue={contact?.ownerId}
+          hint="defaults to you on create"
+        />
       </Section>
 
       <div className="sticky bottom-0 -mx-8 mt-8 border-t border-border bg-background/95 backdrop-blur px-8 py-4 flex items-center justify-end gap-2">

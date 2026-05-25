@@ -129,16 +129,18 @@ function toValues(v: ReturnType<typeof dealFormSchema.parse>) {
     acquisitionManagerNotes: v.acquisitionManagerNotes,
     offerDeliveryInternalNotes: v.offerDeliveryInternalNotes,
     closerFinalNotes: v.closerFinalNotes,
+    ownerId: v.ownerId || null,
+    opsOwnerId: v.opsOwnerId || null,
   };
 }
 
 export async function createDealAction(_prev: FormState, formData: FormData): Promise<FormState> {
-  await requireUser();
+  const user = await requireUser();
   const parsed = dealFormSchema.safeParse(parseDealForm(formData));
   if (!parsed.success) {
     return { ok: false, message: "Fix the highlighted fields", errors: parsed.error.flatten().fieldErrors };
   }
-  const values = toValues(parsed.data);
+  const values = { ...toValues(parsed.data), ownerId: parsed.data.ownerId || user.id };
   const [row] = await db
     .insert(deals)
     .values(values)
@@ -201,4 +203,60 @@ export async function deleteDealAction(id: string): Promise<void> {
   await db.delete(deals).where(eq(deals.id, id));
   revalidatePath("/deals");
   redirect("/deals");
+}
+
+/**
+ * Kanban drag-and-drop server action. Moves a deal to a role lane by setting
+ * its status to the first (lowest sort_order) status within that role.
+ * If the user wants a more specific status within the role, they edit the
+ * deal directly.
+ */
+export async function updateDealStatusByRoleAction(
+  dealId: string,
+  newRole: string,
+): Promise<{ ok: boolean; statusCode?: string; error?: string }> {
+  await requireUser();
+
+  const { dealStatuses } = await import("@/db/schema");
+  const { and, asc } = await import("drizzle-orm");
+
+  const [target] = await db
+    .select({ code: dealStatuses.code })
+    .from(dealStatuses)
+    .where(and(eq(dealStatuses.role, newRole as never), eq(dealStatuses.isActive, true)))
+    .orderBy(asc(dealStatuses.sortOrder))
+    .limit(1);
+
+  if (!target) {
+    return { ok: false, error: `No active statuses found for role "${newRole}"` };
+  }
+
+  const [existing] = await db.select({ readyForReview: deals.readyForReview }).from(deals).where(eq(deals.id, dealId)).limit(1);
+  const previousReady = existing?.readyForReview ?? false;
+
+  await db
+    .update(deals)
+    .set({ statusCode: target.code, closerLastTouch: new Date(), updatedAt: new Date() })
+    .where(eq(deals.id, dealId));
+
+  // If moving INTO underwriting lane and not already flagged, also fire UW notification
+  if (newRole === "uw" && !previousReady) {
+    const [row] = await db
+      .select({
+        id: deals.id,
+        name: deals.name,
+        parkAddress: deals.parkAddress,
+        parkCity: deals.parkCity,
+        parkState: deals.parkState,
+      })
+      .from(deals)
+      .where(eq(deals.id, dealId))
+      .limit(1);
+    if (row) await notifyUwReadyForReview(row);
+  }
+
+  revalidatePath("/deals/board");
+  revalidatePath("/deals");
+  revalidatePath(`/deals/${dealId}`);
+  return { ok: true, statusCode: target.code };
 }

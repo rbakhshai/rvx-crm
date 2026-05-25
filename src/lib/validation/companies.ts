@@ -26,6 +26,8 @@ export const companyFormSchema = z.object({
   employeeCount: optionalText,
 
   bulkEmailOptedOut: checkboxBool,
+
+  ownerId: optionalText,
 });
 
 export type CompanyFormValues = z.infer<typeof companyFormSchema>;

@@ -33,9 +33,11 @@ export async function createContactAction(
   }
 
   const v = parsed.data;
+  const ownerId = v.ownerId || (await requireUser()).id;
   const [row] = await db
     .insert(contacts)
     .values({
+      ownerId,
       firstName: v.firstName,
       lastName: v.lastName,
       email: v.email,
@@ -121,6 +123,7 @@ export async function updateContactAction(
   await db
     .update(contacts)
     .set({
+      ownerId: v.ownerId || null,
       firstName: v.firstName,
       lastName: v.lastName,
       email: v.email,

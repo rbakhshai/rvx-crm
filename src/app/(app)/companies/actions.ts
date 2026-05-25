@@ -28,9 +28,11 @@ export async function createCompanyAction(_prev: FormState, formData: FormData):
     return { ok: false, message: "Fix the highlighted fields", errors: parsed.error.flatten().fieldErrors };
   }
   const v = parsed.data;
+  const ownerId = v.ownerId || (await requireUser()).id;
   const [row] = await db
     .insert(companies)
     .values({
+      ownerId,
       name: v.name,
       relationshipToPark: v.relationshipToPark,
       sellerFirstName: v.sellerFirstName,
@@ -68,6 +70,7 @@ export async function updateCompanyAction(
   await db
     .update(companies)
     .set({
+      ownerId: v.ownerId || null,
       name: v.name,
       relationshipToPark: v.relationshipToPark,
       sellerFirstName: v.sellerFirstName,

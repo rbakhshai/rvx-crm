@@ -115,6 +115,9 @@ export const contactFormSchema = z.object({
   internalNotesBuyerContact: optionalText,
   internalNotesBuyerCriteria: optionalText,
   internalNotesQualifyCredibility: optionalText,
+
+  // Owner
+  ownerId: optionalText,
 });
 
 export type ContactFormValues = z.infer<typeof contactFormSchema>;

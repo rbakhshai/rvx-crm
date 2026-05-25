@@ -11,6 +11,8 @@ const ITEMS: Item[] = [
   { href: "/deals", label: "Deals" },
   { href: "/companies", label: "Sellers" },
   { href: "/bird-dogs", label: "Bird Dogs" },
+  { href: "/tasks", label: "Tasks" },
+  { href: "/notifications", label: "Notifications" },
 ];
 
 export function Nav() {

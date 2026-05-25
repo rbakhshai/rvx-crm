@@ -37,6 +37,7 @@ export function DealForm({
   contactOptions,
   companyOptions,
   birdDogOptions,
+  ownerOptions,
   cancelHref,
   submitLabel = "Save deal",
 }: {
@@ -46,6 +47,7 @@ export function DealForm({
   contactOptions: SelectOption[];
   companyOptions: SelectOption[];
   birdDogOptions: SelectOption[];
+  ownerOptions: SelectOption[];
   cancelHref: string;
   submitLabel?: string;
 }) {
@@ -208,6 +210,13 @@ export function DealForm({
         <TextAreaField label="Acquisition manager notes" name="acquisitionManagerNotes" defaultValue={deal?.acquisitionManagerNotes} rows={2} />
         <TextAreaField label="Offer delivery notes" name="offerDeliveryInternalNotes" defaultValue={deal?.offerDeliveryInternalNotes} rows={2} />
         <TextAreaField label="Closer final notes" name="closerFinalNotes" defaultValue={deal?.closerFinalNotes} rows={2} />
+      </Section>
+
+      <Section title="Ownership">
+        <div className="grid sm:grid-cols-2 gap-3">
+          <SelectField label="Owner" name="ownerId" options={ownerOptions} defaultValue={deal?.ownerId} hint="defaults to you on create" />
+          <SelectField label="Ops owner" name="opsOwnerId" options={ownerOptions} defaultValue={deal?.opsOwnerId} hint="who runs the deal day-to-day" />
+        </div>
       </Section>
 
       <div className="sticky bottom-0 -mx-8 mt-8 border-t border-border bg-background/95 backdrop-blur px-8 py-4 flex items-center justify-end gap-2">

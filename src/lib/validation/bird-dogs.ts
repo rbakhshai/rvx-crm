@@ -64,6 +64,8 @@ export const birdDogFormSchema = z.object({
   zeroDownSince: optionalText,
 
   bulkEmailOptedOut: checkboxBool,
+
+  ownerId: optionalText,
 });
 
 export type BirdDogFormValues = z.infer<typeof birdDogFormSchema>;

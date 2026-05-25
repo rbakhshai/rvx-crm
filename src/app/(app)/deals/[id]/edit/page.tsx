@@ -5,6 +5,7 @@ import { deals, dealStatuses, contacts, companies, birdDogs } from "@/db/schema"
 import { PageShell } from "../../../page-shell";
 import { DealForm } from "../../deal-form";
 import { updateDealAction } from "../../actions";
+import { getUserOptions } from "@/lib/validation/shared";
 
 function nameOf(first: string | null, last: string | null) {
   return [first, last].filter(Boolean).join(" ") || "(unnamed)";
@@ -15,11 +16,12 @@ export default async function EditDealPage({ params }: { params: Promise<{ id: s
   const [deal] = await db.select().from(deals).where(eq(deals.id, id)).limit(1);
   if (!deal) notFound();
 
-  const [statuses, contactRows, companyRows, birdDogRows] = await Promise.all([
+  const [statuses, contactRows, companyRows, birdDogRows, ownerOptions] = await Promise.all([
     db.select().from(dealStatuses).orderBy(asc(dealStatuses.sortOrder)),
     db.select({ id: contacts.id, firstName: contacts.firstName, lastName: contacts.lastName, email: contacts.email }).from(contacts).orderBy(asc(contacts.lastName)),
     db.select({ id: companies.id, name: companies.name }).from(companies).orderBy(asc(companies.name)),
     db.select({ id: birdDogs.id, firstName: birdDogs.firstName, lastName: birdDogs.lastName }).from(birdDogs).orderBy(asc(birdDogs.lastName)),
+    getUserOptions(),
   ]);
   const contactOptions = contactRows.map((c) => ({
     value: c.id,
@@ -40,6 +42,7 @@ export default async function EditDealPage({ params }: { params: Promise<{ id: s
         contactOptions={contactOptions}
         companyOptions={companyOptions}
         birdDogOptions={birdDogOptions}
+        ownerOptions={ownerOptions}
         cancelHref={`/deals/${id}`}
         submitLabel="Save changes"
       />

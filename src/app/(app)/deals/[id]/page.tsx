@@ -1,10 +1,16 @@
 import { notFound } from "next/navigation";
 import Link from "next/link";
-import { eq, asc } from "drizzle-orm";
+import { headers } from "next/headers";
+import { eq, asc, inArray } from "drizzle-orm";
 import { db } from "@/db";
-import { deals, dealStatuses, contacts, companies, birdDogs } from "@/db/schema";
+import { deals, dealStatuses, contacts, companies, birdDogs, user } from "@/db/schema";
+import { auth } from "@/lib/auth";
 import { PageShell } from "../../page-shell";
 import { LinkButton } from "@/components/button";
+import { DeleteButton } from "@/components/delete-button";
+import { ActivityTimeline } from "@/components/activity-timeline";
+import { TaskList } from "@/components/task-list";
+import { deleteDealAction } from "../actions";
 import { Badge } from "@/components/badge";
 import { Section } from "@/components/section";
 import {
@@ -75,6 +81,16 @@ export default async function DealDetailPage({ params }: { params: Promise<{ id:
   ]);
   const statusLabel = new Map(statuses.map((s) => [s.code, s.label]));
 
+  const session = await auth.api.getSession({ headers: await headers() });
+  const ownerIds = [deal.ownerId, deal.opsOwnerId].filter((x): x is string => !!x);
+  const ownerRows = ownerIds.length
+    ? await db.select({ id: user.id, name: user.name, email: user.email }).from(user).where(inArray(user.id, ownerIds))
+    : [];
+  const ownerMap = new Map(ownerRows.map((u) => [u.id, u]));
+  const owner = deal.ownerId ? ownerMap.get(deal.ownerId) : null;
+  const opsOwner = deal.opsOwnerId ? ownerMap.get(deal.opsOwnerId) : null;
+  const deleteBound = deleteDealAction.bind(null, id);
+
   const title = deal.name || deal.parkAddress || "(unnamed deal)";
   const subtitle = [deal.parkCity, deal.parkState].filter(Boolean).join(", ");
 
@@ -83,13 +99,17 @@ export default async function DealDetailPage({ params }: { params: Promise<{ id:
       title={title}
       subtitle={subtitle || "no location set"}
       action={
-        <div className="flex gap-2">
-          <LinkButton href={`/deals/${deal.id}/edit`} variant="secondary" size="sm">
-            Edit
-          </LinkButton>
+        <div className="flex gap-2 items-center">
           <Link href="/deals" className="text-sm text-muted hover:text-foreground self-center">
             ← Back
           </Link>
+          <LinkButton href={`/deals/${deal.id}/edit`} variant="secondary" size="sm">
+            Edit
+          </LinkButton>
+          <DeleteButton
+            action={deleteBound}
+            confirmText={`Delete deal "${title}"? This cannot be undone.`}
+          />
         </div>
       }
     >
@@ -112,6 +132,8 @@ export default async function DealDetailPage({ params }: { params: Promise<{ id:
           <Field label="Weekly review" value={deal.weeklyOfferReview ? reviewLabel.get(deal.weeklyOfferReview) : null} />
           <Field label="Ready for review" value={bool(deal.readyForReview)} />
           <Field label="Closer last touch" value={deal.closerLastTouch?.toLocaleString()} />
+          <Field label="Owner" value={owner ? `${owner.name} (${owner.email})` : null} />
+          <Field label="Ops owner" value={opsOwner ? `${opsOwner.name} (${opsOwner.email})` : null} />
         </dl>
       </Section>
 
@@ -241,6 +263,9 @@ export default async function DealDetailPage({ params }: { params: Promise<{ id:
           </ul>
         </Section>
       )}
+
+      <TaskList parentTable="deals" parentId={deal.id} currentUserId={session?.user.id} />
+      <ActivityTimeline parentTable="deals" parentId={deal.id} currentUserId={session?.user.id} />
 
       {(deal.acquisitionManagerNotes || deal.offerDeliveryInternalNotes || deal.closerFinalNotes) && (
         <Section title="Internal notes" description="Team-only.">

@@ -40,3 +40,12 @@ export function parseForm(formData: FormData, arrayFields: string[] = []): Recor
   }
   return obj;
 }
+
+/** Fetch user list for owner-picker dropdowns. */
+export async function getUserOptions() {
+  const { db } = await import("@/db");
+  const { user } = await import("@/db/schema");
+  const { asc } = await import("drizzle-orm");
+  const rows = await db.select({ id: user.id, name: user.name, email: user.email }).from(user).orderBy(asc(user.name));
+  return rows.map((u) => ({ value: u.id, label: `${u.name} · ${u.email}` }));
+}

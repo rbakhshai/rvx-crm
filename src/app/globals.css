@@ -8,6 +8,9 @@
   --color-primary: oklch(48% 0.18 250);
   --color-primary-foreground: oklch(99% 0 0);
   --color-accent: oklch(70% 0.16 60);
+  /* Brand gold used on rvparkexchange.com — tweak hue/chroma here to match exactly */
+  --color-gold: oklch(72% 0.13 80);
+  --color-gold-foreground: oklch(15% 0 0);
   --font-sans: ui-sans-serif, system-ui, -apple-system, "SF Pro Display", "Segoe UI", Roboto, "Helvetica Neue", sans-serif;
   --font-mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
 }

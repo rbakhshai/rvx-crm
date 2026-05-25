@@ -1,6 +1,6 @@
 import { NextResponse, type NextRequest } from "next/server";
 
-const PROTECTED_PREFIXES = ["/dashboard", "/contacts", "/deals", "/companies", "/bird-dogs"];
+const PROTECTED_PREFIXES = ["/dashboard", "/contacts", "/deals", "/companies", "/bird-dogs", "/tasks", "/notifications", "/search"];
 
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;

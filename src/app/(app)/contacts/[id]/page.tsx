@@ -1,10 +1,16 @@
 import { notFound } from "next/navigation";
 import Link from "next/link";
+import { headers } from "next/headers";
 import { eq } from "drizzle-orm";
 import { db } from "@/db";
-import { contacts } from "@/db/schema";
+import { contacts, user } from "@/db/schema";
+import { auth } from "@/lib/auth";
 import { PageShell } from "../../page-shell";
 import { LinkButton } from "@/components/button";
+import { DeleteButton } from "@/components/delete-button";
+import { ActivityTimeline } from "@/components/activity-timeline";
+import { TaskList } from "@/components/task-list";
+import { deleteContactAction } from "../actions";
 import { Badge } from "@/components/badge";
 import { Section } from "@/components/section";
 import {
@@ -83,20 +89,30 @@ export default async function ContactDetailPage({ params }: { params: Promise<{ 
   const [contact] = await db.select().from(contacts).where(eq(contacts.id, id)).limit(1);
   if (!contact) notFound();
 
+  const session = await auth.api.getSession({ headers: await headers() });
+  const [owner] = contact.ownerId
+    ? await db.select({ name: user.name, email: user.email }).from(user).where(eq(user.id, contact.ownerId)).limit(1)
+    : [null];
+
   const name = [contact.firstName, contact.lastName].filter(Boolean).join(" ") || "(unnamed buyer)";
+  const deleteBound = deleteContactAction.bind(null, id);
 
   return (
     <PageShell
       title={name}
       subtitle={contact.email ?? "no email on file"}
       action={
-        <div className="flex gap-2">
+        <div className="flex gap-2 items-center">
+          <Link href="/contacts" className="text-sm text-muted hover:text-foreground self-center">
+            ← Back
+          </Link>
           <LinkButton href={`/contacts/${contact.id}/edit`} variant="secondary" size="sm">
             Edit
           </LinkButton>
-          <Link href="/contacts" className="text-sm text-muted hover:text-foreground self-center">
-            ← Back to buyers
-          </Link>
+          <DeleteButton
+            action={deleteBound}
+            confirmText={`Delete buyer "${name}"? This cannot be undone.`}
+          />
         </div>
       }
     >
@@ -120,6 +136,7 @@ export default async function ContactDetailPage({ params }: { params: Promise<{ 
           <Field label="Lead source" value={lookup("buyerLeadSource", contact.buyerLeadSource)} />
           <Field label="Buyer #" value={contact.buyerNumber} />
           <Field label="Top tier" value={bool(contact.topTier)} />
+          <Field label="Owner" value={owner ? `${owner.name} (${owner.email})` : null} />
         </dl>
       </Section>
 
@@ -178,6 +195,9 @@ export default async function ContactDetailPage({ params }: { params: Promise<{ 
           <Field label="Opted out of bulk SMS" value={bool(contact.bulkSmsOptedOut)} />
         </dl>
       </Section>
+
+      <TaskList parentTable="contacts" parentId={contact.id} currentUserId={session?.user.id} />
+      <ActivityTimeline parentTable="contacts" parentId={contact.id} currentUserId={session?.user.id} />
 
       {(contact.internalNotesBuyerContact || contact.internalNotesBuyerCriteria || contact.internalNotesQualifyCredibility) && (
         <Section title="Internal notes" description="Team-only.">

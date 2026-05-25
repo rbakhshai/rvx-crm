@@ -23,6 +23,7 @@ async function requireUser() {
 
 function toValues(v: ReturnType<typeof birdDogFormSchema.parse>) {
   return {
+    ownerId: v.ownerId || null,
     firstName: v.firstName,
     lastName: v.lastName,
     email: v.email,
@@ -73,12 +74,13 @@ function toValues(v: ReturnType<typeof birdDogFormSchema.parse>) {
 }
 
 export async function createBirdDogAction(_prev: FormState, formData: FormData): Promise<FormState> {
-  await requireUser();
+  const user = await requireUser();
   const parsed = birdDogFormSchema.safeParse(parseBirdDogForm(formData));
   if (!parsed.success) {
     return { ok: false, message: "Fix the highlighted fields", errors: parsed.error.flatten().fieldErrors };
   }
-  const [row] = await db.insert(birdDogs).values(toValues(parsed.data)).returning({ id: birdDogs.id });
+  const values = { ...toValues(parsed.data), ownerId: parsed.data.ownerId || user.id };
+  const [row] = await db.insert(birdDogs).values(values).returning({ id: birdDogs.id });
   revalidatePath("/bird-dogs");
   redirect(`/bird-dogs/${row.id}`);
 }

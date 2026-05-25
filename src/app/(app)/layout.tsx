@@ -3,6 +3,7 @@ import { headers } from "next/headers";
 import { auth } from "@/lib/auth";
 import { Nav } from "./nav";
 import { SignOutButton } from "./sign-out-button";
+import { SearchInput } from "@/components/search-input";
 
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
   const session = await auth.api.getSession({ headers: await headers() });
@@ -39,7 +40,12 @@ export default async function AppLayout({ children }: { children: React.ReactNod
           </div>
         </div>
       </aside>
-      <main className="flex-1 min-w-0">{children}</main>
+      <div className="flex-1 min-w-0 flex flex-col">
+        <header className="h-12 border-b border-border px-6 flex items-center bg-background/95 backdrop-blur sticky top-0 z-10">
+          <SearchInput scope="global" className="w-full max-w-md" />
+        </header>
+        <main className="flex-1 min-w-0">{children}</main>
+      </div>
     </div>
   );
 }

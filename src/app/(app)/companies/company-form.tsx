@@ -11,6 +11,7 @@ import {
   COMPANY_EMPLOYEE_OPTIONS,
   US_STATES,
 } from "@/lib/options";
+import type { SelectOption } from "@/components/form-field";
 import type { Company } from "@/db/schema";
 import type { FormState } from "./actions";
 
@@ -19,11 +20,13 @@ const initialState: FormState = { ok: false };
 export function CompanyForm({
   action,
   company,
+  ownerOptions,
   cancelHref,
   submitLabel = "Save seller",
 }: {
   action: (prev: FormState, formData: FormData) => Promise<FormState>;
   company?: Company | null;
+  ownerOptions: SelectOption[];
   cancelHref: string;
   submitLabel?: string;
 }) {
@@ -86,6 +89,10 @@ export function CompanyForm({
           <SelectField label="Employee count" name="employeeCount" options={COMPANY_EMPLOYEE_OPTIONS} defaultValue={company?.employeeCount} />
         </div>
         <CheckboxField label="Opted out of bulk email" name="bulkEmailOptedOut" defaultChecked={company?.bulkEmailOptedOut ?? false} />
+      </Section>
+
+      <Section title="Ownership">
+        <SelectField label="Owner" name="ownerId" options={ownerOptions} defaultValue={company?.ownerId} hint="defaults to you on create" />
       </Section>
 
       <div className="sticky bottom-0 -mx-8 mt-8 border-t border-border bg-background/95 backdrop-blur px-8 py-4 flex items-center justify-end gap-2">

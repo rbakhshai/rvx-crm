@@ -1,10 +1,16 @@
 import { notFound } from "next/navigation";
 import Link from "next/link";
+import { headers } from "next/headers";
 import { eq } from "drizzle-orm";
 import { db } from "@/db";
-import { companies } from "@/db/schema";
+import { companies, user } from "@/db/schema";
+import { auth } from "@/lib/auth";
 import { PageShell } from "../../page-shell";
 import { LinkButton } from "@/components/button";
+import { DeleteButton } from "@/components/delete-button";
+import { ActivityTimeline } from "@/components/activity-timeline";
+import { TaskList } from "@/components/task-list";
+import { deleteCompanyAction } from "../actions";
 import { Badge } from "@/components/badge";
 import { Section } from "@/components/section";
 import {
@@ -33,18 +39,28 @@ export default async function CompanyDetailPage({ params }: { params: Promise<{ 
   const [company] = await db.select().from(companies).where(eq(companies.id, id)).limit(1);
   if (!company) notFound();
 
+  const session = await auth.api.getSession({ headers: await headers() });
+  const [owner] = company.ownerId
+    ? await db.select({ name: user.name, email: user.email }).from(user).where(eq(user.id, company.ownerId)).limit(1)
+    : [null];
+  const deleteBound = deleteCompanyAction.bind(null, id);
+
   return (
     <PageShell
       title={company.name}
       subtitle={relationshipLabel.get(company.relationshipToPark) ?? company.relationshipToPark}
       action={
-        <div className="flex gap-2">
-          <LinkButton href={`/companies/${company.id}/edit`} variant="secondary" size="sm">
-            Edit
-          </LinkButton>
+        <div className="flex gap-2 items-center">
           <Link href="/companies" className="text-sm text-muted hover:text-foreground self-center">
             ← Back
           </Link>
+          <LinkButton href={`/companies/${company.id}/edit`} variant="secondary" size="sm">
+            Edit
+          </LinkButton>
+          <DeleteButton
+            action={deleteBound}
+            confirmText={`Delete seller "${company.name}"? This cannot be undone.`}
+          />
         </div>
       }
     >
@@ -62,6 +78,7 @@ export default async function CompanyDetailPage({ params }: { params: Promise<{ 
           <Field label="Email" value={company.email} />
           <Field label="Cell phone" value={company.phone} />
           <Field label="Office phone" value={company.officePhone} />
+          <Field label="Owner" value={owner ? `${owner.name} (${owner.email})` : null} />
         </dl>
       </Section>
 
@@ -73,6 +90,9 @@ export default async function CompanyDetailPage({ params }: { params: Promise<{ 
           <Field label="ZIP" value={company.zipcode} />
         </dl>
       </Section>
+
+      <TaskList parentTable="companies" parentId={company.id} currentUserId={session?.user.id} />
+      <ActivityTimeline parentTable="companies" parentId={company.id} currentUserId={session?.user.id} />
 
       {(company.description || company.annualRevenue || company.employeeCount) && (
         <Section title="Metadata">

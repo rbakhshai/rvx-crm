@@ -106,6 +106,10 @@ export const dealFormSchema = z.object({
   acquisitionManagerNotes: optionalText,
   offerDeliveryInternalNotes: optionalText,
   closerFinalNotes: optionalText,
+
+  // Owner
+  ownerId: optionalText,
+  opsOwnerId: optionalText,
 });
 
 export type DealFormValues = z.infer<typeof dealFormSchema>;

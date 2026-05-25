@@ -5,3 +5,4 @@ export * from "./contacts";
 export * from "./bird-dogs";
 export * from "./deals";
 export * from "./notifications";
+export * from "./activities";

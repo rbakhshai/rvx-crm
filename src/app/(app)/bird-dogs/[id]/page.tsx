@@ -1,10 +1,16 @@
 import { notFound } from "next/navigation";
 import Link from "next/link";
+import { headers } from "next/headers";
 import { eq, asc } from "drizzle-orm";
 import { db } from "@/db";
-import { birdDogs, birdDogStatuses } from "@/db/schema";
+import { birdDogs, birdDogStatuses, user } from "@/db/schema";
+import { auth } from "@/lib/auth";
 import { PageShell } from "../../page-shell";
 import { LinkButton } from "@/components/button";
+import { DeleteButton } from "@/components/delete-button";
+import { ActivityTimeline } from "@/components/activity-timeline";
+import { TaskList } from "@/components/task-list";
+import { deleteBirdDogAction } from "../actions";
 import { Badge } from "@/components/badge";
 import { Section } from "@/components/section";
 import {
@@ -39,6 +45,12 @@ export default async function BirdDogDetailPage({ params }: { params: Promise<{ 
   const statuses = await db.select().from(birdDogStatuses).orderBy(asc(birdDogStatuses.sortOrder));
   const statusLabel = new Map(statuses.map((s) => [s.code, s.label]));
 
+  const session = await auth.api.getSession({ headers: await headers() });
+  const [owner] = bd.ownerId
+    ? await db.select({ name: user.name, email: user.email }).from(user).where(eq(user.id, bd.ownerId)).limit(1)
+    : [null];
+  const deleteBound = deleteBirdDogAction.bind(null, id);
+
   const name = [bd.firstName, bd.lastName].filter(Boolean).join(" ") || "(unnamed)";
 
   return (
@@ -46,13 +58,17 @@ export default async function BirdDogDetailPage({ params }: { params: Promise<{ 
       title={name}
       subtitle={bd.email ?? "no email"}
       action={
-        <div className="flex gap-2">
-          <LinkButton href={`/bird-dogs/${bd.id}/edit`} variant="secondary" size="sm">
-            Edit
-          </LinkButton>
+        <div className="flex gap-2 items-center">
           <Link href="/bird-dogs" className="text-sm text-muted hover:text-foreground self-center">
             ← Back
           </Link>
+          <LinkButton href={`/bird-dogs/${bd.id}/edit`} variant="secondary" size="sm">
+            Edit
+          </LinkButton>
+          <DeleteButton
+            action={deleteBound}
+            confirmText={`Delete bird dog "${name}"? This cannot be undone.`}
+          />
         </div>
       }
     >
@@ -73,6 +89,7 @@ export default async function BirdDogDetailPage({ params }: { params: Promise<{ 
           <Field label="Start date" value={bd.startDate} />
           <Field label="Agreement signed" value={bd.agreementSignDate} />
           <Field label="RVX agreement signed?" value={bool(bd.rvxAgreementSigned)} />
+          <Field label="Owner" value={owner ? `${owner.name} (${owner.email})` : null} />
         </dl>
       </Section>
 
@@ -108,6 +125,9 @@ export default async function BirdDogDetailPage({ params }: { params: Promise<{ 
           <Field label="Years full-time" value={bd.yearsFullTimeTraveling} />
         </dl>
       </Section>
+
+      <TaskList parentTable="bird_dogs" parentId={bd.id} currentUserId={session?.user.id} />
+      <ActivityTimeline parentTable="bird_dogs" parentId={bd.id} currentUserId={session?.user.id} />
 
       {(bd.whyJoinRvx || bd.howHeardAboutRvx || bd.gamePlanForward) && (
         <Section title="Background notes">

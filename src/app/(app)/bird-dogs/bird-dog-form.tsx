@@ -9,6 +9,7 @@ import {
   BD_ACQUISITION_LEVEL_OPTIONS,
   TRAINING_STATUS_OPTIONS,
 } from "@/lib/options";
+import type { SelectOption } from "@/components/form-field";
 import type { BirdDog, BirdDogStatus } from "@/db/schema";
 import type { FormState } from "./actions";
 
@@ -18,12 +19,14 @@ export function BirdDogForm({
   action,
   birdDog,
   statuses,
+  ownerOptions,
   cancelHref,
   submitLabel = "Save bird dog",
 }: {
   action: (prev: FormState, formData: FormData) => Promise<FormState>;
   birdDog?: BirdDog | null;
   statuses: BirdDogStatus[];
+  ownerOptions: SelectOption[];
   cancelHref: string;
   submitLabel?: string;
 }) {
@@ -135,6 +138,10 @@ export function BirdDogForm({
 
       <Section title="Marketing prefs">
         <CheckboxField label="Opted out of bulk email" name="bulkEmailOptedOut" defaultChecked={birdDog?.bulkEmailOptedOut} />
+      </Section>
+
+      <Section title="Ownership">
+        <SelectField label="Owner" name="ownerId" options={ownerOptions} defaultValue={birdDog?.ownerId} hint="defaults to you on create" />
       </Section>
 
       <div className="sticky bottom-0 -mx-8 mt-8 border-t border-border bg-background/95 backdrop-blur px-8 py-4 flex items-center justify-end gap-2">
