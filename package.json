@@ -13,13 +13,20 @@
     "db:generate": "drizzle-kit generate",
     "db:migrate": "drizzle-kit migrate",
     "db:studio": "drizzle-kit studio",
-    "seed": "tsx --env-file=.env.local scripts/seed.ts"
+    "seed": "tsx --env-file=.env.local scripts/seed.ts",
+    "migrate:contacts": "tsx --env-file=.env.local scripts/migrate/contacts.ts",
+    "migrate:companies": "tsx --env-file=.env.local scripts/migrate/companies.ts",
+    "migrate:bird-dogs": "tsx --env-file=.env.local scripts/migrate/bird-dogs.ts",
+    "migrate:deals": "tsx --env-file=.env.local scripts/migrate/deals.ts",
+    "seed:templates": "tsx --env-file=.env.local scripts/seed-templates.ts"
   },
   "dependencies": {
     "@dnd-kit/core": "^6.3.1",
+    "@types/nodemailer": "^8.0.0",
     "better-auth": "^1.2.0",
     "drizzle-orm": "^0.45.2",
     "next": "^16.2.6",
+    "nodemailer": "^8.0.8",
     "postgres": "^3.4.5",
     "react": "19.0.0",
     "react-dom": "19.0.0",

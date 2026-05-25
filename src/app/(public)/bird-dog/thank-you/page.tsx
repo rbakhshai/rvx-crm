@@ -33,7 +33,7 @@ export default function BirdDogThankYouPage() {
 function Step({ n, text }: { n: number; text: string }) {
   return (
     <li className="flex items-start gap-3">
-      <span className="mt-0.5 inline-flex size-5 shrink-0 rounded-full bg-primary text-primary-foreground items-center justify-center text-xs font-semibold">
+      <span className="mt-0.5 inline-flex size-5 shrink-0 rounded-full bg-gold text-gold-foreground items-center justify-center text-xs font-semibold">
         {n}
       </span>
       <span dangerouslySetInnerHTML={{ __html: text }} />

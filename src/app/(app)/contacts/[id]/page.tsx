@@ -10,6 +10,7 @@ import { LinkButton } from "@/components/button";
 import { DeleteButton } from "@/components/delete-button";
 import { ActivityTimeline } from "@/components/activity-timeline";
 import { TaskList } from "@/components/task-list";
+import { MatchingDeals } from "@/components/matching-deals";
 import { deleteContactAction } from "../actions";
 import { Badge } from "@/components/badge";
 import { Section } from "@/components/section";
@@ -196,6 +197,7 @@ export default async function ContactDetailPage({ params }: { params: Promise<{ 
         </dl>
       </Section>
 
+      <MatchingDeals contactId={contact.id} />
       <TaskList parentTable="contacts" parentId={contact.id} currentUserId={session?.user.id} />
       <ActivityTimeline parentTable="contacts" parentId={contact.id} currentUserId={session?.user.id} />
 

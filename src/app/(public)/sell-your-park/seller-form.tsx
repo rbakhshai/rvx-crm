@@ -98,7 +98,7 @@ export function SellerIntakeForm() {
       </label>
 
       <div className="pt-2">
-        <Button type="submit" size="md" disabled={isPending} className="w-full sm:w-auto px-6 py-3 text-base">
+        <Button type="submit" variant="gold" size="md" disabled={isPending} className="w-full sm:w-auto px-6 py-3 text-base">
           {isPending ? "Sending…" : "Tell us about your park →"}
         </Button>
         <p className="mt-3 text-xs text-muted">

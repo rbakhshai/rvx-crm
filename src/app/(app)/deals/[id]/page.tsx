@@ -10,6 +10,7 @@ import { LinkButton } from "@/components/button";
 import { DeleteButton } from "@/components/delete-button";
 import { ActivityTimeline } from "@/components/activity-timeline";
 import { TaskList } from "@/components/task-list";
+import { MatchedBuyers } from "@/components/matched-buyers";
 import { deleteDealAction } from "../actions";
 import { Badge } from "@/components/badge";
 import { Section } from "@/components/section";
@@ -103,6 +104,9 @@ export default async function DealDetailPage({ params }: { params: Promise<{ id:
           <Link href="/deals" className="text-sm text-muted hover:text-foreground self-center">
             ← Back
           </Link>
+          <LinkButton href={`/deals/${deal.id}/dispo`} variant="gold" size="sm">
+            Dispo to buyers →
+          </LinkButton>
           <LinkButton href={`/deals/${deal.id}/edit`} variant="secondary" size="sm">
             Edit
           </LinkButton>
@@ -264,6 +268,7 @@ export default async function DealDetailPage({ params }: { params: Promise<{ id:
         </Section>
       )}
 
+      <MatchedBuyers dealId={deal.id} />
       <TaskList parentTable="deals" parentId={deal.id} currentUserId={session?.user.id} />
       <ActivityTimeline parentTable="deals" parentId={deal.id} currentUserId={session?.user.id} />
 

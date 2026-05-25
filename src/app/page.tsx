@@ -9,13 +9,13 @@ export default function Home() {
           <span className="text-xs font-medium tracking-wide">RV Park Exchange</span>
         </div>
         <h1 className="text-4xl font-semibold tracking-tight">
-          Buy or sell RV parks with <span className="text-primary">rvparkexchange.com</span>.
+          Buy or sell RV parks with <span className="text-gold">rvparkexchange.com</span>.
         </h1>
         <p className="text-muted">Confidential acquisitions. No agency fees if we buy your park.</p>
         <div className="pt-2 flex flex-wrap gap-3 justify-center">
           <Link
             href={"/sell-your-park" as never}
-            className="inline-flex items-center gap-2 rounded-lg bg-primary px-5 py-2.5 text-sm font-medium text-primary-foreground hover:opacity-90 transition"
+            className="inline-flex items-center gap-2 rounded-lg bg-gold px-5 py-2.5 text-sm font-medium text-gold-foreground hover:opacity-90 transition"
           >
             Sell your park
             <span aria-hidden>→</span>

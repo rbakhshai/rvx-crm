@@ -132,7 +132,7 @@ export function QualifyingForm({ id }: { id: string }) {
       </label>
 
       <div className="pt-2">
-        <Button type="submit" disabled={isPending} className="w-full sm:w-auto px-6 py-3 text-base">
+        <Button type="submit" variant="gold" disabled={isPending} className="w-full sm:w-auto px-6 py-3 text-base">
           {isPending ? "Saving…" : "Finish — join the private buyer list →"}
         </Button>
       </div>

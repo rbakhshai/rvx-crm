@@ -27,3 +27,7 @@ drizzle/
 
 # claude code per-user settings
 .claude/
+
+# Ontraport migration dumps — contain client PII (emails, phones, notes).
+# Keep the snapshot doc, ignore the raw exports.
+raw/*.json

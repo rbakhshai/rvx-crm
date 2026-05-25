@@ -15,7 +15,7 @@ export default function BuyerIntakePage() {
           <span className="text-xs font-medium tracking-wide">Private buyer list</span>
         </div>
         <h1 className="mt-6 text-3xl sm:text-4xl font-semibold tracking-tight">
-          Get RV park deals <span className="text-primary">before</span> they hit the market.
+          Get RV park deals <span className="text-gold">before</span> they hit the market.
         </h1>
         <p className="mt-3 text-base text-foreground/70">
           Tell us about you in 3 quick steps. We&apos;ll send only the parks that match your buy box.

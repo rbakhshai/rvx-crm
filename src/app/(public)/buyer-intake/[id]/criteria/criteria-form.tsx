@@ -115,7 +115,7 @@ export function CriteriaForm({ id }: { id: string }) {
       </fieldset>
 
       <div className="pt-2">
-        <Button type="submit" disabled={isPending} className="w-full sm:w-auto px-6 py-3 text-base">
+        <Button type="submit" variant="gold" disabled={isPending} className="w-full sm:w-auto px-6 py-3 text-base">
           {isPending ? "Saving…" : "Continue to qualifying →"}
         </Button>
       </div>

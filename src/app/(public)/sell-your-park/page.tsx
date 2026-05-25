@@ -14,7 +14,7 @@ export default function SellYourParkPage() {
           <span className="text-xs font-medium tracking-wide">Direct buyer · No agent fees</span>
         </div>
         <h1 className="mt-6 text-4xl sm:text-5xl font-semibold tracking-tight">
-          Sell your <span className="text-primary">RV park</span>.
+          Sell your <span className="text-gold">RV park</span>.
         </h1>
         <p className="mt-4 text-lg text-foreground/70 max-w-xl mx-auto">
           Confidential. No obligation. We get back to you within 24 hours — and if we buy, you don&apos;t pay a commission.
