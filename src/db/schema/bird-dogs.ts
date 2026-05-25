@@ -106,6 +106,13 @@ export const birdDogs = pgTable(
     // Relations
     ownerId: text("owner_id").references(() => user.id, { onDelete: "set null" }),
 
+    // Portal access — set when a user signs up with a matching email, or
+    // wired manually by an admin from the BD detail page.
+    userId: text("user_id")
+      .unique()
+      .references(() => user.id, { onDelete: "set null" }),
+    lastPortalVisitAt: timestamp("last_portal_visit_at"),
+
     // Migration / audit
     legacyOntraportId: integer("legacy_ontraport_id"),
     createdAt: timestamp("created_at").notNull().defaultNow(),

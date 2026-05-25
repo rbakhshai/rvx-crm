@@ -14,6 +14,7 @@ import { MatchedBuyers } from "@/components/matched-buyers";
 import { deleteDealAction } from "../actions";
 import { Badge } from "@/components/badge";
 import { Section } from "@/components/section";
+import { GoogleMap } from "@/components/google-map";
 import {
   DEAL_PRIORITY_OPTIONS,
   PARK_TYPE_DEAL_OPTIONS,
@@ -142,6 +143,16 @@ export default async function DealDetailPage({ params }: { params: Promise<{ id:
       </Section>
 
       <Section title="Park">
+        {deal.parkAddress && (
+          <div className="mb-4">
+            <GoogleMap
+              address={deal.parkAddress}
+              city={deal.parkCity}
+              state={deal.parkState}
+              height={320}
+            />
+          </div>
+        )}
         <dl className="grid sm:grid-cols-2 gap-4">
           <Field label="Address" value={deal.parkAddress} />
           <Field label="City / state" value={[deal.parkCity, deal.parkState].filter(Boolean).join(", ")} />

@@ -1,3 +1,4 @@
+import Image from "next/image";
 import { redirect } from "next/navigation";
 import { headers } from "next/headers";
 import { auth } from "@/lib/auth";
@@ -8,15 +9,24 @@ import { SearchInput } from "@/components/search-input";
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
   const session = await auth.api.getSession({ headers: await headers() });
   if (!session) redirect("/login");
+  // Bird dogs don't see the internal CRM — route them to their portal
+  if ((session.user as { role?: string }).role === "bird_dog") {
+    redirect("/portal");
+  }
 
   return (
     <div className="min-h-screen flex bg-background">
       <aside className="w-60 shrink-0 border-r border-border bg-foreground/[0.02] flex flex-col">
         <div className="p-5 border-b border-border">
-          <div className="flex items-center gap-2">
-            <div className="size-7 rounded-md bg-primary text-primary-foreground grid place-items-center text-sm font-semibold">
-              R
-            </div>
+          <div className="flex items-center gap-2.5">
+            <Image
+              src="/rvx-logo.png"
+              alt="RVX"
+              width={40}
+              height={40}
+              priority
+              className="size-10 shrink-0 rounded-md object-contain"
+            />
             <div className="leading-tight">
               <div className="text-sm font-semibold">RVX CRM</div>
               <div className="text-[10px] uppercase tracking-widest text-muted">rvparkexchange</div>

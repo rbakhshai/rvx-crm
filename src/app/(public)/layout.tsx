@@ -1,3 +1,4 @@
+import Image from "next/image";
 import type { Metadata } from "next";
 
 export const metadata: Metadata = {
@@ -9,8 +10,15 @@ export default function PublicLayout({ children }: { children: React.ReactNode }
   return (
     <div className="min-h-screen bg-background">
       <header className="h-16 border-b border-border px-6 flex items-center justify-between">
-        <a href="/" className="flex items-center gap-2">
-          <div className="size-7 rounded-md bg-primary text-primary-foreground grid place-items-center text-sm font-semibold">R</div>
+        <a href="/" className="flex items-center gap-2.5">
+          <Image
+            src="/rvx-logo-light.png"
+            alt="RV Park Exchange"
+            width={44}
+            height={44}
+            priority
+            className="size-11 shrink-0 object-contain"
+          />
           <div className="leading-tight">
             <div className="text-sm font-semibold">RV Park Exchange</div>
             <div className="text-[10px] uppercase tracking-widest text-muted">rvparkexchange.com</div>

@@ -7,6 +7,7 @@ type Item = { href: string; label: string; count?: number };
 
 const ITEMS: Item[] = [
   { href: "/dashboard", label: "Dashboard" },
+  { href: "/triage", label: "Triage" },
   { href: "/contacts", label: "Buyers" },
   { href: "/deals", label: "Deals" },
   { href: "/companies", label: "Sellers" },
