@@ -1,21 +1,74 @@
-import { PageShell, ComingSoon } from "../page-shell";
+import { desc, sql } from "drizzle-orm";
+import { db } from "@/db";
+import { birdDogs } from "@/db/schema";
+import { PageShell } from "../page-shell";
+import { LinkButton } from "@/components/button";
+import { DataTable, type Column } from "@/components/data-table";
+import { EmptyState } from "@/components/empty-state";
+import { Badge } from "@/components/badge";
 
-export default function BirdDogsPage() {
+type Row = typeof birdDogs.$inferSelect;
+
+const columns: Column<Row>[] = [
+  {
+    key: "name",
+    header: "Name",
+    render: (r) => [r.firstName, r.lastName].filter(Boolean).join(" ") || "(unnamed)",
+  },
+  {
+    key: "email",
+    header: "Email",
+    className: "text-muted",
+    render: (r) => r.email ?? "—",
+  },
+  {
+    key: "level",
+    header: "Level",
+    render: (r) =>
+      r.acquisitionLevel ? <Badge>{r.acquisitionLevel}</Badge> : <span className="text-muted">—</span>,
+  },
+  {
+    key: "status",
+    header: "Status",
+    className: "text-muted",
+    render: (r) => r.statusCode ?? "—",
+  },
+  {
+    key: "discord",
+    header: "Discord",
+    render: (r) =>
+      r.isInDiscord ? <Badge tone="success">In</Badge> : <span className="text-muted">—</span>,
+  },
+];
+
+export default async function BirdDogsListPage() {
+  const [rows, [{ count }]] = await Promise.all([
+    db.select().from(birdDogs).orderBy(desc(birdDogs.createdAt)).limit(100),
+    db.select({ count: sql<number>`count(*)::int` }).from(birdDogs),
+  ]);
+
   return (
     <PageShell
       title="Bird Dogs"
-      subtitle="Initial deal finders — your scout team"
+      subtitle={`${count} scout${count === 1 ? "" : "s"} on the team`}
+      action={
+        <LinkButton href="/bird-dogs/new" size="sm">
+          + New bird dog
+        </LinkButton>
+      }
     >
-      <ComingSoon
-        phase="Phase 1"
-        description="Full migration of your Ontraport Bird Dogs (~131 scouts) with the 25-stage onboarding pipeline."
-        features={[
-          "Onboarding kanban: HOLD → Email interview → Agreement → Packet → Active",
-          "Background fields: hospitality, business ops, W2, RV class",
-          "Community memberships (Subto, Gator, Top Tier, Owners Club)",
-          "Agreement file, W9, training completion tracking",
-          "Performance leaderboard: submissions, qualified rate, closes (Phase 2)",
-        ]}
+      <DataTable
+        rows={rows}
+        columns={columns}
+        rowHref={(r) => `/bird-dogs/${r.id}`}
+        empty={
+          <EmptyState
+            title="No bird dogs yet"
+            description="Onboard your first scout. The 21 seeded statuses (HOLD → interview → agreement → onboarding → active) are already wired into the form."
+            ctaLabel="+ New bird dog"
+            ctaHref="/bird-dogs/new"
+          />
+        }
       />
     </PageShell>
   );

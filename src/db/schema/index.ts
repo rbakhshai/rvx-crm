@@ -4,3 +4,4 @@ export * from "./companies";
 export * from "./contacts";
 export * from "./bird-dogs";
 export * from "./deals";
+export * from "./notifications";

@@ -49,7 +49,6 @@ export const buyerLeadSource = pgEnum("buyer_lead_source", [
   "reza_outreach",
   "dan_outreach",
   "travis_outreach",
-  "erika_jason_outreach",
   "pace_zoom_call",
 ]);
 

@@ -108,7 +108,8 @@ export const deals = pgTable(
     totalUnits: integer("total_units"),
     acresCount: text("acres_count"), // free text
     fullHookupPads: text("full_hookup_pads"), // free text
-    septicSystemType: text("septic_system_type"),
+    waterSystemType: text("water_system_type"),       // city / well
+    septicSystemType: text("septic_system_type"),     // septic / city
     septicCountLastServiced: text("septic_count_last_serviced"),
     electricalDetail: text("electrical_detail"), // "how many 30 amp, how many 50 amp"
     padsOnSeparateMeters: text("pads_on_separate_meters"),

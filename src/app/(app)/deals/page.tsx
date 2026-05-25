@@ -1,22 +1,88 @@
-import { PageShell, ComingSoon } from "../page-shell";
+import { desc, sql } from "drizzle-orm";
+import { db } from "@/db";
+import { deals } from "@/db/schema";
+import { PageShell } from "../page-shell";
+import { LinkButton } from "@/components/button";
+import { DataTable, type Column } from "@/components/data-table";
+import { EmptyState } from "@/components/empty-state";
+import { Badge } from "@/components/badge";
 
-export default function DealsPage() {
+type Row = typeof deals.$inferSelect;
+
+const priorityTone = { hot: "danger", warm: "warning", cold: "info" } as const;
+
+const columns: Column<Row>[] = [
+  {
+    key: "name",
+    header: "Deal",
+    render: (r) => r.name ?? r.parkAddress ?? "(unnamed deal)",
+  },
+  {
+    key: "state",
+    header: "State",
+    render: (r) => r.parkState ?? <span className="text-muted">—</span>,
+  },
+  {
+    key: "pads",
+    header: "Pads",
+    className: "text-right tabular-nums",
+    render: (r) => r.padsCount ?? <span className="text-muted">—</span>,
+  },
+  {
+    key: "price",
+    header: "List price",
+    className: "text-right tabular-nums",
+    render: (r) =>
+      r.listPrice ? `$${Number(r.listPrice).toLocaleString()}` : <span className="text-muted">—</span>,
+  },
+  {
+    key: "priority",
+    header: "Priority",
+    render: (r) =>
+      r.dealPriority ? (
+        <Badge tone={priorityTone[r.dealPriority as keyof typeof priorityTone] ?? "default"}>
+          {r.dealPriority}
+        </Badge>
+      ) : (
+        <span className="text-muted">—</span>
+      ),
+  },
+  {
+    key: "status",
+    header: "Stage",
+    className: "text-muted",
+    render: (r) => r.statusCode ?? <span className="text-muted">—</span>,
+  },
+];
+
+export default async function DealsListPage() {
+  const [rows, [{ count }]] = await Promise.all([
+    db.select().from(deals).orderBy(desc(deals.createdAt)).limit(100),
+    db.select({ count: sql<number>`count(*)::int` }).from(deals),
+  ]);
+
   return (
     <PageShell
       title="Deals"
-      subtitle="RV parks in your pipeline — from new lead to closed"
+      subtitle={`${count} deal${count === 1 ? "" : "s"} in the pipeline`}
+      action={
+        <LinkButton href="/deals/new" size="sm">
+          + New deal
+        </LinkButton>
+      }
     >
-      <ComingSoon
-        phase="Phase 1"
-        description="Full migration of your Ontraport deals (~349 parks) with the 40-stage pipeline, versioned LOI/PSA/AA tracking, financials, and documents."
-        features={[
-          "List view filterable by stage, closer, state, priority",
-          "Kanban board across all pipeline stages (Phase 2)",
-          "Detail page with LOI 1/2/3, PSA 1/2/3, AA rounds",
-          "Financial editor (list, agreed, cash, hybrid, seller-finance, bank)",
-          "Document storage (LOI contracts, PSAs, addendums, P&L, appraisal)",
-          "Bird-dog attribution and per-deal data room URL",
-        ]}
+      <DataTable
+        rows={rows}
+        columns={columns}
+        rowHref={(r) => `/deals/${r.id}`}
+        empty={
+          <EmptyState
+            title="No deals yet"
+            description="Add a park to the pipeline. Kanban view across the 40 pipeline stages ships in Phase 2."
+            ctaLabel="+ New deal"
+            ctaHref="/deals/new"
+          />
+        }
       />
     </PageShell>
   );
