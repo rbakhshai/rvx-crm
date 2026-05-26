@@ -34,7 +34,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
           </div>
         </div>
         <div className="p-3 flex-1">
-          <Nav />
+          <Nav role={(session.user as { role?: string }).role} />
         </div>
         <div className="p-3 border-t border-border">
           <div className="text-xs">

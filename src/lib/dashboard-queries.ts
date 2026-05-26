@@ -315,3 +315,248 @@ export async function fetchDealStatusLabels() {
   const rows = await db.select({ code: dealStatuses.code, label: dealStatuses.label }).from(dealStatuses);
   return new Map(rows.map((r) => [r.code, r.label]));
 }
+
+// ---- active deals for the dashboard map ----
+
+import { groupForStatus } from "./portal-stage-groups";
+
+const MAP_ACTIVE_STATUS_CODES = [
+  "new_lead_received", "pace_leads", "sent_back_to_bd", "incomplete_file",
+  "closer_first_contact_attempted", "closer_first_contact_made",
+  "closer_under_negotiation", "closer_gathering_docs",
+  "uw_ready_phase_2", "uw_under_phase_2",
+  "loi_ready", "loi_submitted", "loi_in_negotiation",
+  "loi_signed_by_seller", "loi_accepted_both_sides",
+  "tc_writing_psa", "tc_psa_submitted", "psa_accepted",
+  "dm_dispo_initiated",
+  "tc_dd_in_escrow", "dd_completed_in_escrow",
+  "closed_rvx_acquired", "closed_rvx_network",
+];
+
+export async function fetchActiveDealsForMap() {
+  const { and, isNotNull, inArray } = await import("drizzle-orm");
+  const rows = await db
+    .select({
+      id: deals.id,
+      name: deals.name,
+      parkAddress: deals.parkAddress,
+      parkCity: deals.parkCity,
+      parkState: deals.parkState,
+      statusCode: deals.statusCode,
+      listPrice: deals.listPrice,
+      latitude: deals.latitude,
+      longitude: deals.longitude,
+    })
+    .from(deals)
+    .where(
+      and(
+        isNotNull(deals.latitude),
+        isNotNull(deals.longitude),
+        inArray(deals.statusCode, MAP_ACTIVE_STATUS_CODES),
+      ),
+    );
+
+  return rows.map((r) => {
+    const g = groupForStatus(r.statusCode);
+    return {
+      id: r.id,
+      title: r.name || r.parkAddress || "(unnamed)",
+      city: r.parkCity,
+      state: r.parkState,
+      lat: Number(r.latitude),
+      lng: Number(r.longitude),
+      group: g.code as "new" | "contact" | "uw" | "offer" | "contract" | "won" | "network" | "drip" | "lost" | "dead" | "unknown",
+      groupLabel: g.label,
+      listPrice: r.listPrice,
+    };
+  });
+}
+
+// ---- pipeline value + funnel ----
+
+import { PIPELINE_STAGES, type PipelineStageKey } from "./pipeline-stages";
+
+export type FunnelStage = {
+  key: PipelineStageKey;
+  label: string;
+  description: string;
+  count: number;
+  valueCents: number;
+};
+
+export async function fetchPipelineFunnel(): Promise<{
+  stages: FunnelStage[];
+  activeValueCents: number;
+  activeCount: number;
+  closedValueCents: number;
+  closedCount: number;
+}> {
+  const { inArray } = await import("drizzle-orm");
+  const allActive = PIPELINE_STAGES.flatMap((f) => f.statuses);
+  const rows = await db
+    .select({ statusCode: deals.statusCode, listPrice: deals.listPrice })
+    .from(deals)
+    .where(inArray(deals.statusCode, allActive));
+
+  // Bucket each deal into a funnel stage
+  const statusToKey = new Map<string, FunnelStage["key"]>();
+  for (const f of PIPELINE_STAGES) {
+    for (const s of f.statuses) statusToKey.set(s, f.key);
+  }
+
+  const stages: FunnelStage[] = PIPELINE_STAGES.map((f) => ({
+    key: f.key,
+    label: f.label,
+    description: f.description,
+    count: 0,
+    valueCents: 0,
+  }));
+  const indexByKey = new Map(stages.map((s, i) => [s.key, i]));
+
+  for (const r of rows) {
+    const key = r.statusCode ? statusToKey.get(r.statusCode) : null;
+    if (!key) continue;
+    const idx = indexByKey.get(key)!;
+    stages[idx].count++;
+    const cents = priceToCents(r.listPrice);
+    stages[idx].valueCents += cents;
+  }
+
+  const activeStages = stages.filter((s) => s.key !== "closed");
+  const closedStage = stages.find((s) => s.key === "closed")!;
+
+  return {
+    stages,
+    activeValueCents: activeStages.reduce((sum, s) => sum + s.valueCents, 0),
+    activeCount: activeStages.reduce((sum, s) => sum + s.count, 0),
+    closedValueCents: closedStage.valueCents,
+    closedCount: closedStage.count,
+  };
+}
+
+function priceToCents(v: string | null): number {
+  if (!v) return 0;
+  const n = Number(v);
+  if (!Number.isFinite(n) || n <= 0) return 0;
+  return Math.round(n * 100);
+}
+
+// ---- activity pulse (recent events across the system) ----
+
+import { user as userTable } from "@/db/schema";
+
+export type ActivityEvent = {
+  id: string;          // unique row id
+  kind: "note" | "call_log" | "form_submission" | "new_deal" | "dispo";
+  icon: string;        // emoji
+  title: string;       // one-line description
+  detail?: string;     // optional second line (note body, etc.)
+  authorName?: string | null;
+  /** Where clicking takes you */
+  href?: string;
+  at: Date;
+};
+
+export async function fetchRecentActivity(limit = 25): Promise<ActivityEvent[]> {
+  const { desc: descFn, gt: gtFn } = await import("drizzle-orm");
+
+  // 1) Recent notes (call_log, manual, form_submission, dispo sends written as manual)
+  const recentNotes = await db
+    .select({
+      id: notes.id,
+      type: notes.type,
+      body: notes.body,
+      parentTable: notes.parentTable,
+      parentId: notes.parentId,
+      createdAt: notes.createdAt,
+      authorName: userTable.name,
+    })
+    .from(notes)
+    .leftJoin(userTable, eq(notes.authorId, userTable.id))
+    .orderBy(descFn(notes.createdAt))
+    .limit(limit);
+
+  // 2) Recent deal creations (last 14d) — catches new BD portal submissions
+  const twoWeeksAgo = new Date(Date.now() - 14 * 24 * 60 * 60 * 1000);
+  const recentDeals = await db
+    .select({
+      id: deals.id,
+      name: deals.name,
+      parkAddress: deals.parkAddress,
+      parkCity: deals.parkCity,
+      parkState: deals.parkState,
+      birdDogFirstName: deals.birdDogFirstName,
+      birdDogLastName: deals.birdDogLastName,
+      leadSource: deals.leadSource,
+      createdAt: deals.createdAt,
+    })
+    .from(deals)
+    .where(gtFn(deals.createdAt, twoWeeksAgo))
+    .orderBy(descFn(deals.createdAt))
+    .limit(limit);
+
+  const events: ActivityEvent[] = [];
+
+  // Notes
+  for (const n of recentNotes) {
+    const dealLink = n.parentTable === "deals" ? `/deals/${n.parentId}` : undefined;
+    const contactLink = n.parentTable === "contacts" ? `/contacts/${n.parentId}` : undefined;
+    const isDispo = n.body.startsWith("📤 Dispo'd");
+    const isCallLog = n.type === "call_log";
+    events.push({
+      id: `note:${n.id}`,
+      kind: isDispo ? "dispo" : isCallLog ? "call_log" : n.type === "form_submission" ? "form_submission" : "note",
+      icon: isDispo ? "📤" : isCallLog ? "📞" : n.type === "form_submission" ? "📋" : "📝",
+      title: firstLine(n.body),
+      detail: secondLine(n.body),
+      authorName: n.authorName,
+      href: dealLink ?? contactLink,
+      at: n.createdAt,
+    });
+  }
+
+  // New deals (only if NOT already represented by a form_submission note for the same deal)
+  const noteDealIds = new Set(recentNotes.filter((n) => n.parentTable === "deals" && n.type === "form_submission").map((n) => n.parentId));
+  for (const d of recentDeals) {
+    if (noteDealIds.has(d.id)) continue;
+    const title = d.name || d.parkAddress || "(unnamed deal)";
+    const loc = [d.parkCity, d.parkState].filter(Boolean).join(", ");
+    const bdName = [d.birdDogFirstName, d.birdDogLastName].filter(Boolean).join(" ").trim() || null;
+    const sourceLabel =
+      d.leadSource === "bird_dog" ? (bdName ? `via bird dog ${bdName}` : "via bird dog")
+      : d.leadSource === "direct_seller_rvx_website" ? "via /sell-your-park"
+      : d.leadSource === "outside_source_rvx_website" ? "via outside source"
+      : null;
+    events.push({
+      id: `deal:${d.id}`,
+      kind: "new_deal",
+      icon: "🦅",
+      title: `New deal: ${title}`,
+      detail: [loc, sourceLabel].filter(Boolean).join(" · ") || undefined,
+      authorName: null,
+      href: `/deals/${d.id}`,
+      at: d.createdAt,
+    });
+  }
+
+  // Merge, sort, truncate
+  events.sort((a, b) => b.at.getTime() - a.at.getTime());
+  return events.slice(0, limit);
+}
+
+function firstLine(body: string): string {
+  const i = body.indexOf("\n");
+  const line = (i === -1 ? body : body.slice(0, i)).trim();
+  return line.length > 120 ? line.slice(0, 117) + "…" : line;
+}
+
+function secondLine(body: string): string | undefined {
+  const i = body.indexOf("\n");
+  if (i === -1) return undefined;
+  const rest = body.slice(i + 1).trim();
+  if (!rest) return undefined;
+  // skip a blank separator line between header and body
+  const j = rest.indexOf("\n");
+  const second = (j === -1 ? rest : rest.slice(0, j)).trim() || rest;
+  return second.length > 140 ? second.slice(0, 137) + "…" : second;
+}

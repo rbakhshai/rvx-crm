@@ -22,6 +22,12 @@ function daysSince(d: Date | null | undefined): number | null {
   return Math.floor((Date.now() - d.getTime()) / (1000 * 60 * 60 * 24));
 }
 
+function priceNumber(v: string | null): number {
+  if (!v) return 0;
+  const n = Number(v);
+  return Number.isFinite(n) ? n : 0;
+}
+
 type DealRow = {
   id: string;
   name: string | null;
@@ -30,12 +36,32 @@ type DealRow = {
   parkState: string | null;
   statusCode: string | null;
   updateToBirdDog: string | null;
+  listPrice: string | null;
   createdAt: Date;
   updatedAt: Date;
 };
 
 const ACTIVE_GROUPS = ["new", "contact", "uw", "offer", "contract"];
 const WON_GROUPS = ["won", "network"];
+
+// The 5 high-level stages a bird dog cares about — used for per-lead progress bar
+const PROGRESS_STEPS: Array<{
+  key: "submitted" | "talking" | "offer" | "contract" | "closed";
+  label: string;
+  /** Stage groups (from portal-stage-groups) that count as "at this step" */
+  matches: string[];
+}> = [
+  { key: "submitted", label: "Submitted", matches: ["new"] },
+  { key: "talking",   label: "Talking",   matches: ["contact", "uw"] },
+  { key: "offer",     label: "Offer",     matches: ["offer"] },
+  { key: "contract",  label: "Contract",  matches: ["contract"] },
+  { key: "closed",    label: "Closed",    matches: ["won", "network"] },
+];
+
+function progressIndexFor(statusCode: string | null): number {
+  const g = groupForStatus(statusCode).code;
+  return PROGRESS_STEPS.findIndex((s) => s.matches.includes(g));
+}
 
 export default async function PortalPage() {
   const session = await auth.api.getSession({ headers: await headers() });
@@ -47,9 +73,7 @@ export default async function PortalPage() {
     .where(eq(birdDogs.userId, session.user.id))
     .limit(1);
 
-  if (!bd) {
-    return null;
-  }
+  if (!bd) return null;
 
   await db
     .update(birdDogs)
@@ -65,6 +89,7 @@ export default async function PortalPage() {
       parkState: deals.parkState,
       statusCode: deals.statusCode,
       updateToBirdDog: deals.updateToBirdDog,
+      listPrice: deals.listPrice,
       createdAt: deals.createdAt,
       updatedAt: deals.updatedAt,
     })
@@ -72,7 +97,7 @@ export default async function PortalPage() {
     .where(eq(deals.birdDogId, bd.id))
     .orderBy(desc(deals.updatedAt));
 
-  // ---- Stats ----
+  // ---- Aggregate stats ----
   const total = rows.length;
   const activeCount = rows.filter((r) => ACTIVE_GROUPS.includes(groupForStatus(r.statusCode).code)).length;
   const wonCount = rows.filter((r) => WON_GROUPS.includes(groupForStatus(r.statusCode).code)).length;
@@ -80,15 +105,24 @@ export default async function PortalPage() {
     const g = groupForStatus(r.statusCode).code;
     return g !== "new" && g !== "unknown" && g !== "lost" && g !== "dead";
   }).length;
-  // Conversion = "made it past first-touch review (not still 'new', not dead)"
   const conversionPct = total > 0 ? Math.round((advancedCount / total) * 100) : 0;
+
+  // ---- Deltas vs last 30 days ----
+  const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
+  const submittedLast30d = rows.filter((r) => r.createdAt > thirtyDaysAgo).length;
+  const wonLast30d = rows.filter(
+    (r) => WON_GROUPS.includes(groupForStatus(r.statusCode).code) && r.updatedAt > thirtyDaysAgo,
+  ).length;
+  const activeNewLast30d = rows.filter(
+    (r) => ACTIVE_GROUPS.includes(groupForStatus(r.statusCode).code) && r.createdAt > thirtyDaysAgo,
+  ).length;
 
   const lastSubmitted = rows
     .map((r) => r.createdAt)
     .sort((a, b) => b.getTime() - a.getTime())[0];
   const daysSinceLastSubmit = daysSince(lastSubmitted);
 
-  // Group breakdown for the stage-distribution bar
+  // ---- Stage distribution bar ----
   const breakdown = new Map<string, { group: StageGroup; count: number }>();
   for (const r of rows) {
     const g = groupForStatus(r.statusCode);
@@ -97,6 +131,23 @@ export default async function PortalPage() {
     else breakdown.set(g.code, { group: g, count: 1 });
   }
   const breakdownOrdered = Array.from(breakdown.values()).sort((a, b) => a.group.order - b.group.order);
+
+  // ---- Recent team updates ----
+  const recentUpdates = rows
+    .filter((r) => r.updateToBirdDog && r.updateToBirdDog.trim().length > 0)
+    .slice(0, 6);
+
+  // ---- Achievements ----
+  const hasMillionDollar = rows.some((r) => priceNumber(r.listPrice) >= 1_000_000);
+  const achievements: { code: string; label: string; emoji: string; unlocked: boolean; description: string }[] = [
+    { code: "first_lead",       label: "First lead submitted",       emoji: "🌱", unlocked: total >= 1,              description: "You're on the board." },
+    { code: "five_leads",       label: "5 leads submitted",          emoji: "🦅", unlocked: total >= 5,              description: "Volume scout in the making." },
+    { code: "past_review",      label: "First lead past review",     emoji: "🚀", unlocked: advancedCount >= 1,      description: "Our team moved a lead of yours forward." },
+    { code: "ten_leads",        label: "10 leads submitted",         emoji: "🏆", unlocked: total >= 10,             description: "Top-quartile bird dog." },
+    { code: "first_close",      label: "First closed deal",          emoji: "🎯", unlocked: wonCount >= 1,           description: "Commission incoming." },
+    { code: "big_park",         label: "Submitted a $1M+ park",      emoji: "💎", unlocked: hasMillionDollar,        description: "Big league lead." },
+    { code: "twenty_five",      label: "25 leads submitted",         emoji: "🌟", unlocked: total >= 25,             description: "Elite scout." },
+  ];
 
   // ---- Grouped sections ----
   const buckets = new Map<string, { group: StageGroup; rows: DealRow[] }>();
@@ -116,7 +167,7 @@ export default async function PortalPage() {
         <div>
           <h1 className="text-2xl font-semibold tracking-tight">Hey {firstName}</h1>
           <p className="text-sm text-muted mt-1">
-            Here&apos;s the state of your leads. Submit new ones often — high-volume scouts have higher conversion.
+            Here&apos;s the state of your leads. High-volume scouts have higher conversion — keep them coming.
           </p>
         </div>
         <Link
@@ -141,16 +192,36 @@ export default async function PortalPage() {
         </div>
       ) : (
         <>
-          {/* ---- TOP DASHBOARD: stats + nudge ---- */}
+          {/* ---- TOP STATS + NUDGE ---- */}
           <section className="mt-8 space-y-4">
             <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-              <StatCard label="Submitted" value={total.toString()} sub="all-time" />
-              <StatCard label="Active in pipeline" value={activeCount.toString()} sub="our team is working" tone="active" />
-              <StatCard label="Closed wins" value={wonCount.toString()} sub="commission qualifying" tone="won" />
+              <StatCard
+                label="Submitted"
+                value={total.toString()}
+                sub="all-time"
+                delta={submittedLast30d > 0 ? `+${submittedLast30d} in last 30d` : "none in last 30d"}
+                deltaPositive={submittedLast30d > 0}
+              />
+              <StatCard
+                label="Active in pipeline"
+                value={activeCount.toString()}
+                sub="our team is working"
+                tone="active"
+                delta={activeNewLast30d > 0 ? `+${activeNewLast30d} new this month` : undefined}
+                deltaPositive={true}
+              />
+              <StatCard
+                label="Closed wins"
+                value={wonCount.toString()}
+                sub="commission qualifying"
+                tone="won"
+                delta={wonLast30d > 0 ? `+${wonLast30d} this month 🎉` : undefined}
+                deltaPositive={true}
+              />
               <StatCard
                 label="Advancement rate"
                 value={`${conversionPct}%`}
-                sub={`${advancedCount} of ${total} got past first review`}
+                sub={`${advancedCount} of ${total} past first review`}
               />
             </div>
 
@@ -163,6 +234,64 @@ export default async function PortalPage() {
               total={total}
             />
           </section>
+
+          {/* ---- ACHIEVEMENTS ---- */}
+          <section className="mt-10 pt-6 border-t border-border">
+            <header className="mb-4 flex items-baseline justify-between">
+              <h2 className="text-sm uppercase tracking-widest text-muted font-medium">Achievements</h2>
+              <span className="text-[11px] text-muted">
+                {achievements.filter((a) => a.unlocked).length} / {achievements.length} unlocked
+              </span>
+            </header>
+            <ul className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2.5">
+              {achievements.map((a) => (
+                <li
+                  key={a.code}
+                  className={
+                    "rounded-lg border p-3 flex items-start gap-3 transition " +
+                    (a.unlocked
+                      ? "border-amber-300/70 bg-gradient-to-br from-amber-50 to-amber-50/30"
+                      : "border-border bg-foreground/[0.02] opacity-60")
+                  }
+                  title={a.unlocked ? "Unlocked" : "Locked"}
+                >
+                  <span className={"text-2xl shrink-0 " + (a.unlocked ? "" : "grayscale")}>{a.emoji}</span>
+                  <div className="min-w-0">
+                    <div className={"text-sm font-medium " + (a.unlocked ? "text-amber-900" : "text-foreground/70")}>
+                      {a.label}
+                    </div>
+                    <div className="text-[11px] text-muted mt-0.5">{a.description}</div>
+                  </div>
+                </li>
+              ))}
+            </ul>
+          </section>
+
+          {/* ---- RECENT TEAM ACTIVITY ---- */}
+          {recentUpdates.length > 0 && (
+            <section className="mt-10 pt-6 border-t border-border">
+              <header className="mb-4 flex items-baseline justify-between">
+                <div>
+                  <h2 className="text-sm uppercase tracking-widest text-muted font-medium">Recent team activity</h2>
+                  <p className="text-[11px] text-muted mt-0.5">What our team's been saying about your leads</p>
+                </div>
+              </header>
+              <ol className="space-y-2.5">
+                {recentUpdates.map((r) => {
+                  const title = r.name || r.parkAddress || "(unnamed lead)";
+                  return (
+                    <li key={r.id} className="rounded-lg border border-border bg-background p-3">
+                      <div className="flex items-baseline justify-between gap-2">
+                        <div className="text-sm font-medium truncate">{title}</div>
+                        <time className="text-[11px] text-muted shrink-0 tabular-nums">{fmtRelative(r.updatedAt)}</time>
+                      </div>
+                      <p className="mt-1.5 text-sm text-foreground/85 whitespace-pre-wrap">{r.updateToBirdDog}</p>
+                    </li>
+                  );
+                })}
+              </ol>
+            </section>
+          )}
 
           {/* ---- INDIVIDUAL LEADS ---- */}
           <section className="mt-10 space-y-8 pt-6 border-t border-border">
@@ -182,11 +311,15 @@ function StatCard({
   value,
   sub,
   tone = "neutral",
+  delta,
+  deltaPositive,
 }: {
   label: string;
   value: string;
   sub: string;
   tone?: "neutral" | "active" | "won";
+  delta?: string;
+  deltaPositive?: boolean;
 }) {
   const accent =
     tone === "won"
@@ -199,6 +332,11 @@ function StatCard({
       <div className="text-[10px] uppercase tracking-widest text-muted font-medium">{label}</div>
       <div className={`mt-1 text-2xl font-semibold tabular-nums ${accent}`}>{value}</div>
       <div className="text-[11px] text-muted mt-0.5">{sub}</div>
+      {delta && (
+        <div className={"mt-1.5 text-[11px] font-medium " + (deltaPositive ? "text-green-700" : "text-muted")}>
+          {delta}
+        </div>
+      )}
     </div>
   );
 }
@@ -262,11 +400,10 @@ function Nudge({
   wonCount: number;
   total: number;
 }) {
-  // Pick the most useful prompt for right now
   let tone: "gold" | "neutral" | "warning" = "neutral";
   let title = "";
   let body = "";
-  let cta: { href: string; label: string } | null = { href: "/portal/submit-lead", label: "Submit a new lead →" };
+  const cta: { href: string; label: string } | null = { href: "/portal/submit-lead", label: "Submit a new lead →" };
 
   if (wonCount > 0) {
     tone = "gold";
@@ -338,6 +475,10 @@ function StageSection({ group, rows }: { group: StageGroup; rows: DealRow[] }) {
 function LeadCard({ row }: { row: DealRow }) {
   const title = row.name || row.parkAddress || "(unnamed lead)";
   const loc = [row.parkCity, row.parkState].filter(Boolean).join(", ");
+  const groupCode = groupForStatus(row.statusCode).code;
+  const isDead = groupCode === "lost" || groupCode === "dead";
+  const progressIdx = progressIndexFor(row.statusCode);
+
   return (
     <li className="rounded-lg border border-border p-4 bg-background hover:bg-foreground/[0.01]">
       <div className="flex items-start justify-between gap-3">
@@ -350,6 +491,53 @@ function LeadCard({ row }: { row: DealRow }) {
           <div>Submitted {fmtRelative(row.createdAt)}</div>
         </div>
       </div>
+
+      {/* Per-lead progress bar */}
+      {!isDead && progressIdx >= 0 && (
+        <div className="mt-4">
+          <div className="flex items-center gap-1">
+            {PROGRESS_STEPS.map((step, i) => {
+              const done = i < progressIdx;
+              const current = i === progressIdx;
+              return (
+                <div key={step.key} className="flex-1 flex items-center gap-1">
+                  <div
+                    className={
+                      "h-1.5 flex-1 rounded-full " +
+                      (done
+                        ? "bg-gold"
+                        : current
+                        ? "bg-gradient-to-r from-gold to-amber-300"
+                        : "bg-foreground/[0.08]")
+                    }
+                  />
+                  <div
+                    className={
+                      "size-2.5 rounded-full shrink-0 " +
+                      (done
+                        ? "bg-gold"
+                        : current
+                        ? "bg-gold ring-2 ring-amber-200"
+                        : "bg-foreground/15")
+                    }
+                  />
+                </div>
+              );
+            })}
+          </div>
+          <div className="mt-1.5 flex justify-between text-[10px] text-muted">
+            {PROGRESS_STEPS.map((step, i) => (
+              <span
+                key={step.key}
+                className={i === progressIdx ? "font-semibold text-foreground" : ""}
+              >
+                {step.label}
+              </span>
+            ))}
+          </div>
+        </div>
+      )}
+
       {row.updateToBirdDog && (
         <div className="mt-3 rounded-md bg-foreground/[0.04] border border-border/50 px-3 py-2">
           <div className="text-[10px] uppercase tracking-widest text-muted font-medium mb-1">Latest update from our team</div>

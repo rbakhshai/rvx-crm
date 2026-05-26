@@ -100,6 +100,10 @@ export const deals = pgTable(
     parkAddress: text("park_address"),
     parkCity: text("park_city"),
     parkState: text("park_state"),
+    // Geocoded from the address — used for the dashboard map.
+    // Populated lazily by the geocoder script (Nominatim).
+    latitude: numeric("latitude", { precision: 10, scale: 7 }),
+    longitude: numeric("longitude", { precision: 10, scale: 7 }),
     parkType: parkType("park_type"),
     padsCount: integer("pads_count"),
     cabinsCount: text("cabins_count"),       // free text in source ("# Of Cabins (If Applicable)")

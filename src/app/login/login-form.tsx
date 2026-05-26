@@ -12,6 +12,7 @@ export function LoginForm() {
   const [mode, setMode] = useState<"signin" | "signup">("signin");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
   const [name, setName] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
@@ -63,15 +64,24 @@ export function LoginForm() {
       </label>
 
       <label className="block">
-        <span className="text-sm text-muted">Password</span>
+        <div className="flex items-center justify-between">
+          <span className="text-sm text-muted">Password</span>
+          <button
+            type="button"
+            onClick={() => setShowPassword((v) => !v)}
+            className="text-[11px] text-muted hover:text-foreground"
+          >
+            {showPassword ? "Hide" : "Show"}
+          </button>
+        </div>
         <input
-          type="password"
+          type={showPassword ? "text" : "password"}
           required
           minLength={8}
           autoComplete={mode === "signin" ? "current-password" : "new-password"}
           value={password}
           onChange={(e) => setPassword(e.target.value)}
-          className="mt-1 w-full rounded-md border border-border bg-background px-3 py-2 text-sm"
+          className="mt-1 w-full rounded-md border border-border bg-background px-3 py-2 text-sm font-mono"
         />
       </label>
 

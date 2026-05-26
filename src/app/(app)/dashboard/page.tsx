@@ -24,6 +24,10 @@ import {
   money,
   moneyShort,
 } from "./widgets";
+import { DealsMap } from "@/components/deals-map";
+import { PipelineFunnel } from "@/components/pipeline-funnel";
+import { ActivityPulse } from "@/components/activity-pulse";
+import { fetchActiveDealsForMap, fetchPipelineFunnel, fetchRecentActivity } from "@/lib/dashboard-queries";
 
 export default async function DashboardPage() {
   const session = await auth.api.getSession({ headers: await headers() });
@@ -111,13 +115,46 @@ async function MyTasks({ userId }: { userId: string }) {
 // =====================================================
 
 async function AdminBoard() {
-  const data = await fetchAdminDashboard();
+  const [data, mapPins, funnel, activity] = await Promise.all([
+    fetchAdminDashboard(),
+    fetchActiveDealsForMap(),
+    fetchPipelineFunnel(),
+    fetchRecentActivity(25),
+  ]);
+  const mapsApiKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY ?? "";
   return (
     <>
+      {/* Hero: pipeline value + funnel */}
+      <div className="mb-5">
+        <PipelineFunnel
+          stages={funnel.stages}
+          totalActiveValueCents={funnel.activeValueCents}
+          totalActiveCount={funnel.activeCount}
+          closedValueCents={funnel.closedValueCents}
+          closedCount={funnel.closedCount}
+        />
+      </div>
+
+      {/* Map */}
+      <section className="mb-5">
+        <div className="flex items-baseline justify-between mb-2">
+          <h2 className="text-sm uppercase tracking-widest text-muted font-medium">
+            Active pipeline — coast to coast
+          </h2>
+          <span className="text-[11px] text-muted">{mapPins.length} active parks</span>
+        </div>
+        <DealsMap pins={mapPins} apiKey={mapsApiKey} />
+      </section>
+
       <div className="grid sm:grid-cols-3 gap-4 mb-5">
         <StatTile label="New buyers (7d)" value={data.weeklyBuyersAdded} />
-        <StatTile label="New deals (7d)" value={data.weeklyDealsAdded} />
+        <StatTile label="New leads (7d)" value={data.weeklyDealsAdded} />
         <StatTile label="Total POF on file" value={moneyShort(data.totalPof)} hint="across all buyers" />
+      </div>
+
+      {/* Live activity pulse */}
+      <div className="mb-5">
+        <ActivityPulse events={activity} />
       </div>
 
       <div className="grid lg:grid-cols-2 gap-4">
