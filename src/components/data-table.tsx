@@ -6,6 +6,20 @@ export type Column<T> = {
   header: string;
   className?: string;
   render: (row: T) => React.ReactNode;
+  /**
+   * Setting this makes the column header clickable to sort.
+   * The value is what the page's URL `?sort=` will be set to.
+   */
+  sortKey?: string;
+};
+
+export type SortConfig = {
+  /** Current sort key (matches one of the columns' sortKey). */
+  current: string | null;
+  /** Current direction. */
+  dir: "asc" | "desc";
+  /** Build a URL for sorting by a given key — page-side knows the route + other params. */
+  hrefFor: (sortKey: string, nextDir: "asc" | "desc") => string;
 };
 
 export function DataTable<T extends { id: string }>({
@@ -13,11 +27,13 @@ export function DataTable<T extends { id: string }>({
   columns,
   rowHref,
   empty,
+  sort,
 }: {
   rows: T[];
   columns: Column<T>[];
   rowHref?: (row: T) => string;
   empty?: React.ReactNode;
+  sort?: SortConfig;
 }) {
   if (rows.length === 0 && empty) {
     return <>{empty}</>;
@@ -28,17 +44,59 @@ export function DataTable<T extends { id: string }>({
       <table className="w-full text-sm">
         <thead className="bg-foreground/[0.02] text-left">
           <tr>
-            {columns.map((col) => (
-              <th
-                key={col.key}
-                className={cn(
-                  "px-3.5 py-2.5 text-[11px] font-semibold uppercase tracking-widest text-muted",
-                  col.className,
-                )}
-              >
-                {col.header}
-              </th>
-            ))}
+            {columns.map((col) => {
+              const sortable = sort && col.sortKey;
+              const isCurrent = sortable && sort?.current === col.sortKey;
+              const nextDir: "asc" | "desc" = isCurrent && sort?.dir === "asc" ? "desc" : "asc";
+              const arrow = !sortable
+                ? null
+                : isCurrent
+                ? sort?.dir === "asc"
+                  ? "↑"
+                  : "↓"
+                : "⇅";
+
+              const inner = (
+                <span
+                  className={cn(
+                    "inline-flex items-center gap-1",
+                    sortable && "hover:text-foreground transition cursor-pointer",
+                    isCurrent && "text-foreground",
+                  )}
+                >
+                  <span>{col.header}</span>
+                  {arrow && (
+                    <span
+                      className={cn(
+                        "text-[10px] tabular-nums",
+                        !isCurrent && "text-foreground/30",
+                      )}
+                    >
+                      {arrow}
+                    </span>
+                  )}
+                </span>
+              );
+
+              return (
+                <th
+                  key={col.key}
+                  className={cn(
+                    "px-3.5 py-2.5 text-[11px] font-semibold uppercase tracking-widest text-muted",
+                    col.className,
+                  )}
+                  aria-sort={isCurrent ? (sort?.dir === "asc" ? "ascending" : "descending") : undefined}
+                >
+                  {sortable ? (
+                    <Link href={sort.hrefFor(col.sortKey!, nextDir) as never}>
+                      {inner}
+                    </Link>
+                  ) : (
+                    inner
+                  )}
+                </th>
+              );
+            })}
           </tr>
         </thead>
         <tbody>

@@ -125,6 +125,7 @@ export default async function TriagePage({
             callDisposition: current.callDisposition,
             updateToBirdDog: current.updateToBirdDog,
             lastNote: current.lastNote,
+            aiSummaryMd: current.aiSummaryMd,
             closerLastTouch: current.closerLastTouch?.toISOString() ?? null,
             createdAt: current.createdAt.toISOString(),
           }}

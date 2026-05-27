@@ -37,3 +37,80 @@ html, body {
 ::selection {
   background: color-mix(in oklch, var(--color-primary) 25%, transparent);
 }
+
+/* ============================================================
+   Marketing homepage animations — keep here so the page stays clean.
+   ============================================================ */
+
+/* Slow drifting blur orbs in the hero — gives the bg subtle motion */
+@keyframes drift-a {
+  0%, 100% { transform: translate(0, 0) scale(1); }
+  50%      { transform: translate(80px, -60px) scale(1.15); }
+}
+@keyframes drift-b {
+  0%, 100% { transform: translate(0, 0) scale(1); }
+  50%      { transform: translate(-90px, 70px) scale(0.9); }
+}
+@keyframes drift-c {
+  0%, 100% { transform: translate(0, 0) scale(1); }
+  50%      { transform: translate(60px, 80px) scale(1.1); }
+}
+.orb-a { animation: drift-a 18s ease-in-out infinite; }
+.orb-b { animation: drift-b 22s ease-in-out infinite; }
+.orb-c { animation: drift-c 26s ease-in-out infinite; }
+
+/* Slow shifting mesh-gradient backdrop */
+@keyframes mesh-shift {
+  0%, 100% { background-position: 0% 0%, 100% 100%, 50% 50%; }
+  50%      { background-position: 100% 50%, 0% 50%, 50% 100%; }
+}
+.mesh-bg {
+  background-image:
+    radial-gradient(at 20% 20%, color-mix(in oklch, var(--color-gold) 22%, transparent) 0px, transparent 50%),
+    radial-gradient(at 80% 30%, color-mix(in oklch, var(--color-gold) 12%, transparent) 0px, transparent 50%),
+    radial-gradient(at 40% 80%, color-mix(in oklch, oklch(60% 0.10 30) 14%, transparent) 0px, transparent 50%);
+  background-size: 200% 200%, 200% 200%, 200% 200%;
+  animation: mesh-shift 25s ease-in-out infinite;
+}
+
+/* Gradient text fill for accent words */
+.text-shimmer {
+  display: inline-block;
+  background-image: linear-gradient(120deg, var(--color-gold) 0%, oklch(88% 0.18 90) 45%, var(--color-gold) 100%);
+  background-size: 200% auto;
+  background-clip: text;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  color: transparent;
+  animation: shimmer 6s linear infinite;
+}
+@keyframes shimmer {
+  to { background-position: 200% center; }
+}
+
+/* Subtle fade-up on mount */
+@keyframes fade-up {
+  from { opacity: 0; transform: translateY(16px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.fade-up        { animation: fade-up 0.8s ease-out both; }
+.fade-up-delay-1 { animation: fade-up 0.8s ease-out 0.1s both; }
+.fade-up-delay-2 { animation: fade-up 0.8s ease-out 0.2s both; }
+.fade-up-delay-3 { animation: fade-up 0.8s ease-out 0.3s both; }
+.fade-up-delay-4 { animation: fade-up 0.8s ease-out 0.4s both; }
+
+/* 3D tilt cards: container sets perspective; child tilts on hover */
+.tilt-3d        { perspective: 1000px; }
+.tilt-3d-inner  { transition: transform 0.35s cubic-bezier(0.2, 0.8, 0.2, 1), box-shadow 0.35s; transform-style: preserve-3d; }
+.tilt-3d:hover .tilt-3d-inner { transform: rotateX(4deg) rotateY(-6deg) translateY(-6px); box-shadow: 0 30px 60px -20px color-mix(in oklch, var(--color-gold) 35%, transparent); }
+
+/* Glowing button effect */
+.glow-cta { box-shadow: 0 8px 24px -8px color-mix(in oklch, var(--color-gold) 70%, transparent), inset 0 0 0 1px color-mix(in oklch, white 30%, transparent); transition: box-shadow 0.3s, transform 0.2s; }
+.glow-cta:hover { box-shadow: 0 16px 36px -10px color-mix(in oklch, var(--color-gold) 80%, transparent), inset 0 0 0 1px color-mix(in oklch, white 50%, transparent); transform: translateY(-1px); }
+
+/* Tactile lift cards */
+.lift-card { transition: transform 0.25s cubic-bezier(0.2, 0.8, 0.2, 1), box-shadow 0.25s, border-color 0.25s; }
+.lift-card:hover { transform: translateY(-4px); box-shadow: 0 20px 40px -16px color-mix(in oklch, var(--color-foreground) 22%, transparent); border-color: color-mix(in oklch, var(--color-gold) 40%, var(--color-border)); }
+
+/* Number counter — placeholder for future count-up; static for now */
+.big-num { font-variant-numeric: tabular-nums; letter-spacing: -0.04em; }

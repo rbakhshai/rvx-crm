@@ -21,6 +21,7 @@
     "seed:templates": "tsx --env-file=.env.local scripts/seed-templates.ts"
   },
   "dependencies": {
+    "@anthropic-ai/sdk": "^0.98.0",
     "@dnd-kit/core": "^6.3.1",
     "@types/nodemailer": "^8.0.0",
     "@vis.gl/react-google-maps": "^1.8.3",

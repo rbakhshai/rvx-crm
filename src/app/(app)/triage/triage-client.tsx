@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Badge } from "@/components/badge";
 import { Button } from "@/components/button";
+import { AiSummaryCard } from "./ai-summary-card";
 import { CALL_OUTCOMES, type Queue, buildTriageUrl, suggestedStatusForOutcome } from "./lib";
 import { triageDealAction } from "./actions";
 
@@ -22,6 +23,7 @@ type DealCard = {
   callDisposition: string | null;
   updateToBirdDog: string | null;
   lastNote: string | null;
+  aiSummaryMd: string | null;
   closerLastTouch: string | null;
   createdAt: string;
 };
@@ -234,6 +236,10 @@ export function TriageClient({
               telHref={bdTel}
               companyName={null}
             />
+          </div>
+
+          <div className="mt-4 pt-4 border-t border-border">
+            <AiSummaryCard dealId={deal.id} initialSummary={deal.aiSummaryMd} />
           </div>
 
           {deal.lastNote && (
