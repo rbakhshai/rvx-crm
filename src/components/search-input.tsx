@@ -28,13 +28,13 @@ export function SearchInput({
     e.preventDefault();
     const q = value.trim();
     if (scope === "global") {
-      router.push(q ? `/search?q=${encodeURIComponent(q)}` : "/search");
+      router.push((q ? `/search?q=${encodeURIComponent(q)}` : "/search") as never);
       return;
     }
     const next = new URLSearchParams(params.toString());
     if (q) next.set("q", q);
     else next.delete("q");
-    router.push(`${pathname}?${next.toString()}`);
+    router.push(`${pathname}?${next.toString()}` as never);
   }
 
   return (

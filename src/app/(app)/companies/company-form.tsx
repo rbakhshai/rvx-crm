@@ -96,7 +96,7 @@ export function CompanyForm({
       </Section>
 
       <div className="sticky bottom-0 -mx-8 mt-8 border-t border-border bg-background/95 backdrop-blur px-8 py-4 flex items-center justify-end gap-2">
-        <Button type="button" variant="ghost" onClick={() => router.push(cancelHref)}>
+        <Button type="button" variant="ghost" onClick={() => router.push(cancelHref as never)}>
           Cancel
         </Button>
         <Button type="submit" disabled={isPending}>

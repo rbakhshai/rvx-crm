@@ -72,7 +72,7 @@ export default async function NotificationsPage({ searchParams }: { searchParams
           return (
             <Link
               key={f.label}
-              href={href}
+              href={href as never}
               className={
                 "rounded-full px-2.5 py-0.5 border " +
                 (active ? "bg-foreground/[0.06] border-foreground/20" : "border-border text-muted hover:bg-foreground/[0.03]")

@@ -29,7 +29,7 @@ export function LoginForm() {
         setError(result.error.message ?? "Something went wrong");
         return;
       }
-      router.push(next);
+      router.push(next as never);
       router.refresh();
     });
   }

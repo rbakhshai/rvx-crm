@@ -34,7 +34,7 @@ export function FilterChips({
     <div className="flex flex-wrap items-center gap-1.5 text-xs">
       <span className="text-muted mr-1">{label}:</span>
       <Link
-        href={hrefFor(null)}
+        href={hrefFor(null) as never}
         className={cn(
           "rounded-full px-2 py-0.5 border transition",
           !current
@@ -49,7 +49,7 @@ export function FilterChips({
         return (
           <Link
             key={o.value}
-            href={hrefFor(o.value)}
+            href={hrefFor(o.value) as never}
             className={cn(
               "rounded-full px-2 py-0.5 border transition",
               active

@@ -132,11 +132,11 @@ function ResultSection({
     <section>
       <div className="flex items-baseline justify-between mb-2">
         <h3 className="text-sm font-semibold">{title} <span className="text-muted tabular-nums">({count})</span></h3>
-        <Link href={seeAllHref} className="text-xs text-muted hover:text-foreground">See all matches →</Link>
+        <Link href={seeAllHref as never} className="text-xs text-muted hover:text-foreground">See all matches →</Link>
       </div>
       <div className="rounded-xl border border-border divide-y divide-border overflow-hidden">
         {rows.map((r) => (
-          <Link key={r.key} href={r.href} className="block px-4 py-2.5 hover:bg-foreground/[0.02]">
+          <Link key={r.key} href={r.href as never} className="block px-4 py-2.5 hover:bg-foreground/[0.02]">
             <div className="text-sm font-medium">{r.primary}</div>
             {r.secondary && <div className="text-xs text-muted mt-0.5">{r.secondary}</div>}
           </Link>
