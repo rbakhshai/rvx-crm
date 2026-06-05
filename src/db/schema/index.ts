@@ -7,3 +7,4 @@ export * from "./deals";
 export * from "./notifications";
 export * from "./activities";
 export * from "./templates";
+export * from "./due-diligence";

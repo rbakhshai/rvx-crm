@@ -105,6 +105,9 @@ export default async function DealDetailPage({ params }: { params: Promise<{ id:
           <Link href="/deals" className="text-sm text-muted hover:text-foreground self-center">
             ← Back
           </Link>
+          <LinkButton href={`/deals/${deal.id}/due-diligence`} variant="secondary" size="sm">
+            Due diligence
+          </LinkButton>
           <LinkButton href={`/deals/${deal.id}/dispo`} variant="gold" size="sm">
             Dispo to buyers →
           </LinkButton>

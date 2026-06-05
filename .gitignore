@@ -32,3 +32,6 @@ drizzle/
 # Ontraport migration dumps — contain client PII (emails, phones, notes).
 # Keep the snapshot doc, ignore the raw exports.
 raw/*.json
+
+# DD worksheet templates — proprietary internal docs, not in source control
+*.xlsx
