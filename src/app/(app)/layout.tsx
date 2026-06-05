@@ -6,6 +6,7 @@ import { Nav } from "./nav";
 import { SignOutButton } from "./sign-out-button";
 import { CommandPalette } from "@/components/command-palette";
 import { CommandPaletteTrigger } from "@/components/command-palette-trigger";
+import { ThemeToggle } from "@/components/theme-toggle";
 import { getPermissionsFor } from "@/lib/has-permission";
 
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
@@ -55,8 +56,11 @@ export default async function AppLayout({ children }: { children: React.ReactNod
         </div>
       </aside>
       <div className="flex-1 min-w-0 flex flex-col">
-        <header className="h-12 border-b border-border px-6 flex items-center bg-background/95 backdrop-blur sticky top-0 z-10">
+        <header className="h-12 border-b border-border px-6 flex items-center gap-3 bg-background/95 backdrop-blur sticky top-0 z-10">
           <CommandPaletteTrigger />
+          <div className="ml-auto">
+            <ThemeToggle />
+          </div>
         </header>
         <main className="flex-1 min-w-0">{children}</main>
       </div>

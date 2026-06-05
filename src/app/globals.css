@@ -1,18 +1,46 @@
 @import "tailwindcss";
 
+/* ============================================================
+   Design system — Pipedrive-style palette, light + dark.
+   Light is the default; .dark on <html> flips to dark.
+   The brand gold used by the marketing site stays untouched in
+   both modes so the public homepage keeps its identity.
+   ============================================================ */
+
 @theme {
-  --color-background: oklch(99% 0 0);
-  --color-foreground: oklch(15% 0 0);
-  --color-muted: oklch(55% 0 0);
-  --color-border: oklch(92% 0 0);
-  --color-primary: oklch(48% 0.18 250);
-  --color-primary-foreground: oklch(99% 0 0);
-  --color-accent: oklch(70% 0.16 60);
-  /* Brand gold used on rvparkexchange.com — tweak hue/chroma here to match exactly */
+  /* Default = LIGHT tokens.
+     Numbers chosen from the Pipedrive light mockup the user picked. */
+  --color-background: #F7F6F2;
+  --color-foreground: #1B1B1F;
+  --color-muted: #6E7280;
+  --color-border: #E8E4DC;
+  --color-surface: #FFFFFF;            /* card backgrounds */
+  --color-surface-subtle: #FBFAF6;     /* hover bg for ghost buttons / rows */
+  --color-primary: #26A65B;            /* Pipedrive green */
+  --color-primary-foreground: #FFFFFF;
+  --color-accent: #F97316;             /* tertiary accent for warnings/highlights */
+
+  /* Brand gold preserved for the marketing homepage. */
   --color-gold: oklch(74% 0.17 82);
   --color-gold-foreground: oklch(15% 0 0);
-  --font-sans: ui-sans-serif, system-ui, -apple-system, "SF Pro Display", "Segoe UI", Roboto, "Helvetica Neue", sans-serif;
+
+  /* Friendly humanist sans (Rubik, loaded via next/font). Falls back to system. */
+  --font-sans: var(--font-rubik), ui-sans-serif, system-ui, -apple-system, "SF Pro Display", "Segoe UI", Roboto, "Helvetica Neue", sans-serif;
   --font-mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+}
+
+/* Dark mode tokens — applied via .dark on <html>. */
+html.dark {
+  --color-background: #13141A;
+  --color-foreground: #E8E8EA;
+  --color-muted: #8A8F98;
+  --color-border: #2A2D38;
+  --color-surface: #1A1B22;
+  --color-surface-subtle: #1F2028;
+  --color-primary: #34C25F;            /* slightly brighter green on dark */
+  --color-primary-foreground: #0E0F14;
+  --color-accent: #FB923C;
+  color-scheme: dark;
 }
 
 html {

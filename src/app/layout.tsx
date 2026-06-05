@@ -1,14 +1,44 @@
 import type { Metadata } from "next";
+import { Rubik } from "next/font/google";
 import "./globals.css";
+
+/**
+ * Rubik — friendly humanist sans. Drives the Pipedrive-flavored
+ * look across the whole app. CSS var `--font-rubik` is referenced
+ * by `--font-sans` in globals.css.
+ */
+const rubik = Rubik({
+  subsets: ["latin"],
+  weight: ["400", "500", "600", "700"],
+  variable: "--font-rubik",
+  display: "swap",
+});
 
 export const metadata: Metadata = {
   title: "RVX CRM",
   description: "Brokerage operating system for rvparkexchange.com",
 };
 
+/**
+ * Tiny no-flash script: runs before React hydrates, reads the saved
+ * theme from localStorage (falling back to system preference), and
+ * sets `.dark` on <html> immediately so there's no light→dark flicker.
+ */
+const THEME_SCRIPT = `
+try {
+  const stored = localStorage.getItem('theme');
+  const prefersDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+  const dark = stored === 'dark' || (!stored && prefersDark);
+  if (dark) document.documentElement.classList.add('dark');
+} catch (e) {}
+`;
+
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en">
+    <html lang="en" className={rubik.variable}>
+      <head>
+        <script dangerouslySetInnerHTML={{ __html: THEME_SCRIPT }} />
+      </head>
       <body>{children}</body>
     </html>
   );
