@@ -9,15 +9,28 @@ import { EmptyState } from "@/components/empty-state";
 import { Badge } from "@/components/badge";
 import { SearchInput } from "@/components/search-input";
 import { FilterChips } from "@/components/filter-chips";
+import { Avatar } from "@/components/avatar";
+import { StaleDot } from "@/components/stale-dot";
 import { DEAL_PRIORITY_OPTIONS, US_STATES } from "@/lib/options";
 import { isPipelineStageKey, labelForStage, statusesForStage } from "@/lib/pipeline-stages";
 
-type Row = typeof deals.$inferSelect;
+type Row = typeof deals.$inferSelect & { ownerName?: string | null };
 
 const priorityTone = { hot: "danger", warm: "warning", cold: "info" } as const;
 
 const columns: Column<Row>[] = [
-  { key: "name", header: "Deal", sortKey: "name", render: (r) => r.name ?? r.parkAddress ?? "(unnamed deal)" },
+  {
+    key: "fresh",
+    header: "",
+    className: "w-6",
+    render: (r) => <StaleDot since={r.closerLastTouch ?? r.updatedAt} />,
+  },
+  {
+    key: "name",
+    header: "Deal",
+    sortKey: "name",
+    render: (r) => r.name ?? r.parkAddress ?? "(unnamed deal)",
+  },
   { key: "state", header: "State", sortKey: "state", render: (r) => r.parkState ?? <span className="text-muted">—</span> },
   { key: "pads", header: "Pads", sortKey: "pads", className: "text-right tabular-nums", render: (r) => r.padsCount ?? <span className="text-muted">—</span> },
   {
@@ -39,6 +52,17 @@ const columns: Column<Row>[] = [
       ),
   },
   { key: "status", header: "Stage", sortKey: "status", className: "text-muted", render: (r) => r.statusCode ?? <span className="text-muted">—</span> },
+  {
+    key: "owner",
+    header: "Owner",
+    className: "w-12",
+    render: (r) =>
+      r.ownerId ? (
+        <Avatar name={r.ownerName ?? "?"} id={r.ownerId} />
+      ) : (
+        <span className="text-muted">—</span>
+      ),
+  },
 ];
 
 const SORT_COLUMNS: Record<string, SQLWrapper> = {
@@ -83,12 +107,18 @@ export default async function DealsListPage({ searchParams }: { searchParams: Se
     ? (sortDir === "asc" ? asc(SORT_COLUMNS[sortKey]) : desc(SORT_COLUMNS[sortKey]))
     : desc(deals.createdAt);
 
-  const [rows, [{ count }], statuses, users] = await Promise.all([
+  const [rawRows, [{ count }], statuses, users] = await Promise.all([
     db.select().from(deals).where(where).orderBy(orderBy).limit(500),
     db.select({ count: sql<number>`count(*)::int` }).from(deals).where(where),
     db.select().from(dealStatuses).orderBy(asc(dealStatuses.sortOrder)),
     db.select({ id: user.id, name: user.name }).from(user).orderBy(asc(user.name)),
   ]);
+
+  const userMap = new Map(users.map((u) => [u.id, u.name]));
+  const rows: Row[] = rawRows.map((r) => ({
+    ...r,
+    ownerName: r.ownerId ? userMap.get(r.ownerId) ?? null : null,
+  }));
 
   const pathname = "/deals";
 

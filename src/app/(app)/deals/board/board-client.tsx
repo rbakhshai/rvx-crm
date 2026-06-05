@@ -14,6 +14,8 @@ import {
   type DragStartEvent,
 } from "@dnd-kit/core";
 import { Badge } from "@/components/badge";
+import { Avatar } from "@/components/avatar";
+import { StaleDot } from "@/components/stale-dot";
 import { cn } from "@/lib/cn";
 import { DEAL_PRIORITY_OPTIONS } from "@/lib/options";
 import { updateDealStatusByRoleAction } from "../actions";
@@ -34,6 +36,9 @@ export type DealCard = {
   statusLabel: string | null;
   dealPriority: string | null;
   role: string; // computed lane assignment
+  ownerId: string | null;
+  ownerName: string | null;
+  lastTouch: Date | null;
 };
 
 export type Lane = { key: string; label: string; subtitle: string };
@@ -163,9 +168,13 @@ function Card({ deal, dragging }: { deal: DealCard; dragging?: boolean }) {
           : "border-border hover:border-foreground/30 hover:shadow-sm cursor-grab",
       )}
     >
-      <div className="text-sm font-medium leading-tight line-clamp-2">{title}</div>
-      {location && <div className="text-[11px] text-muted mt-1">{location}</div>}
-      <div className="mt-2 flex items-center justify-between gap-2">
+      <div className="flex items-start gap-2">
+        <StaleDot since={deal.lastTouch} className="mt-1.5" />
+        <div className="text-sm font-medium leading-tight line-clamp-2 flex-1">{title}</div>
+        {deal.ownerId && <Avatar name={deal.ownerName ?? "?"} id={deal.ownerId} size="xs" />}
+      </div>
+      {location && <div className="text-[11px] text-muted mt-1 ml-4">{location}</div>}
+      <div className="mt-2 flex items-center justify-between gap-2 ml-4">
         <div className="text-[11px] text-muted tabular-nums">
           {price ? `$${Number(price).toLocaleString()}` : "—"}
           {deal.padsCount ? ` · ${deal.padsCount} pads` : ""}
@@ -177,7 +186,7 @@ function Card({ deal, dragging }: { deal: DealCard; dragging?: boolean }) {
         )}
       </div>
       {deal.statusLabel && (
-        <div className="mt-2 text-[10px] text-muted truncate" title={deal.statusLabel}>
+        <div className="mt-2 text-[10px] text-muted truncate ml-4" title={deal.statusLabel}>
           {deal.statusLabel}
         </div>
       )}

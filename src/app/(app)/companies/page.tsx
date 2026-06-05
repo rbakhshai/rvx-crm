@@ -8,9 +8,11 @@ import { EmptyState } from "@/components/empty-state";
 import { Badge } from "@/components/badge";
 import { SearchInput } from "@/components/search-input";
 import { FilterChips } from "@/components/filter-chips";
+import { Avatar } from "@/components/avatar";
+import { StaleDot } from "@/components/stale-dot";
 import { COMPANY_RELATIONSHIP_OPTIONS, US_STATES } from "@/lib/options";
 
-type Row = typeof companies.$inferSelect;
+type Row = typeof companies.$inferSelect & { ownerName?: string | null };
 
 const relationshipLabel: Record<string, string> = {
   realtor: "Realtor",
@@ -19,6 +21,7 @@ const relationshipLabel: Record<string, string> = {
 };
 
 const columns: Column<Row>[] = [
+  { key: "fresh", header: "", className: "w-6", render: (r) => <StaleDot since={r.updatedAt} /> },
   { key: "name", header: "Name", render: (r) => r.name },
   { key: "relationship", header: "Relationship", render: (r) => <Badge>{relationshipLabel[r.relationshipToPark] ?? r.relationshipToPark}</Badge> },
   {
@@ -29,6 +32,12 @@ const columns: Column<Row>[] = [
   { key: "email", header: "Email", className: "text-muted", render: (r) => r.email ?? "—" },
   { key: "phone", header: "Phone", className: "text-muted", render: (r) => r.phone ?? "—" },
   { key: "state", header: "State", render: (r) => r.state ?? <span className="text-muted">—</span> },
+  {
+    key: "owner",
+    header: "Owner",
+    className: "w-12",
+    render: (r) => (r.ownerId ? <Avatar name={r.ownerName ?? "?"} id={r.ownerId} /> : <span className="text-muted">—</span>),
+  },
 ];
 
 type SearchParams = Promise<{ q?: string; relationship?: string; state?: string; owner?: string }>;
@@ -49,11 +58,17 @@ export default async function CompaniesListPage({ searchParams }: { searchParams
 
   const where = filters.length ? and(...filters) : undefined;
 
-  const [rows, [{ count }], users] = await Promise.all([
+  const [rawRows, [{ count }], users] = await Promise.all([
     db.select().from(companies).where(where).orderBy(desc(companies.createdAt)).limit(100),
     db.select({ count: sql<number>`count(*)::int` }).from(companies).where(where),
     db.select({ id: user.id, name: user.name }).from(user).orderBy(asc(user.name)),
   ]);
+
+  const userMap = new Map(users.map((u) => [u.id, u.name]));
+  const rows: Row[] = rawRows.map((r) => ({
+    ...r,
+    ownerName: r.ownerId ? userMap.get(r.ownerId) ?? null : null,
+  }));
 
   const pathname = "/companies";
   const ownerOptions = users.map((u) => ({ value: u.id, label: u.name }));

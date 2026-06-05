@@ -54,6 +54,7 @@ export default async function DealsBoardPage({ searchParams }: { searchParams: S
   ]);
 
   const statusByCode = new Map(allStatuses.map((s) => [s.code, s]));
+  const userMap = new Map(userRows.map((u) => [u.id, u.name]));
   const count = totalCount[0]?.count ?? 0;
 
   const cards: DealCard[] = dealRows.map((d) => {
@@ -71,6 +72,9 @@ export default async function DealsBoardPage({ searchParams }: { searchParams: S
       statusLabel: status?.label ?? null,
       dealPriority: d.dealPriority,
       role: status?.role ?? "misc",
+      ownerId: d.ownerId,
+      ownerName: d.ownerId ? userMap.get(d.ownerId) ?? null : null,
+      lastTouch: d.closerLastTouch,
     };
   });
 
