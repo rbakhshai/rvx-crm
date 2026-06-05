@@ -1,5 +1,8 @@
 "use client";
 
+import * as Sentry from "@sentry/nextjs";
+import { useEffect } from "react";
+
 export default function TodayError({
   error,
   reset,
@@ -7,6 +10,10 @@ export default function TodayError({
   error: Error & { digest?: string };
   reset: () => void;
 }) {
+  useEffect(() => {
+    Sentry.captureException(error);
+  }, [error]);
+
   return (
     <div className="max-w-2xl mx-auto py-12 px-6">
       <h1 className="text-xl font-semibold text-red-700">Today page error</h1>

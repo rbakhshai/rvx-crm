@@ -1,8 +1,11 @@
 "use client";
 
+import * as Sentry from "@sentry/nextjs";
+import { useEffect } from "react";
+
 /**
  * Surfaces the actual error message instead of Next.js's generic page.
- * Safe to keep around — only shown when the DD page render throws.
+ * Also reports to Sentry so we hear about it without the user telling us.
  */
 export default function DdError({
   error,
@@ -11,6 +14,10 @@ export default function DdError({
   error: Error & { digest?: string };
   reset: () => void;
 }) {
+  useEffect(() => {
+    Sentry.captureException(error);
+  }, [error]);
+
   return (
     <div className="max-w-2xl mx-auto py-12 px-6">
       <h1 className="text-xl font-semibold text-red-700">Due Diligence page error</h1>
