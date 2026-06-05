@@ -151,7 +151,7 @@ export default async function TodayPage() {
   const pipelineValue = Number(pipelineValueRows[0]?.total ?? 0);
 
   return (
-    <PageShell title={greeting(session.user.name)} subtitle={new Date().toLocaleDateString(undefined, { weekday: "long", month: "long", day: "numeric" })}>
+    <PageShell title={greeting(session.user.name)} subtitle={new Date().toLocaleDateString(undefined, { weekday: "long", month: "long", day: "numeric" })} width="wide">
       {/* ===== Hero stats ===== */}
       <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-3 mb-6">
         <StatTile

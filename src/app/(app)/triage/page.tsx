@@ -82,6 +82,7 @@ export default async function TriagePage({
     <PageShell
       title="Triage"
       subtitle="One deal at a time — call, log, advance, next."
+      width="wide"
       action={<QueueTabs current={queue} counts={null} />}
     >
       {queueRows.length === 0 ? (

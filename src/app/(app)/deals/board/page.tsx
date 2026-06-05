@@ -84,6 +84,7 @@ export default async function DealsBoardPage({ searchParams }: { searchParams: S
     <PageShell
       title="Deal pipeline"
       subtitle={`${count} deal${count === 1 ? "" : "s"}${ownerFilter ? " · filtered" : ""} · drag cards across lanes to change status`}
+      width="full"
       action={
         <div className="flex gap-2 items-center">
           <Link href="/deals" className="text-sm text-muted hover:text-foreground self-center">

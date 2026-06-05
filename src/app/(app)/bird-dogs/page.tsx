@@ -68,6 +68,7 @@ export default async function BirdDogsListPage({ searchParams }: { searchParams:
     <PageShell
       title="Bird Dogs"
       subtitle={`${count} scout${count === 1 ? "" : "s"}${q || status || level || owner ? " (filtered)" : ""}`}
+      width="wide"
       action={<LinkButton href="/bird-dogs/new" size="sm">+ New bird dog</LinkButton>}
     >
       <div className="space-y-3 mb-5">

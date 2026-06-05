@@ -1,16 +1,32 @@
+type Width = "narrow" | "default" | "wide" | "full";
+
+const widthClass: Record<Width, string> = {
+  narrow: "max-w-3xl",         // 768px — single-column forms
+  default: "max-w-6xl",        // 1152px — detail pages with prose
+  wide: "max-w-screen-2xl",    // 1536px — list pages, dashboards, tables
+  full: "max-w-none",          // edge-to-edge for kanban / DD / wide grids
+};
+
 export function PageShell({
   title,
   subtitle,
   action,
   children,
+  width = "default",
 }: {
   title: string;
   subtitle?: string;
   action?: React.ReactNode;
   children: React.ReactNode;
+  /**
+   * How wide the page should be. Defaults to "default" (max-w-6xl) for the
+   * legacy detail-page look. List pages and dashboards should pass "wide";
+   * kanban / wide tables pass "full" to use every pixel.
+   */
+  width?: Width;
 }) {
   return (
-    <div className="max-w-6xl mx-auto px-8 py-10">
+    <div className={`${widthClass[width]} mx-auto px-8 py-10`}>
       <header className="flex items-start justify-between gap-4 pb-6 border-b border-border">
         <div>
           <h1 className="text-2xl font-semibold tracking-tight">{title}</h1>

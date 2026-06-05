@@ -41,6 +41,7 @@ export default async function DashboardPage() {
     <PageShell
       title={`${greeting}, ${firstName}`}
       subtitle={roleSubtitle(role)}
+      width="wide"
     >
       <MyTasks userId={session.user.id} />
 

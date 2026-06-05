@@ -163,6 +163,7 @@ export default async function DealsListPage({ searchParams }: { searchParams: Se
     <PageShell
       title="Deals"
       subtitle={`${count} deal${count === 1 ? "" : "s"}${q || status || phase || priority || state || owner ? " (filtered)" : ""}`}
+      width="wide"
       action={
         <div className="flex gap-2 items-center">
           <LinkButton href="/deals/board" variant="secondary" size="sm">Board view</LinkButton>

@@ -63,6 +63,7 @@ export default async function NotificationsPage({ searchParams }: { searchParams
     <PageShell
       title="Notifications"
       subtitle="Outbound email + SMS queue. Phase 4 will wire real sending; today most rows are 'logged only' until you connect Gmail SMTP."
+      width="wide"
     >
       <div className="mb-4 flex items-center gap-2 text-xs">
         <span className="text-muted">Status:</span>

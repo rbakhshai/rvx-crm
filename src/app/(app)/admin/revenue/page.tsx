@@ -16,7 +16,7 @@ export default async function RevenuePage() {
   if (!session) redirect("/login?next=/admin/revenue");
   if (!(await hasPermission(session.user, "view_revenue"))) {
     return (
-      <PageShell title="Revenue" subtitle="You don't have permission to view revenue.">
+      <PageShell width="wide" title="Revenue" subtitle="You don't have permission to view revenue.">
         <div className="rounded-xl border border-border p-10 text-center text-sm text-muted">
           Ask an admin to grant you the &quot;See revenue dashboard&quot; capability under Settings → Role permissions.
         </div>
@@ -28,7 +28,7 @@ export default async function RevenuePage() {
 
   if (!summary.configured) {
     return (
-      <PageShell title="Revenue" subtitle="Money coming in from parks RVX owns.">
+      <PageShell width="wide" title="Revenue" subtitle="Money coming in from parks RVX owns.">
         <ConnectStripeCard />
       </PageShell>
     );
@@ -37,7 +37,7 @@ export default async function RevenuePage() {
   const currency = summary.currencies[0] ?? "usd";
 
   return (
-    <PageShell title="Revenue" subtitle="Pulled live from Stripe.">
+    <PageShell width="wide" title="Revenue" subtitle="Pulled live from Stripe.">
       {/* Hero — park name + total */}
       <section className="rounded-2xl border border-border bg-gradient-to-b from-gold/[0.06] to-transparent p-8 text-center">
         <div className="text-[11px] uppercase tracking-widest text-muted font-medium">

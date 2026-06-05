@@ -77,6 +77,7 @@ export default async function CompaniesListPage({ searchParams }: { searchParams
     <PageShell
       title="Sellers"
       subtitle={`${count} seller${count === 1 ? "" : "s"}${q || relationship || state || owner ? " (filtered)" : ""}`}
+      width="wide"
       action={<LinkButton href="/companies/new" size="sm">+ New seller</LinkButton>}
     >
       <div className="space-y-3 mb-5">

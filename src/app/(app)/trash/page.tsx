@@ -89,6 +89,7 @@ export default async function TrashPage() {
           ? "Nothing in the trash. Deleted records appear here for 30 days."
           : `${total} item${total === 1 ? "" : "s"} · auto-purged after ${PURGE_AFTER_DAYS} days · restore anytime`
       }
+      width="wide"
     >
       {total === 0 ? (
         <div className="rounded-xl border border-dashed border-border p-12 text-center bg-foreground/[0.02]">

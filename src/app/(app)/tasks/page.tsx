@@ -97,7 +97,7 @@ export default async function TasksPage({ searchParams }: { searchParams: Search
   await Promise.all(fetches);
 
   return (
-    <PageShell title="Tasks" subtitle="Your work queue across every record.">
+    <PageShell title="Tasks" subtitle="Your work queue across every record." width="wide">
       <div className="mb-4 flex items-center gap-2 text-xs flex-wrap">
         {VIEWS.map((v) => {
           const active = view === v.key;

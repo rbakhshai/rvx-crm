@@ -17,7 +17,7 @@ export default async function SearchPage({ searchParams }: { searchParams: Searc
 
   if (!q) {
     return (
-      <PageShell title="Search" subtitle="Find buyers, deals, sellers, and bird dogs.">
+      <PageShell title="Search" subtitle="Find buyers, deals, sellers, and bird dogs." width="wide">
         <EmptyState
           title="Type a search term"
           description="Search by name, email, phone, park address, or city. Use the bar at the top of the page."
@@ -58,7 +58,7 @@ export default async function SearchPage({ searchParams }: { searchParams: Searc
   const total = buyerRows.length + dealRows.length + companyRows.length + birdDogRows.length;
 
   return (
-    <PageShell title={`Search: "${q}"`} subtitle={`${total} match${total === 1 ? "" : "es"} across all records`}>
+    <PageShell title={`Search: "${q}"`} subtitle={`${total} match${total === 1 ? "" : "es"} across all records`} width="wide">
       {total === 0 ? (
         <EmptyState
           title="No matches"

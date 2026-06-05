@@ -95,6 +95,7 @@ export default async function ContactsListPage({ searchParams }: { searchParams:
     <PageShell
       title="Buyers"
       subtitle={`${count} buyer${count === 1 ? "" : "s"}${q || status || tier || state || owner ? " (filtered)" : ""}`}
+      width="wide"
       action={<LinkButton href="/contacts/new" size="sm">+ New buyer</LinkButton>}
     >
       <div className="space-y-3 mb-5">

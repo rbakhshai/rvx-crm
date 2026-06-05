@@ -16,7 +16,7 @@ export function SettingsShell({
   children: React.ReactNode;
 }) {
   return (
-    <PageShell title="Settings" subtitle={subtitle}>
+    <PageShell title="Settings" subtitle={subtitle} width="wide">
       <div className="border-b border-border mb-6 -mx-8 px-8">
         <div className="flex items-center gap-1">
           {TABS.map((t) => {

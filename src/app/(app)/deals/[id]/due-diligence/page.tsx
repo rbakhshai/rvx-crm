@@ -272,6 +272,7 @@ export default async function DueDiligencePage({
     <PageShell
       title="Due Diligence"
       subtitle={title}
+      width="full"
       action={
         <div className="flex gap-2 items-center">
           <Link href={`/deals/${id}` as never} className="text-sm text-muted hover:text-foreground self-center">
