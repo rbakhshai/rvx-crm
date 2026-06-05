@@ -12,7 +12,7 @@
  */
 import Link from "next/link";
 import { headers } from "next/headers";
-import { and, desc, eq, inArray, isNull, sql } from "drizzle-orm";
+import { and, desc, eq, gt, inArray, isNull, sql } from "drizzle-orm";
 import { db } from "@/db";
 import {
   tasks,
@@ -123,7 +123,7 @@ export default async function TodayPage() {
     db
       .select({ id: notificationsTable.id, kind: notificationsTable.kind, subject: notificationsTable.subject, status: notificationsTable.status, createdAt: notificationsTable.createdAt })
       .from(notificationsTable)
-      .where(sql`${notificationsTable.status} IN ('pending', 'failed')`)
+      .where(inArray(notificationsTable.status, ["pending", "failed"]))
       .orderBy(desc(notificationsTable.createdAt))
       .limit(5),
 
@@ -132,7 +132,7 @@ export default async function TodayPage() {
     // 5a) New deals this week
     db.select({ count: sql<number>`count(*)::int` })
       .from(deals)
-      .where(sql`${deals.createdAt} > ${new Date(Date.now() - 7 * DAY_MS)}`),
+      .where(gt(deals.createdAt, new Date(Date.now() - 7 * DAY_MS))),
 
     // 5b) Pipeline value across all active stages
     db.select({ total: sql<number>`COALESCE(SUM(${deals.listPrice}::numeric), 0)::bigint` })
