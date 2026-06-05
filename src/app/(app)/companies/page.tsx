@@ -95,6 +95,7 @@ export default async function CompaniesListPage({ searchParams }: { searchParams
         rowHref={(r) => `/companies/${r.id}`}
         empty={
           <EmptyState
+            icon="🏢"
             title="No sellers match"
             description="Try clearing filters or adding a seller."
             ctaLabel="+ New seller"

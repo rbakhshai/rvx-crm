@@ -213,6 +213,7 @@ export default async function DealsListPage({ searchParams }: { searchParams: Se
         }}
         empty={
           <EmptyState
+            icon="🏞"
             title="No deals match"
             description="Try clearing filters or adding a deal."
             ctaLabel="+ New deal"

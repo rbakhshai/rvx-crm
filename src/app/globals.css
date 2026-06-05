@@ -142,3 +142,43 @@ html, body {
 
 /* Number counter — placeholder for future count-up; static for now */
 .big-num { font-variant-numeric: tabular-nums; letter-spacing: -0.04em; }
+
+/* ============================================================
+   Polish layer — subtle hover / transition feel across the app.
+   Designed to be invisible individually, "more expensive" together.
+   ============================================================ */
+
+/* Smooth color transitions on all interactive surfaces by default. */
+button, a, [role="button"], .lift-row {
+  transition: background-color 0.15s ease, color 0.15s ease,
+              border-color 0.15s ease, box-shadow 0.15s ease,
+              transform 0.15s ease;
+}
+
+/* Table rows lift a touch on hover — applied wherever the DataTable
+   wrapping rows have class `lift-row`. */
+.lift-row { transition: background-color 0.15s ease, transform 0.15s ease; }
+.lift-row:hover { background-color: color-mix(in oklch, var(--color-foreground) 3%, transparent); }
+
+/* Apply a gentle ::-webkit-scrollbar style so scrollbars don't look
+   default-ugly. */
+@media (pointer: fine) {
+  ::-webkit-scrollbar { width: 10px; height: 10px; }
+  ::-webkit-scrollbar-thumb {
+    background: color-mix(in oklch, var(--color-foreground) 12%, transparent);
+    border-radius: 6px;
+    border: 2px solid var(--color-background);
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    background: color-mix(in oklch, var(--color-foreground) 22%, transparent);
+  }
+  ::-webkit-scrollbar-track { background: transparent; }
+}
+
+/* Pulse used by the Skeleton component (Tailwind already provides
+   animate-pulse via JIT; this is a nicer slower variant). */
+@keyframes skeleton-pulse {
+  0%, 100% { opacity: 1; }
+  50%      { opacity: 0.55; }
+}
+.animate-pulse { animation: skeleton-pulse 1.6s ease-in-out infinite; }

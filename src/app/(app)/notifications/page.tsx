@@ -87,6 +87,7 @@ export default async function NotificationsPage({ searchParams }: { searchParams
 
       {count === 0 ? (
         <EmptyState
+          icon="🔔"
           title="No notifications yet"
           description="When you flag a deal as Ready for review, a notification will land here. Check 'Ready for review' on any deal and save to see it."
         />

@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Rubik } from "next/font/google";
+import { Toaster } from "sonner";
 import "./globals.css";
 
 /**
@@ -39,7 +40,21 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       <head>
         <script dangerouslySetInnerHTML={{ __html: THEME_SCRIPT }} />
       </head>
-      <body>{children}</body>
+      <body>
+        {children}
+        <Toaster
+          position="bottom-right"
+          richColors
+          closeButton
+          theme="system"
+          toastOptions={{
+            style: {
+              fontFamily: "var(--font-rubik)",
+              fontSize: 13,
+            },
+          }}
+        />
+      </body>
     </html>
   );
 }

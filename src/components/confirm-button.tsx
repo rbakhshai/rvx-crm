@@ -1,6 +1,7 @@
 "use client";
 
 import { useTransition } from "react";
+import { toast } from "sonner";
 
 /**
  * Button that prompts confirm() then runs a server action.
@@ -12,11 +13,15 @@ export function ConfirmButton({
   label,
   confirmText,
   className,
+  toastMessage = "Done",
+  toastDescription,
 }: {
   action: () => Promise<void>;
   label: string;
   confirmText: string;
   className?: string;
+  toastMessage?: string;
+  toastDescription?: string;
 }) {
   const [isPending, startTransition] = useTransition();
   return (
@@ -27,7 +32,14 @@ export function ConfirmButton({
       onClick={() => {
         if (!confirm(confirmText)) return;
         startTransition(async () => {
-          await action();
+          try {
+            await action();
+            toast.success(toastMessage, toastDescription ? { description: toastDescription } : undefined);
+          } catch (err) {
+            toast.error("Action failed", {
+              description: err instanceof Error ? err.message : "Try again or contact support.",
+            });
+          }
         });
       }}
     >

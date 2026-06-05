@@ -118,6 +118,7 @@ export default async function TasksPage({ searchParams }: { searchParams: Search
 
       {taskRows.length === 0 ? (
         <EmptyState
+          icon="✅"
           title="No tasks in this view"
           description="Add tasks from any buyer / deal / seller / bird dog detail page. They show up here grouped by your filters."
         />

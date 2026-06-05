@@ -116,6 +116,7 @@ export default async function ContactsListPage({ searchParams }: { searchParams:
         rowHref={(r) => `/contacts/${r.id}`}
         empty={
           <EmptyState
+            icon="👤"
             title="No buyers match"
             description="Try clearing filters or adding a buyer."
             ctaLabel="+ New buyer"

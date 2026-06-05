@@ -86,6 +86,7 @@ export default async function BirdDogsListPage({ searchParams }: { searchParams:
         rowHref={(r) => `/bird-dogs/${r.id}`}
         empty={
           <EmptyState
+            icon="🦅"
             title="No bird dogs match"
             description="Try clearing filters or adding a bird dog."
             ctaLabel="+ New bird dog"

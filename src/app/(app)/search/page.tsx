@@ -19,6 +19,7 @@ export default async function SearchPage({ searchParams }: { searchParams: Searc
     return (
       <PageShell title="Search" subtitle="Find buyers, deals, sellers, and bird dogs." width="wide">
         <EmptyState
+          icon="🔍"
           title="Type a search term"
           description="Search by name, email, phone, park address, or city. Use the bar at the top of the page."
         />
