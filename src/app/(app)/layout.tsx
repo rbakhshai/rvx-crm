@@ -4,7 +4,8 @@ import { headers } from "next/headers";
 import { auth } from "@/lib/auth";
 import { Nav } from "./nav";
 import { SignOutButton } from "./sign-out-button";
-import { SearchInput } from "@/components/search-input";
+import { CommandPalette } from "@/components/command-palette";
+import { CommandPaletteTrigger } from "@/components/command-palette-trigger";
 
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
   const session = await auth.api.getSession({ headers: await headers() });
@@ -52,10 +53,11 @@ export default async function AppLayout({ children }: { children: React.ReactNod
       </aside>
       <div className="flex-1 min-w-0 flex flex-col">
         <header className="h-12 border-b border-border px-6 flex items-center bg-background/95 backdrop-blur sticky top-0 z-10">
-          <SearchInput scope="global" className="w-full max-w-md" />
+          <CommandPaletteTrigger />
         </header>
         <main className="flex-1 min-w-0">{children}</main>
       </div>
+      <CommandPalette />
     </div>
   );
 }
