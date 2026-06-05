@@ -197,9 +197,32 @@ export async function updateContactAction(
   redirect(`/contacts/${id}`);
 }
 
+/** Soft-delete: row hidden from lists, recoverable from /trash for 30 days. */
 export async function deleteContactAction(id: string): Promise<void> {
+  const user = await requireUser();
+  await db
+    .update(contacts)
+    .set({ deletedAt: new Date(), deletedById: user.id, updatedAt: new Date() })
+    .where(eq(contacts.id, id));
+  revalidatePath("/contacts");
+  revalidatePath("/trash");
+  redirect("/contacts");
+}
+
+export async function restoreContactAction(id: string): Promise<void> {
+  await requireUser();
+  await db
+    .update(contacts)
+    .set({ deletedAt: null, deletedById: null, updatedAt: new Date() })
+    .where(eq(contacts.id, id));
+  revalidatePath("/contacts");
+  revalidatePath("/trash");
+  redirect(`/contacts/${id}`);
+}
+
+export async function purgeContactAction(id: string): Promise<void> {
   await requireUser();
   await db.delete(contacts).where(eq(contacts.id, id));
-  revalidatePath("/contacts");
-  redirect("/contacts");
+  revalidatePath("/trash");
+  redirect("/trash" as never);
 }

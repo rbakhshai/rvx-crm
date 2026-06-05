@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { asc, desc, eq, sql } from "drizzle-orm";
+import { and, asc, desc, eq, isNull, sql } from "drizzle-orm";
 import { db } from "@/db";
 import { deals, dealStatuses, user } from "@/db/schema";
 import { PageShell } from "../../page-shell";
@@ -26,7 +26,9 @@ const LANES: Lane[] = [
 
 export default async function DealsBoardPage({ searchParams }: { searchParams: SearchParams }) {
   const { owner: ownerFilter } = await searchParams;
-  const ownerWhere = ownerFilter ? eq(deals.ownerId, ownerFilter) : undefined;
+  const ownerWhere = ownerFilter
+    ? and(eq(deals.ownerId, ownerFilter), isNull(deals.deletedAt))
+    : isNull(deals.deletedAt);
 
   const [allStatuses, dealRows, userRows, totalCount] = await Promise.all([
     db.select().from(dealStatuses).orderBy(asc(dealStatuses.sortOrder)),

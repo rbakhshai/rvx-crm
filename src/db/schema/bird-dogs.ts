@@ -117,6 +117,8 @@ export const birdDogs = pgTable(
     legacyOntraportId: integer("legacy_ontraport_id"),
     createdAt: timestamp("created_at").notNull().defaultNow(),
     updatedAt: timestamp("updated_at").notNull().defaultNow(),
+    deletedAt: timestamp("deleted_at"),
+    deletedById: text("deleted_by_id").references(() => user.id, { onDelete: "set null" }),
     lastActivityAt: timestamp("last_activity_at"),
     lastEmailReceivedAt: timestamp("last_email_received_at"),
     lastEmailSentAt: timestamp("last_email_sent_at"),

@@ -107,7 +107,7 @@ export default async function TodayPage() {
         updatedAt: deals.updatedAt,
       })
       .from(deals)
-      .where(and(eq(deals.ownerId, me), inArray(deals.statusCode, ACTIVE_DEAL_STAGES)))
+      .where(and(eq(deals.ownerId, me), inArray(deals.statusCode, ACTIVE_DEAL_STAGES), isNull(deals.deletedAt)))
       .orderBy(sql`COALESCE(${deals.closerLastTouch}, ${deals.updatedAt}) ASC`)
       .limit(8),
 
@@ -115,7 +115,7 @@ export default async function TodayPage() {
     db
       .select({ id: contacts.id, firstName: contacts.firstName, lastName: contacts.lastName, email: contacts.email, createdAt: contacts.createdAt })
       .from(contacts)
-      .where(eq(contacts.status, "new_waiting_to_connect"))
+      .where(and(eq(contacts.status, "new_waiting_to_connect"), isNull(contacts.deletedAt)))
       .orderBy(desc(contacts.createdAt))
       .limit(6),
 
@@ -132,12 +132,12 @@ export default async function TodayPage() {
     // 5a) New deals this week
     db.select({ count: sql<number>`count(*)::int` })
       .from(deals)
-      .where(gt(deals.createdAt, new Date(Date.now() - 7 * DAY_MS))),
+      .where(and(gt(deals.createdAt, new Date(Date.now() - 7 * DAY_MS)), isNull(deals.deletedAt))),
 
     // 5b) Pipeline value across all active stages
     db.select({ total: sql<number>`COALESCE(SUM(${deals.listPrice}::numeric), 0)::bigint` })
       .from(deals)
-      .where(inArray(deals.statusCode, ACTIVE_DEAL_STAGES)),
+      .where(and(inArray(deals.statusCode, ACTIVE_DEAL_STAGES), isNull(deals.deletedAt))),
 
     fetchRecentActivity(20),
   ]);

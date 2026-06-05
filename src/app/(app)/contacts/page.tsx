@@ -1,4 +1,4 @@
-import { and, desc, eq, ilike, or, sql, type SQL } from "drizzle-orm";
+import { and, desc, eq, ilike, isNull, or, sql, type SQL } from "drizzle-orm";
 import { asc } from "drizzle-orm";
 import { db } from "@/db";
 import { contacts, user } from "@/db/schema";
@@ -63,7 +63,7 @@ export default async function ContactsListPage({ searchParams }: { searchParams:
   const params = await searchParams;
   const { q, status, tier, state, owner } = params;
 
-  const filters: SQL[] = [];
+  const filters: SQL[] = [isNull(contacts.deletedAt)];
   if (q) {
     const pat = `%${q}%`;
     const cond = or(ilike(contacts.firstName, pat), ilike(contacts.lastName, pat), ilike(contacts.email, pat), ilike(contacts.phone, pat));

@@ -23,14 +23,17 @@ async function requireUser() {
 }
 
 function queueWhere(queue: Queue, userId: string) {
+  // Every queue filter implicitly excludes soft-deleted deals.
+  const notDeleted = isNull(deals.deletedAt);
   switch (queue) {
     case "new":
-      return inArray(deals.statusCode, NEW_STATUSES as unknown as string[]);
+      return and(inArray(deals.statusCode, NEW_STATUSES as unknown as string[]), notDeleted)!;
     case "stale": {
       const twoDaysAgo = new Date(Date.now() - 2 * 24 * 60 * 60 * 1000);
       return and(
         inArray(deals.statusCode, ACTIVE_CLOSER_STATUSES as unknown as string[]),
         or(isNull(deals.closerLastTouch), lt(deals.closerLastTouch, twoDaysAgo)),
+        notDeleted,
       )!;
     }
     case "mine":
@@ -40,6 +43,7 @@ function queueWhere(queue: Queue, userId: string) {
           inArray(deals.statusCode, NEW_STATUSES as unknown as string[]),
           inArray(deals.statusCode, ACTIVE_CLOSER_STATUSES as unknown as string[]),
         ),
+        notDeleted,
       )!;
   }
 }

@@ -96,9 +96,32 @@ export async function updateCompanyAction(
   redirect(`/companies/${id}`);
 }
 
+/** Soft-delete: row hidden from lists, recoverable from /trash for 30 days. */
 export async function deleteCompanyAction(id: string): Promise<void> {
+  const user = await requireUser();
+  await db
+    .update(companies)
+    .set({ deletedAt: new Date(), deletedById: user.id, updatedAt: new Date() })
+    .where(eq(companies.id, id));
+  revalidatePath("/companies");
+  revalidatePath("/trash");
+  redirect("/companies");
+}
+
+export async function restoreCompanyAction(id: string): Promise<void> {
+  await requireUser();
+  await db
+    .update(companies)
+    .set({ deletedAt: null, deletedById: null, updatedAt: new Date() })
+    .where(eq(companies.id, id));
+  revalidatePath("/companies");
+  revalidatePath("/trash");
+  redirect(`/companies/${id}`);
+}
+
+export async function purgeCompanyAction(id: string): Promise<void> {
   await requireUser();
   await db.delete(companies).where(eq(companies.id, id));
-  revalidatePath("/companies");
-  redirect("/companies");
+  revalidatePath("/trash");
+  redirect("/trash" as never);
 }

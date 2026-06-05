@@ -101,9 +101,32 @@ export async function updateBirdDogAction(
   redirect(`/bird-dogs/${id}`);
 }
 
+/** Soft-delete: row hidden from lists, recoverable from /trash for 30 days. */
 export async function deleteBirdDogAction(id: string): Promise<void> {
+  const user = await requireUser();
+  await db
+    .update(birdDogs)
+    .set({ deletedAt: new Date(), deletedById: user.id, updatedAt: new Date() })
+    .where(eq(birdDogs.id, id));
+  revalidatePath("/bird-dogs");
+  revalidatePath("/trash");
+  redirect("/bird-dogs");
+}
+
+export async function restoreBirdDogAction(id: string): Promise<void> {
+  await requireUser();
+  await db
+    .update(birdDogs)
+    .set({ deletedAt: null, deletedById: null, updatedAt: new Date() })
+    .where(eq(birdDogs.id, id));
+  revalidatePath("/bird-dogs");
+  revalidatePath("/trash");
+  redirect(`/bird-dogs/${id}`);
+}
+
+export async function purgeBirdDogAction(id: string): Promise<void> {
   await requireUser();
   await db.delete(birdDogs).where(eq(birdDogs.id, id));
-  revalidatePath("/bird-dogs");
-  redirect("/bird-dogs");
+  revalidatePath("/trash");
+  redirect("/trash" as never);
 }

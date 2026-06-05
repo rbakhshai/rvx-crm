@@ -1,4 +1,4 @@
-import { and, asc, desc, eq, ilike, or, sql, type SQL } from "drizzle-orm";
+import { and, asc, desc, eq, ilike, isNull, or, sql, type SQL } from "drizzle-orm";
 import { db } from "@/db";
 import { companies, user } from "@/db/schema";
 import { PageShell } from "../page-shell";
@@ -46,7 +46,7 @@ export default async function CompaniesListPage({ searchParams }: { searchParams
   const params = await searchParams;
   const { q, relationship, state, owner } = params;
 
-  const filters: SQL[] = [];
+  const filters: SQL[] = [isNull(companies.deletedAt)];
   if (q) {
     const pat = `%${q}%`;
     const cond = or(ilike(companies.name, pat), ilike(companies.sellerFirstName, pat), ilike(companies.sellerLastName, pat), ilike(companies.email, pat));

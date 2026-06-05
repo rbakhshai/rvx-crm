@@ -198,11 +198,39 @@ export async function updateDealAction(id: string, _prev: FormState, formData: F
   redirect(`/deals/${id}`);
 }
 
+/**
+ * Soft-delete: sets deleted_at so the row vanishes from lists but stays
+ * recoverable from /trash for 30 days.
+ */
 export async function deleteDealAction(id: string): Promise<void> {
+  const user = await requireUser();
+  await db
+    .update(deals)
+    .set({ deletedAt: new Date(), deletedById: user.id, updatedAt: new Date() })
+    .where(eq(deals.id, id));
+  revalidatePath("/deals");
+  revalidatePath("/trash");
+  redirect("/deals");
+}
+
+/** Restore a soft-deleted deal from /trash. */
+export async function restoreDealAction(id: string): Promise<void> {
+  await requireUser();
+  await db
+    .update(deals)
+    .set({ deletedAt: null, deletedById: null, updatedAt: new Date() })
+    .where(eq(deals.id, id));
+  revalidatePath("/deals");
+  revalidatePath("/trash");
+  redirect(`/deals/${id}`);
+}
+
+/** Permanently remove the row — only callable from /trash after a confirm. */
+export async function purgeDealAction(id: string): Promise<void> {
   await requireUser();
   await db.delete(deals).where(eq(deals.id, id));
-  revalidatePath("/deals");
-  redirect("/deals");
+  revalidatePath("/trash");
+  redirect("/trash" as never);
 }
 
 /**

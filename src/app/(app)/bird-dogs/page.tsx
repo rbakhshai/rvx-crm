@@ -1,4 +1,4 @@
-import { and, asc, desc, eq, ilike, or, sql, type SQL } from "drizzle-orm";
+import { and, asc, desc, eq, ilike, isNull, or, sql, type SQL } from "drizzle-orm";
 import { db } from "@/db";
 import { birdDogs, birdDogStatuses, user } from "@/db/schema";
 import { PageShell } from "../page-shell";
@@ -35,7 +35,7 @@ export default async function BirdDogsListPage({ searchParams }: { searchParams:
   const params = await searchParams;
   const { q, status, level, owner } = params;
 
-  const filters: SQL[] = [];
+  const filters: SQL[] = [isNull(birdDogs.deletedAt)];
   if (q) {
     const pat = `%${q}%`;
     const cond = or(ilike(birdDogs.firstName, pat), ilike(birdDogs.lastName, pat), ilike(birdDogs.email, pat));

@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { ilike, or, desc } from "drizzle-orm";
+import { and, ilike, isNull, or, desc } from "drizzle-orm";
 import { db } from "@/db";
 import { contacts, deals, companies, birdDogs } from "@/db/schema";
 import { PageShell } from "../page-shell";
@@ -32,25 +32,25 @@ export default async function SearchPage({ searchParams }: { searchParams: Searc
     db
       .select({ id: contacts.id, firstName: contacts.firstName, lastName: contacts.lastName, email: contacts.email, state: contacts.state })
       .from(contacts)
-      .where(or(ilike(contacts.firstName, pat), ilike(contacts.lastName, pat), ilike(contacts.email, pat), ilike(contacts.phone, pat)))
+      .where(and(or(ilike(contacts.firstName, pat), ilike(contacts.lastName, pat), ilike(contacts.email, pat), ilike(contacts.phone, pat)), isNull(contacts.deletedAt)))
       .orderBy(desc(contacts.createdAt))
       .limit(10),
     db
       .select({ id: deals.id, name: deals.name, parkAddress: deals.parkAddress, parkCity: deals.parkCity, parkState: deals.parkState })
       .from(deals)
-      .where(or(ilike(deals.name, pat), ilike(deals.parkAddress, pat), ilike(deals.parkCity, pat)))
+      .where(and(or(ilike(deals.name, pat), ilike(deals.parkAddress, pat), ilike(deals.parkCity, pat)), isNull(deals.deletedAt)))
       .orderBy(desc(deals.createdAt))
       .limit(10),
     db
       .select({ id: companies.id, name: companies.name, sellerFirstName: companies.sellerFirstName, sellerLastName: companies.sellerLastName, email: companies.email })
       .from(companies)
-      .where(or(ilike(companies.name, pat), ilike(companies.sellerFirstName, pat), ilike(companies.sellerLastName, pat), ilike(companies.email, pat)))
+      .where(and(or(ilike(companies.name, pat), ilike(companies.sellerFirstName, pat), ilike(companies.sellerLastName, pat), ilike(companies.email, pat)), isNull(companies.deletedAt)))
       .orderBy(desc(companies.createdAt))
       .limit(10),
     db
       .select({ id: birdDogs.id, firstName: birdDogs.firstName, lastName: birdDogs.lastName, email: birdDogs.email })
       .from(birdDogs)
-      .where(or(ilike(birdDogs.firstName, pat), ilike(birdDogs.lastName, pat), ilike(birdDogs.email, pat)))
+      .where(and(or(ilike(birdDogs.firstName, pat), ilike(birdDogs.lastName, pat), ilike(birdDogs.email, pat)), isNull(birdDogs.deletedAt)))
       .orderBy(desc(birdDogs.createdAt))
       .limit(10),
   ]);

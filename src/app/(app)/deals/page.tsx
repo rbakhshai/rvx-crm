@@ -1,4 +1,4 @@
-import { and, asc, desc, eq, ilike, inArray, or, sql, type SQL, type SQLWrapper } from "drizzle-orm";
+import { and, asc, desc, eq, ilike, inArray, isNull, or, sql, type SQL, type SQLWrapper } from "drizzle-orm";
 import Link from "next/link";
 import { db } from "@/db";
 import { deals, dealStatuses, user } from "@/db/schema";
@@ -85,7 +85,7 @@ export default async function DealsListPage({ searchParams }: { searchParams: Se
   const stageKey = isPipelineStageKey(stage) ? stage : null;
   const phaseKey = isDealPhaseRole(phase) ? phase : null;
 
-  const filters: SQL[] = [];
+  const filters: SQL[] = [isNull(deals.deletedAt)];
   if (q) {
     const pat = `%${q}%`;
     const cond = or(ilike(deals.name, pat), ilike(deals.parkAddress, pat), ilike(deals.parkCity, pat));
