@@ -8,3 +8,4 @@ export * from "./notifications";
 export * from "./activities";
 export * from "./templates";
 export * from "./due-diligence";
+export * from "./permissions";

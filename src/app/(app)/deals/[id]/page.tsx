@@ -5,6 +5,7 @@ import { eq, asc, inArray } from "drizzle-orm";
 import { db } from "@/db";
 import { deals, dealStatuses, contacts, companies, birdDogs, user } from "@/db/schema";
 import { auth } from "@/lib/auth";
+import { hasPermission } from "@/lib/has-permission";
 import { PageShell } from "../../page-shell";
 import { LinkButton } from "@/components/button";
 import { DeleteButton } from "@/components/delete-button";
@@ -92,6 +93,7 @@ export default async function DealDetailPage({ params }: { params: Promise<{ id:
   const owner = deal.ownerId ? ownerMap.get(deal.ownerId) : null;
   const opsOwner = deal.opsOwnerId ? ownerMap.get(deal.opsOwnerId) : null;
   const deleteBound = deleteDealAction.bind(null, id);
+  const canDelete = await hasPermission(session?.user, "delete_deals");
 
   const title = deal.name || deal.parkAddress || "(unnamed deal)";
   const subtitle = [deal.parkCity, deal.parkState].filter(Boolean).join(", ");
@@ -114,10 +116,12 @@ export default async function DealDetailPage({ params }: { params: Promise<{ id:
           <LinkButton href={`/deals/${deal.id}/edit`} variant="secondary" size="sm">
             Edit
           </LinkButton>
-          <DeleteButton
-            action={deleteBound}
-            confirmText={`Delete deal "${title}"? This cannot be undone.`}
-          />
+          {canDelete && (
+            <DeleteButton
+              action={deleteBound}
+              confirmText={`Delete deal "${title}"? This cannot be undone.`}
+            />
+          )}
         </div>
       }
     >

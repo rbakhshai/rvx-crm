@@ -7,6 +7,7 @@ import { headers } from "next/headers";
 import { db } from "@/db";
 import { deals } from "@/db/schema";
 import { auth } from "@/lib/auth";
+import { requirePermission } from "@/lib/has-permission";
 import { sendNotification } from "@/lib/email";
 import { dealFormSchema, parseDealForm } from "@/lib/validation/deals";
 
@@ -204,6 +205,7 @@ export async function updateDealAction(id: string, _prev: FormState, formData: F
  */
 export async function deleteDealAction(id: string): Promise<void> {
   const user = await requireUser();
+  await requirePermission(user, "delete_deals");
   await db
     .update(deals)
     .set({ deletedAt: new Date(), deletedById: user.id, updatedAt: new Date() })
@@ -215,7 +217,8 @@ export async function deleteDealAction(id: string): Promise<void> {
 
 /** Restore a soft-deleted deal from /trash. */
 export async function restoreDealAction(id: string): Promise<void> {
-  await requireUser();
+  const user = await requireUser();
+  await requirePermission(user, "restore_from_trash");
   await db
     .update(deals)
     .set({ deletedAt: null, deletedById: null, updatedAt: new Date() })
@@ -227,7 +230,8 @@ export async function restoreDealAction(id: string): Promise<void> {
 
 /** Permanently remove the row — only callable from /trash after a confirm. */
 export async function purgeDealAction(id: string): Promise<void> {
-  await requireUser();
+  const user = await requireUser();
+  await requirePermission(user, "purge_permanently");
   await db.delete(deals).where(eq(deals.id, id));
   revalidatePath("/trash");
   redirect("/trash" as never);

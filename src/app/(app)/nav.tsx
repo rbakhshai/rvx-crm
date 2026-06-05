@@ -2,12 +2,15 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import type { PermissionKey } from "@/lib/permissions";
 
 type NavItem = {
   href: string;
   label: string;
   /** When set, the item belongs to a labeled group of children. */
-  children?: Array<{ href: string; label: string }>;
+  children?: Array<{ href: string; label: string; requires?: PermissionKey }>;
+  /** Hide the whole group unless the user has this permission. */
+  requires?: PermissionKey;
 };
 
 /**
@@ -39,34 +42,51 @@ const GROUPS: NavItem[] = [
     ],
   },
   { href: "/tasks", label: "Tasks" },
-  { href: "/trash", label: "Trash" },
+  { href: "/trash", label: "Trash", requires: "view_trash" },
 ];
 
 const ADMIN_GROUPS: NavItem[] = [
   {
     href: "/admin/revenue",
     label: "Insights",
-    children: [{ href: "/admin/revenue", label: "Revenue" }],
+    requires: "view_revenue",
+    children: [{ href: "/admin/revenue", label: "Revenue", requires: "view_revenue" }],
+  },
+  {
+    href: "/settings/roles",
+    label: "Settings",
+    requires: "manage_roles",
+    children: [
+      { href: "/settings/roles", label: "Role permissions", requires: "manage_roles" },
+      { href: "/settings/users", label: "Team & roles", requires: "manage_users" },
+    ],
   },
 ];
 
-export function Nav({ role }: { role?: string }) {
+export function Nav({ permissions }: { permissions: Partial<Record<PermissionKey, boolean>> }) {
   const pathname = usePathname();
-  const isAdmin = role === "admin";
+
+  function allowed(req?: PermissionKey): boolean {
+    if (!req) return true;
+    return permissions[req] === true;
+  }
+
+  const visibleGroups = GROUPS.filter((g) => allowed(g.requires));
+  const visibleAdmin = ADMIN_GROUPS.filter((g) => allowed(g.requires));
 
   return (
     <nav className="space-y-2 text-sm">
-      {GROUPS.map((g) => (
-        <NavGroup key={g.label} group={g} pathname={pathname} />
+      {visibleGroups.map((g) => (
+        <NavGroup key={g.label} group={g} pathname={pathname} allowed={allowed} />
       ))}
 
-      {isAdmin && (
+      {visibleAdmin.length > 0 && (
         <>
           <div className="mt-5 mb-1 px-2.5 text-[10px] uppercase tracking-widest text-muted font-medium">
             Admin
           </div>
-          {ADMIN_GROUPS.map((g) => (
-            <NavGroup key={g.label} group={g} pathname={pathname} />
+          {visibleAdmin.map((g) => (
+            <NavGroup key={g.label} group={g} pathname={pathname} allowed={allowed} />
           ))}
         </>
       )}
@@ -74,9 +94,18 @@ export function Nav({ role }: { role?: string }) {
   );
 }
 
-function NavGroup({ group, pathname }: { group: NavItem; pathname: string }) {
-  const groupActive = isActive(pathname, group.href, group.children?.map((c) => c.href));
-  const hasChildren = (group.children?.length ?? 0) > 0;
+function NavGroup({
+  group,
+  pathname,
+  allowed,
+}: {
+  group: NavItem;
+  pathname: string;
+  allowed: (req?: PermissionKey) => boolean;
+}) {
+  const visibleChildren = (group.children ?? []).filter((c) => allowed(c.requires));
+  const groupActive = isActive(pathname, group.href, visibleChildren.map((c) => c.href));
+  const hasChildren = visibleChildren.length > 0;
 
   return (
     <div>
@@ -93,7 +122,7 @@ function NavGroup({ group, pathname }: { group: NavItem; pathname: string }) {
       </Link>
       {hasChildren && (
         <div className="mt-0.5 ml-1.5 pl-2.5 border-l border-border/80 space-y-0.5">
-          {group.children!.map((c) => {
+          {visibleChildren.map((c) => {
             const childActive = pathname === c.href || pathname.startsWith(c.href + "/");
             return (
               <Link

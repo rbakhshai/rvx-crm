@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
 import { headers } from "next/headers";
 import { auth } from "@/lib/auth";
+import { hasPermission } from "@/lib/has-permission";
 import { PageShell } from "../../page-shell";
 import { fmtStripeAmount, getRevenueSummary } from "@/lib/stripe";
 
@@ -13,12 +14,11 @@ const PARK_NAME = "Fort Valley Ranch";
 export default async function RevenuePage() {
   const session = await auth.api.getSession({ headers: await headers() });
   if (!session) redirect("/login?next=/admin/revenue");
-  const role = (session.user as { role?: string }).role ?? "viewer";
-  if (role !== "admin") {
+  if (!(await hasPermission(session.user, "view_revenue"))) {
     return (
-      <PageShell title="Revenue" subtitle="Admin only.">
+      <PageShell title="Revenue" subtitle="You don't have permission to view revenue.">
         <div className="rounded-xl border border-border p-10 text-center text-sm text-muted">
-          You don&apos;t have access to this page.
+          Ask an admin to grant you the &quot;See revenue dashboard&quot; capability under Settings → Role permissions.
         </div>
       </PageShell>
     );

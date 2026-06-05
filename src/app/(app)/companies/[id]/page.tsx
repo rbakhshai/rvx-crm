@@ -5,6 +5,7 @@ import { eq } from "drizzle-orm";
 import { db } from "@/db";
 import { companies, user } from "@/db/schema";
 import { auth } from "@/lib/auth";
+import { hasPermission } from "@/lib/has-permission";
 import { PageShell } from "../../page-shell";
 import { LinkButton } from "@/components/button";
 import { DeleteButton } from "@/components/delete-button";
@@ -40,6 +41,7 @@ export default async function CompanyDetailPage({ params }: { params: Promise<{ 
   if (!company) notFound();
 
   const session = await auth.api.getSession({ headers: await headers() });
+  const canDelete = await hasPermission(session?.user, "delete_companies");
   const [owner] = company.ownerId
     ? await db.select({ name: user.name, email: user.email }).from(user).where(eq(user.id, company.ownerId)).limit(1)
     : [null];
@@ -57,10 +59,12 @@ export default async function CompanyDetailPage({ params }: { params: Promise<{ 
           <LinkButton href={`/companies/${company.id}/edit`} variant="secondary" size="sm">
             Edit
           </LinkButton>
-          <DeleteButton
-            action={deleteBound}
-            confirmText={`Delete seller "${company.name}"? This cannot be undone.`}
-          />
+          {canDelete && (
+            <DeleteButton
+              action={deleteBound}
+              confirmText={`Delete seller "${company.name}"? This cannot be undone.`}
+            />
+          )}
         </div>
       }
     >

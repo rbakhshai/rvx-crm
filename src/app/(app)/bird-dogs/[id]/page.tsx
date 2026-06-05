@@ -5,6 +5,7 @@ import { eq, asc, desc } from "drizzle-orm";
 import { db } from "@/db";
 import { birdDogs, birdDogStatuses, deals, user } from "@/db/schema";
 import { auth } from "@/lib/auth";
+import { hasPermission } from "@/lib/has-permission";
 import { PageShell } from "../../page-shell";
 import { LinkButton } from "@/components/button";
 import { DeleteButton } from "@/components/delete-button";
@@ -140,6 +141,7 @@ export default async function BirdDogDetailPage({ params }: { params: Promise<{ 
   const lastSubmittedAt = bdLeads.length > 0 ? bdLeads.map((r) => r.createdAt).sort((a, b) => b.getTime() - a.getTime())[0] : null;
 
   const session = await auth.api.getSession({ headers: await headers() });
+  const canDelete = await hasPermission(session?.user, "delete_bird_dogs");
   const [owner] = bd.ownerId
     ? await db.select({ name: user.name, email: user.email }).from(user).where(eq(user.id, bd.ownerId)).limit(1)
     : [null];
@@ -159,10 +161,12 @@ export default async function BirdDogDetailPage({ params }: { params: Promise<{ 
           <LinkButton href={`/bird-dogs/${bd.id}/edit`} variant="secondary" size="sm">
             Edit
           </LinkButton>
-          <DeleteButton
-            action={deleteBound}
-            confirmText={`Delete bird dog "${name}"? This cannot be undone.`}
-          />
+          {canDelete && (
+            <DeleteButton
+              action={deleteBound}
+              confirmText={`Delete bird dog "${name}"? This cannot be undone.`}
+            />
+          )}
         </div>
       }
     >

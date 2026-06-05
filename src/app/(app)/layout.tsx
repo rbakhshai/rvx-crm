@@ -6,14 +6,17 @@ import { Nav } from "./nav";
 import { SignOutButton } from "./sign-out-button";
 import { CommandPalette } from "@/components/command-palette";
 import { CommandPaletteTrigger } from "@/components/command-palette-trigger";
+import { getPermissionsFor } from "@/lib/has-permission";
 
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
   const session = await auth.api.getSession({ headers: await headers() });
   if (!session) redirect("/login");
+  const role = (session.user as { role?: string }).role;
   // Bird dogs don't see the internal CRM — route them to their portal
-  if ((session.user as { role?: string }).role === "bird_dog") {
+  if (role === "bird_dog") {
     redirect("/portal");
   }
+  const permissions = await getPermissionsFor(role);
 
   return (
     <div className="min-h-screen flex bg-background">
@@ -35,7 +38,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
           </div>
         </div>
         <div className="p-3 flex-1">
-          <Nav role={(session.user as { role?: string }).role} />
+          <Nav permissions={permissions} />
         </div>
         <div className="p-3 border-t border-border">
           <div className="text-xs">

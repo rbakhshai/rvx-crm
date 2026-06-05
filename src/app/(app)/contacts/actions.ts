@@ -7,6 +7,7 @@ import { headers } from "next/headers";
 import { db } from "@/db";
 import { contacts } from "@/db/schema";
 import { auth } from "@/lib/auth";
+import { requirePermission } from "@/lib/has-permission";
 import { contactFormSchema, parseContactFormData } from "@/lib/validation/contacts";
 
 export type FormState = {
@@ -200,6 +201,7 @@ export async function updateContactAction(
 /** Soft-delete: row hidden from lists, recoverable from /trash for 30 days. */
 export async function deleteContactAction(id: string): Promise<void> {
   const user = await requireUser();
+  await requirePermission(user, "delete_contacts");
   await db
     .update(contacts)
     .set({ deletedAt: new Date(), deletedById: user.id, updatedAt: new Date() })
@@ -210,7 +212,8 @@ export async function deleteContactAction(id: string): Promise<void> {
 }
 
 export async function restoreContactAction(id: string): Promise<void> {
-  await requireUser();
+  const user = await requireUser();
+  await requirePermission(user, "restore_from_trash");
   await db
     .update(contacts)
     .set({ deletedAt: null, deletedById: null, updatedAt: new Date() })
@@ -221,7 +224,8 @@ export async function restoreContactAction(id: string): Promise<void> {
 }
 
 export async function purgeContactAction(id: string): Promise<void> {
-  await requireUser();
+  const user = await requireUser();
+  await requirePermission(user, "purge_permanently");
   await db.delete(contacts).where(eq(contacts.id, id));
   revalidatePath("/trash");
   redirect("/trash" as never);

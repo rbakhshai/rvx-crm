@@ -7,6 +7,7 @@ import { headers } from "next/headers";
 import { db } from "@/db";
 import { birdDogs } from "@/db/schema";
 import { auth } from "@/lib/auth";
+import { requirePermission } from "@/lib/has-permission";
 import { birdDogFormSchema, parseBirdDogForm } from "@/lib/validation/bird-dogs";
 
 export type FormState = {
@@ -104,6 +105,7 @@ export async function updateBirdDogAction(
 /** Soft-delete: row hidden from lists, recoverable from /trash for 30 days. */
 export async function deleteBirdDogAction(id: string): Promise<void> {
   const user = await requireUser();
+  await requirePermission(user, "delete_bird_dogs");
   await db
     .update(birdDogs)
     .set({ deletedAt: new Date(), deletedById: user.id, updatedAt: new Date() })
@@ -114,7 +116,8 @@ export async function deleteBirdDogAction(id: string): Promise<void> {
 }
 
 export async function restoreBirdDogAction(id: string): Promise<void> {
-  await requireUser();
+  const user = await requireUser();
+  await requirePermission(user, "restore_from_trash");
   await db
     .update(birdDogs)
     .set({ deletedAt: null, deletedById: null, updatedAt: new Date() })
@@ -125,7 +128,8 @@ export async function restoreBirdDogAction(id: string): Promise<void> {
 }
 
 export async function purgeBirdDogAction(id: string): Promise<void> {
-  await requireUser();
+  const user = await requireUser();
+  await requirePermission(user, "purge_permanently");
   await db.delete(birdDogs).where(eq(birdDogs.id, id));
   revalidatePath("/trash");
   redirect("/trash" as never);
