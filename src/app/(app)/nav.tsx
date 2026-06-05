@@ -3,21 +3,50 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 
-type Item = { href: string; label: string; count?: number; adminOnly?: boolean };
+type NavItem = {
+  href: string;
+  label: string;
+  /** When set, the item belongs to a labeled group of children. */
+  children?: Array<{ href: string; label: string }>;
+};
 
-const ITEMS: Item[] = [
-  { href: "/dashboard", label: "Dashboard" },
-  { href: "/triage", label: "Triage" },
-  { href: "/contacts", label: "Buyers" },
-  { href: "/deals", label: "Deals" },
-  { href: "/companies", label: "Sellers" },
-  { href: "/bird-dogs", label: "Bird Dogs" },
+/**
+ * 5-group information architecture, verb-driven not noun-driven:
+ *   Today      — what needs me right now (default landing)
+ *   Pipeline   — every active deal, four lenses
+ *   Contacts   — buyers · sellers · bird dogs, unified directory
+ *   Tasks      — full queue across every record
+ *   Insights   — revenue + future analytics (admin only)
+ */
+const GROUPS: NavItem[] = [
+  { href: "/today", label: "Today" },
+  {
+    href: "/deals",
+    label: "Pipeline",
+    children: [
+      { href: "/deals/board", label: "Board" },
+      { href: "/deals", label: "List" },
+      { href: "/triage", label: "Triage" },
+    ],
+  },
+  {
+    href: "/contacts",
+    label: "Contacts",
+    children: [
+      { href: "/contacts", label: "Buyers" },
+      { href: "/companies", label: "Sellers" },
+      { href: "/bird-dogs", label: "Bird dogs" },
+    ],
+  },
   { href: "/tasks", label: "Tasks" },
-  { href: "/notifications", label: "Notifications" },
 ];
 
-const ADMIN_ITEMS: Item[] = [
-  { href: "/admin/revenue", label: "Revenue" },
+const ADMIN_GROUPS: NavItem[] = [
+  {
+    href: "/admin/revenue",
+    label: "Insights",
+    children: [{ href: "/admin/revenue", label: "Revenue" }],
+  },
 ];
 
 export function Nav({ role }: { role?: string }) {
@@ -25,18 +54,18 @@ export function Nav({ role }: { role?: string }) {
   const isAdmin = role === "admin";
 
   return (
-    <nav className="space-y-0.5 text-sm">
-      {ITEMS.map((item) => (
-        <NavItem key={item.href} item={item} pathname={pathname} />
+    <nav className="space-y-2 text-sm">
+      {GROUPS.map((g) => (
+        <NavGroup key={g.label} group={g} pathname={pathname} />
       ))}
 
       {isAdmin && (
         <>
-          <div className="mt-4 mb-1 px-2.5 text-[10px] uppercase tracking-widest text-muted font-medium">
+          <div className="mt-5 mb-1 px-2.5 text-[10px] uppercase tracking-widest text-muted font-medium">
             Admin
           </div>
-          {ADMIN_ITEMS.map((item) => (
-            <NavItem key={item.href} item={item} pathname={pathname} />
+          {ADMIN_GROUPS.map((g) => (
+            <NavGroup key={g.label} group={g} pathname={pathname} />
           ))}
         </>
       )}
@@ -44,22 +73,50 @@ export function Nav({ role }: { role?: string }) {
   );
 }
 
-function NavItem({ item, pathname }: { item: Item; pathname: string }) {
-  const active = pathname === item.href || pathname.startsWith(item.href + "/");
+function NavGroup({ group, pathname }: { group: NavItem; pathname: string }) {
+  const groupActive = isActive(pathname, group.href, group.children?.map((c) => c.href));
+  const hasChildren = (group.children?.length ?? 0) > 0;
+
   return (
-    <Link
-      href={item.href as never}
-      className={
-        "flex items-center justify-between rounded-md px-2.5 py-1.5 transition " +
-        (active
-          ? "bg-foreground/5 font-medium text-foreground"
-          : "text-foreground/70 hover:bg-foreground/5 hover:text-foreground")
-      }
-    >
-      <span>{item.label}</span>
-      {item.count !== undefined && (
-        <span className="text-xs text-muted tabular-nums">{item.count}</span>
+    <div>
+      <Link
+        href={group.href as never}
+        className={
+          "flex items-center justify-between rounded-md px-2.5 py-1.5 transition " +
+          (groupActive && !hasChildren
+            ? "bg-foreground/5 font-medium text-foreground"
+            : "font-semibold text-foreground hover:bg-foreground/5")
+        }
+      >
+        <span>{group.label}</span>
+      </Link>
+      {hasChildren && (
+        <div className="mt-0.5 ml-1.5 pl-2.5 border-l border-border/80 space-y-0.5">
+          {group.children!.map((c) => {
+            const childActive = pathname === c.href || pathname.startsWith(c.href + "/");
+            return (
+              <Link
+                key={c.href + c.label}
+                href={c.href as never}
+                className={
+                  "block rounded-md px-2.5 py-1 text-[13px] transition " +
+                  (childActive
+                    ? "bg-foreground/5 font-medium text-foreground"
+                    : "text-foreground/65 hover:bg-foreground/5 hover:text-foreground")
+                }
+              >
+                {c.label}
+              </Link>
+            );
+          })}
+        </div>
       )}
-    </Link>
+    </div>
   );
+}
+
+function isActive(pathname: string, href: string, children?: string[]): boolean {
+  if (pathname === href || pathname.startsWith(href + "/")) return true;
+  if (children) return children.some((c) => pathname === c || pathname.startsWith(c + "/"));
+  return false;
 }
