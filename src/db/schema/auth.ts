@@ -28,6 +28,11 @@ export const user = pgTable("user", {
   role: userRole("role").notNull().default("viewer"),
   createdAt: timestamp("created_at").notNull().defaultNow(),
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
+  // Admin-managed lifecycle
+  suspendedAt: timestamp("suspended_at"),
+  suspendedById: text("suspended_by_id"),
+  deletedAt: timestamp("deleted_at"),
+  deletedById: text("deleted_by_id"),
 });
 
 export const session = pgTable("session", {

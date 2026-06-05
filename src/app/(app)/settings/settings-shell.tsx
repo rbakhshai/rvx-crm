@@ -4,6 +4,7 @@ import { PageShell } from "../page-shell";
 const TABS = [
   { href: "/settings/roles", label: "Role permissions" },
   { href: "/settings/users", label: "Team & roles" },
+  { href: "/settings/audit", label: "Audit log" },
 ] as const;
 
 export function SettingsShell({
@@ -11,7 +12,7 @@ export function SettingsShell({
   children,
   subtitle,
 }: {
-  active: "/settings/roles" | "/settings/users";
+  active: "/settings/roles" | "/settings/users" | "/settings/audit";
   subtitle?: string;
   children: React.ReactNode;
 }) {

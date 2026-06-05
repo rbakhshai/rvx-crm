@@ -59,6 +59,7 @@ const ADMIN_GROUPS: NavItem[] = [
     children: [
       { href: "/settings/roles", label: "Role permissions", requires: "manage_roles" },
       { href: "/settings/users", label: "Team & roles", requires: "manage_users" },
+      { href: "/settings/audit", label: "Audit log", requires: "manage_users" },
     ],
   },
 ];

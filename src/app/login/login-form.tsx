@@ -8,13 +8,16 @@ export function LoginForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const next = searchParams.get("next") ?? "/today";
+  const reason = searchParams.get("reason");
 
   const [mode, setMode] = useState<"signin" | "signup">("signin");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [name, setName] = useState("");
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(
+    reason === "suspended" ? "Your account is suspended. Ask an admin to restore access." : null,
+  );
   const [isPending, startTransition] = useTransition();
 
   function submit(e: React.FormEvent) {

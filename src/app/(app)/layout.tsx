@@ -1,6 +1,9 @@
 import Image from "next/image";
 import { redirect } from "next/navigation";
 import { headers } from "next/headers";
+import { eq } from "drizzle-orm";
+import { db } from "@/db";
+import { user as userTable } from "@/db/schema";
 import { auth } from "@/lib/auth";
 import { Nav } from "./nav";
 import { SignOutButton } from "./sign-out-button";
@@ -13,6 +16,16 @@ export default async function AppLayout({ children }: { children: React.ReactNod
   const session = await auth.api.getSession({ headers: await headers() });
   if (!session) redirect("/login");
   const role = (session.user as { role?: string }).role;
+  // Look up suspendedAt/deletedAt directly — Better Auth's session payload
+  // doesn't carry them by default, and we want this check on every page.
+  const [me] = await db
+    .select({ suspendedAt: userTable.suspendedAt, deletedAt: userTable.deletedAt })
+    .from(userTable)
+    .where(eq(userTable.id, session.user.id))
+    .limit(1);
+  if (me?.suspendedAt || me?.deletedAt) {
+    redirect("/login?reason=suspended");
+  }
   // Bird dogs don't see the internal CRM — route them to their portal
   if (role === "bird_dog") {
     redirect("/portal");

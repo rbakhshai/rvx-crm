@@ -7,6 +7,7 @@ import { db } from "@/db";
 import { rolePermissions, user as userTable } from "@/db/schema";
 import { auth } from "@/lib/auth";
 import { requirePermission } from "@/lib/has-permission";
+import { AUDIT_ACTIONS, recordAudit } from "@/lib/audit";
 import {
   DEFAULT_PERMISSIONS,
   ROLES,
@@ -18,15 +19,13 @@ import {
 async function requireAdmin() {
   const session = await auth.api.getSession({ headers: await headers() });
   if (!session) throw new Error("Not authenticated");
-  // Specific check: manage_roles for the toggle endpoint, manage_users for the assign endpoint.
-  // The caller passes the right key.
   return session.user;
 }
 
-/**
- * Seed missing (role, permission_key) rows from the code defaults.
- * Idempotent — safe to call on every page load. Returns the live state.
- */
+// ============================================================================
+// Role permissions
+// ============================================================================
+
 export async function ensureRolePermissionsSeeded(): Promise<void> {
   const existing = await db.select({ role: rolePermissions.role, key: rolePermissions.permissionKey }).from(rolePermissions);
   const have = new Set(existing.map((r) => `${r.role}:${r.key}`));
@@ -43,13 +42,9 @@ export async function ensureRolePermissionsSeeded(): Promise<void> {
   }
 }
 
-/**
- * Set a (role, permission) cell. Called from each checkbox toggle in the
- * /settings/roles matrix.
- */
 export async function setRolePermissionAction(formData: FormData): Promise<void> {
-  const user = await requireAdmin();
-  await requirePermission(user, "manage_roles");
+  const actor = await requireAdmin();
+  await requirePermission(actor, "manage_roles");
 
   const role = String(formData.get("role") ?? "") as Role;
   const key = String(formData.get("key") ?? "") as PermissionKey;
@@ -65,29 +60,20 @@ export async function setRolePermissionAction(formData: FormData): Promise<void>
       set: { enabled, updatedAt: new Date() },
     });
 
+  await recordAudit({
+    actor: { id: actor.id, name: actor.name, email: actor.email },
+    action: AUDIT_ACTIONS.ROLE_PERMISSION_TOGGLED,
+    target: { kind: "role", id: role, label: role },
+    meta: { permissionKey: key, enabled },
+  });
+
   revalidatePath("/settings/roles");
   revalidatePath("/settings/users");
 }
 
-/** Assign a role to a user from /settings/users. */
-export async function setUserRoleAction(formData: FormData): Promise<void> {
-  const user = await requireAdmin();
-  await requirePermission(user, "manage_users");
-
-  const userId = String(formData.get("userId") ?? "");
-  const role = String(formData.get("role") ?? "") as Role;
-  if (!userId) throw new Error("Missing userId");
-  if (!(role in DEFAULT_PERMISSIONS)) throw new Error("Invalid role");
-
-  await db.update(userTable).set({ role }).where(eq(userTable.id, userId));
-
-  revalidatePath("/settings/users");
-}
-
-/** Restore all of a single role's permissions to the code defaults. */
 export async function resetRoleToDefaultsAction(formData: FormData): Promise<void> {
-  const user = await requireAdmin();
-  await requirePermission(user, "manage_roles");
+  const actor = await requireAdmin();
+  await requirePermission(actor, "manage_roles");
 
   const role = String(formData.get("role") ?? "") as Role;
   if (!(role in DEFAULT_PERMISSIONS)) throw new Error("Invalid role");
@@ -109,7 +95,201 @@ export async function resetRoleToDefaultsAction(formData: FormData): Promise<voi
       });
   }
 
+  await recordAudit({
+    actor: { id: actor.id, name: actor.name, email: actor.email },
+    action: AUDIT_ACTIONS.ROLE_RESET_TO_DEFAULTS,
+    target: { kind: "role", id: role, label: role },
+  });
+
   revalidatePath("/settings/roles");
-  // also silence import warning
   void and;
+}
+
+// ============================================================================
+// User management
+// ============================================================================
+
+export async function setUserRoleAction(formData: FormData): Promise<void> {
+  const actor = await requireAdmin();
+  await requirePermission(actor, "manage_users");
+
+  const userId = String(formData.get("userId") ?? "");
+  const role = String(formData.get("role") ?? "") as Role;
+  if (!userId) throw new Error("Missing userId");
+  if (!(role in DEFAULT_PERMISSIONS)) throw new Error("Invalid role");
+
+  const [before] = await db.select({ role: userTable.role, name: userTable.name, email: userTable.email }).from(userTable).where(eq(userTable.id, userId)).limit(1);
+  if (!before) throw new Error("User not found");
+  if (before.role === role) return;
+
+  await db.update(userTable).set({ role, updatedAt: new Date() }).where(eq(userTable.id, userId));
+
+  await recordAudit({
+    actor: { id: actor.id, name: actor.name, email: actor.email },
+    action: AUDIT_ACTIONS.USER_ROLE_CHANGED,
+    target: { kind: "user", id: userId, label: before.name ?? before.email },
+    meta: { from: before.role, to: role },
+  });
+
+  revalidatePath("/settings/users");
+}
+
+/**
+ * Generates a strong-but-readable temporary password the admin can share
+ * manually with the invited teammate. Format: 3 dictionary-style chunks +
+ * 4 digits. Example: "willow-river-cove-4192".
+ *
+ * Picked words avoid ambiguous look-alikes (no "rho", "mu") so it's easy
+ * to type once.
+ */
+function generateTempPassword(): string {
+  const words = [
+    "amber","aspen","birch","blue","brook","cedar","clay","clover","cove","crow",
+    "delta","ember","fawn","fern","forest","glen","gold","grove","harbor","heath",
+    "hill","ivy","kite","lake","leaf","mist","moss","oak","ocean","onyx",
+    "otter","park","peak","pine","plum","quill","raven","ridge","river","rose",
+    "sage","salt","sand","seed","shade","sky","slate","sparrow","spruce","starlight",
+    "stone","stream","summit","sun","thistle","valley","vine","willow","wren",
+  ];
+  const pick = () => words[Math.floor(Math.random() * words.length)];
+  const digits = String(Math.floor(1000 + Math.random() * 9000));
+  return `${pick()}-${pick()}-${pick()}-${digits}`;
+}
+
+/**
+ * Create a new user with a temp password. Returns the temp password so the
+ * admin can copy it from the toast and share it with the team member.
+ * Phase B will replace this with an email invitation.
+ */
+export async function inviteUserAction(formData: FormData): Promise<{ tempPassword: string; email: string; name: string }> {
+  const actor = await requireAdmin();
+  await requirePermission(actor, "manage_users");
+
+  const name = String(formData.get("name") ?? "").trim();
+  const email = String(formData.get("email") ?? "").trim().toLowerCase();
+  const role = String(formData.get("role") ?? "viewer") as Role;
+
+  if (!name) throw new Error("Name is required");
+  if (!email) throw new Error("Email is required");
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) throw new Error("Invalid email format");
+  if (!(role in DEFAULT_PERMISSIONS)) throw new Error("Invalid role");
+
+  const existing = await db.select({ id: userTable.id }).from(userTable).where(eq(userTable.email, email)).limit(1);
+  if (existing.length > 0) throw new Error("A user with that email already exists");
+
+  const tempPassword = generateTempPassword();
+
+  // Use better-auth's signup so the password gets hashed + account row created.
+  const result = await auth.api.signUpEmail({
+    body: { email, password: tempPassword, name },
+    headers: await headers(),
+    asResponse: false,
+  });
+
+  if (!result || !("user" in result)) {
+    throw new Error("Failed to create user");
+  }
+
+  // Assign the chosen role (signup defaults to "viewer").
+  if (role !== "viewer") {
+    await db.update(userTable).set({ role, updatedAt: new Date() }).where(eq(userTable.id, result.user.id));
+  }
+
+  await recordAudit({
+    actor: { id: actor.id, name: actor.name, email: actor.email },
+    action: AUDIT_ACTIONS.USER_INVITED,
+    target: { kind: "user", id: result.user.id, label: name },
+    meta: { email, role },
+  });
+
+  revalidatePath("/settings/users");
+  return { tempPassword, email, name };
+}
+
+export async function setUserSuspendedAction(userId: string, suspend: boolean): Promise<void> {
+  const actor = await requireAdmin();
+  await requirePermission(actor, "manage_users");
+
+  if (!userId) throw new Error("Missing userId");
+  if (userId === actor.id) throw new Error("You can't suspend yourself");
+
+  const [target] = await db.select({ name: userTable.name, email: userTable.email }).from(userTable).where(eq(userTable.id, userId)).limit(1);
+  if (!target) throw new Error("User not found");
+
+  await db
+    .update(userTable)
+    .set({
+      suspendedAt: suspend ? new Date() : null,
+      suspendedById: suspend ? actor.id : null,
+      updatedAt: new Date(),
+    })
+    .where(eq(userTable.id, userId));
+
+  await recordAudit({
+    actor: { id: actor.id, name: actor.name, email: actor.email },
+    action: suspend ? AUDIT_ACTIONS.USER_SUSPENDED : AUDIT_ACTIONS.USER_UNSUSPENDED,
+    target: { kind: "user", id: userId, label: target.name ?? target.email },
+  });
+
+  revalidatePath("/settings/users");
+}
+
+export async function deleteUserAction(userId: string): Promise<void> {
+  const actor = await requireAdmin();
+  await requirePermission(actor, "manage_users");
+
+  if (!userId) throw new Error("Missing userId");
+  if (userId === actor.id) throw new Error("You can't delete yourself");
+
+  const [target] = await db.select({ name: userTable.name, email: userTable.email }).from(userTable).where(eq(userTable.id, userId)).limit(1);
+  if (!target) throw new Error("User not found");
+
+  await db
+    .update(userTable)
+    .set({
+      deletedAt: new Date(),
+      deletedById: actor.id,
+      // also auto-suspend so any leftover sessions can't act
+      suspendedAt: new Date(),
+      suspendedById: actor.id,
+      updatedAt: new Date(),
+    })
+    .where(eq(userTable.id, userId));
+
+  await recordAudit({
+    actor: { id: actor.id, name: actor.name, email: actor.email },
+    action: AUDIT_ACTIONS.USER_DELETED,
+    target: { kind: "user", id: userId, label: target.name ?? target.email },
+  });
+
+  revalidatePath("/settings/users");
+}
+
+export async function restoreUserAction(userId: string): Promise<void> {
+  const actor = await requireAdmin();
+  await requirePermission(actor, "manage_users");
+
+  if (!userId) throw new Error("Missing userId");
+
+  const [target] = await db.select({ name: userTable.name, email: userTable.email }).from(userTable).where(eq(userTable.id, userId)).limit(1);
+  if (!target) throw new Error("User not found");
+
+  await db
+    .update(userTable)
+    .set({
+      deletedAt: null,
+      deletedById: null,
+      suspendedAt: null,
+      suspendedById: null,
+      updatedAt: new Date(),
+    })
+    .where(eq(userTable.id, userId));
+
+  await recordAudit({
+    actor: { id: actor.id, name: actor.name, email: actor.email },
+    action: AUDIT_ACTIONS.USER_RESTORED,
+    target: { kind: "user", id: userId, label: target.name ?? target.email },
+  });
+
+  revalidatePath("/settings/users");
 }
