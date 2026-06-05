@@ -12,7 +12,7 @@
  */
 import Link from "next/link";
 import { headers } from "next/headers";
-import { and, desc, eq, isNull, sql } from "drizzle-orm";
+import { and, desc, eq, inArray, isNull, sql } from "drizzle-orm";
 import { db } from "@/db";
 import {
   tasks,
@@ -106,7 +106,7 @@ export default async function TodayPage() {
         updatedAt: deals.updatedAt,
       })
       .from(deals)
-      .where(and(eq(deals.ownerId, me), sql`${deals.statusCode} = ANY(${ACTIVE_DEAL_STAGES})`))
+      .where(and(eq(deals.ownerId, me), inArray(deals.statusCode, ACTIVE_DEAL_STAGES)))
       .orderBy(sql`COALESCE(${deals.closerLastTouch}, ${deals.updatedAt}) ASC`)
       .limit(8),
 
@@ -131,7 +131,7 @@ export default async function TodayPage() {
     // 5) Weekly headlines for the hero
     db.select({
       newDeals: sql<number>`COUNT(*) FILTER (WHERE ${deals.createdAt} > ${new Date(Date.now() - 7 * DAY_MS)})::int`,
-      pipelineValue: sql<number>`COALESCE(SUM(CASE WHEN ${deals.statusCode} = ANY(${ACTIVE_DEAL_STAGES}) THEN ${deals.listPrice}::numeric ELSE 0 END), 0)::bigint`,
+      pipelineValue: sql<number>`COALESCE(SUM(CASE WHEN ${deals.statusCode} IN ${sql.raw(`(${ACTIVE_DEAL_STAGES.map((s) => `'${s}'`).join(",")})`)} THEN ${deals.listPrice}::numeric ELSE 0 END), 0)::bigint`,
     }).from(deals),
 
     fetchRecentActivity(20),
