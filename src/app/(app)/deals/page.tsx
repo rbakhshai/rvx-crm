@@ -2,6 +2,7 @@ import { and, asc, desc, eq, ilike, inArray, or, sql, type SQL, type SQLWrapper 
 import Link from "next/link";
 import { db } from "@/db";
 import { deals, dealStatuses, user } from "@/db/schema";
+// kept as a separate import so the subquery use below reads cleanly
 import { PageShell } from "../page-shell";
 import { LinkButton } from "@/components/button";
 import { DataTable, type Column } from "@/components/data-table";
@@ -12,7 +13,7 @@ import { FilterChips } from "@/components/filter-chips";
 import { Avatar } from "@/components/avatar";
 import { StaleDot } from "@/components/stale-dot";
 import { DEAL_PRIORITY_OPTIONS, US_STATES } from "@/lib/options";
-import { isPipelineStageKey, labelForStage, statusesForStage } from "@/lib/pipeline-stages";
+import { DEAL_PHASE_ROLES, isDealPhaseRole, isPipelineStageKey, labelForStage, statusesForStage } from "@/lib/pipeline-stages";
 
 type Row = typeof deals.$inferSelect & { ownerName?: string | null };
 
@@ -74,14 +75,15 @@ const SORT_COLUMNS: Record<string, SQLWrapper> = {
   status: deals.statusCode,
 };
 
-type SearchParams = Promise<{ q?: string; status?: string; priority?: string; state?: string; owner?: string; stage?: string; bird_dog?: string; sort?: string; dir?: string }>;
+type SearchParams = Promise<{ q?: string; status?: string; phase?: string; priority?: string; state?: string; owner?: string; stage?: string; bird_dog?: string; sort?: string; dir?: string }>;
 
 export default async function DealsListPage({ searchParams }: { searchParams: SearchParams }) {
   const params = await searchParams;
-  const { q, status, priority, state, owner, stage } = params;
+  const { q, status, priority, state, owner, stage, phase } = params;
   const birdDogId = params.bird_dog;
 
   const stageKey = isPipelineStageKey(stage) ? stage : null;
+  const phaseKey = isDealPhaseRole(phase) ? phase : null;
 
   const filters: SQL[] = [];
   if (q) {
@@ -91,6 +93,15 @@ export default async function DealsListPage({ searchParams }: { searchParams: Se
   }
   if (stageKey) {
     filters.push(inArray(deals.statusCode, statusesForStage(stageKey)));
+  }
+  if (phaseKey) {
+    // Subquery: every status code whose role equals the selected phase.
+    filters.push(
+      inArray(
+        deals.statusCode,
+        db.select({ code: dealStatuses.code }).from(dealStatuses).where(eq(dealStatuses.role, phaseKey as never)),
+      ),
+    );
   }
   if (status) filters.push(eq(deals.statusCode, status));
   if (priority) filters.push(eq(deals.dealPriority, priority as never));
@@ -107,12 +118,19 @@ export default async function DealsListPage({ searchParams }: { searchParams: Se
     ? (sortDir === "asc" ? asc(SORT_COLUMNS[sortKey]) : desc(SORT_COLUMNS[sortKey]))
     : desc(deals.createdAt);
 
-  const [rawRows, [{ count }], statuses, users] = await Promise.all([
+  const [rawRows, [{ count }], statuses, users, phaseCounts] = await Promise.all([
     db.select().from(deals).where(where).orderBy(orderBy).limit(500),
     db.select({ count: sql<number>`count(*)::int` }).from(deals).where(where),
     db.select().from(dealStatuses).orderBy(asc(dealStatuses.sortOrder)),
     db.select({ id: user.id, name: user.name }).from(user).orderBy(asc(user.name)),
+    // Count deals per phase role — drives the "Closer · 12" chip labels
+    db
+      .select({ role: dealStatuses.role, n: sql<number>`count(${deals.id})::int` })
+      .from(dealStatuses)
+      .leftJoin(deals, eq(deals.statusCode, dealStatuses.code))
+      .groupBy(dealStatuses.role),
   ]);
+  const phaseCountMap = new Map<string, number>(phaseCounts.map((p) => [p.role, p.n]));
 
   const userMap = new Map(users.map((u) => [u.id, u.name]));
   const rows: Row[] = rawRows.map((r) => ({
@@ -135,11 +153,16 @@ export default async function DealsListPage({ searchParams }: { searchParams: Se
   }
   const statusOptions = statuses.map((s) => ({ value: s.code, label: s.label }));
   const ownerOptions = users.map((u) => ({ value: u.id, label: u.name }));
+  // Phase chips with counts: skip empty phases ("Misc · 0" is just noise).
+  const phaseOptions = DEAL_PHASE_ROLES
+    .map((p) => ({ ...p, n: phaseCountMap.get(p.value) ?? 0 }))
+    .filter((p) => p.n > 0)
+    .map((p) => ({ value: p.value, label: `${p.label} · ${p.n}` }));
 
   return (
     <PageShell
       title="Deals"
-      subtitle={`${count} deal${count === 1 ? "" : "s"}${q || status || priority || state || owner ? " (filtered)" : ""}`}
+      subtitle={`${count} deal${count === 1 ? "" : "s"}${q || status || phase || priority || state || owner ? " (filtered)" : ""}`}
       action={
         <div className="flex gap-2 items-center">
           <LinkButton href="/deals/board" variant="secondary" size="sm">Board view</LinkButton>
@@ -161,12 +184,21 @@ export default async function DealsListPage({ searchParams }: { searchParams: Se
           </div>
         )}
         <SearchInput scope="scoped" placeholder="Search deals by name, address, city…" />
+        <FilterChips label="Phase" paramKey="phase" current={phase} pathname={pathname} searchParams={params} options={phaseOptions} />
         <FilterChips label="Priority" paramKey="priority" current={priority} pathname={pathname} searchParams={params} options={DEAL_PRIORITY_OPTIONS} />
         <FilterChips label="State" paramKey="state" current={state} pathname={pathname} searchParams={params} options={US_STATES} />
-        <FilterChips label="Stage" paramKey="status" current={status} pathname={pathname} searchParams={params} options={statusOptions} />
         {users.length > 1 && (
           <FilterChips label="Owner" paramKey="owner" current={owner} pathname={pathname} searchParams={params} options={ownerOptions} />
         )}
+        <details className="text-xs">
+          <summary className="cursor-pointer text-muted hover:text-foreground select-none inline-flex items-center gap-1 list-none">
+            <span className="transition-transform group-open:rotate-90">›</span>
+            <span>{status ? "Detailed stage (filtered)" : "Filter by exact stage"}</span>
+          </summary>
+          <div className="mt-2 pl-3 border-l-2 border-border">
+            <FilterChips label="Stage" paramKey="status" current={status} pathname={pathname} searchParams={params} options={statusOptions} />
+          </div>
+        </details>
       </div>
 
       <DataTable

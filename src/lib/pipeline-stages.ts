@@ -77,3 +77,32 @@ export function statusesForStage(key: PipelineStageKey): string[] {
 export function labelForStage(key: PipelineStageKey): string {
   return PIPELINE_STAGES.find((s) => s.key === key)?.label ?? key;
 }
+
+/**
+ * Role-based phase chips for the /deals filter. Each role buckets a subset
+ * of the 34+ granular statuses. Maps 1:1 with the kanban lanes — so a deal
+ * tagged "uw" appears on the Underwriting lane AND under this filter chip.
+ *
+ * Ordered to match the natural progression (intake → close → drip → dead).
+ */
+export const DEAL_PHASE_ROLES = [
+  { value: "am", label: "Acquisitions", description: "New intake" },
+  { value: "uw", label: "Underwriting", description: "Phase 1/2 review" },
+  { value: "closer", label: "Closer", description: "Contact + negotiation" },
+  { value: "pm", label: "LOI", description: "Letter of intent" },
+  { value: "tc", label: "PSA / Escrow", description: "Contract + DD" },
+  { value: "dm", label: "Dispo", description: "Sending to buyers" },
+  { value: "closed", label: "Closed (won)", description: "RVX acquired or network" },
+  { value: "drip", label: "Drip", description: "Follow-up cadence" },
+  { value: "parked", label: "Parked", description: "Pending revisit" },
+  { value: "dead", label: "Dead", description: "Not pursuing" },
+  { value: "misc", label: "Misc", description: "Edge cases" },
+] as const;
+
+export type DealPhaseRole = (typeof DEAL_PHASE_ROLES)[number]["value"];
+
+const ROLE_VALUES = new Set<string>(DEAL_PHASE_ROLES.map((r) => r.value));
+
+export function isDealPhaseRole(v: string | undefined): v is DealPhaseRole {
+  return !!v && ROLE_VALUES.has(v);
+}
