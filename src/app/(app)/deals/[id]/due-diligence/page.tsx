@@ -687,7 +687,7 @@ function ChecklistRow({
   return (
     <details className="group">
       <summary className="flex items-center gap-3 px-3 py-2 hover:bg-foreground/[0.02] cursor-pointer list-none">
-        <form action={toggleDdChecklistItemAction} onClick={(e) => e.stopPropagation()}>
+        <form action={toggleDdChecklistItemAction}>
           <input type="hidden" name="itemId" value={item.id} />
           <input type="hidden" name="dealId" value={dealId} />
           <input type="hidden" name="done" value={done ? "false" : "true"} />
