@@ -80,7 +80,8 @@ export default async function TodayPage() {
     newLeads,
     unreadNotifs,
     statusRows,
-    weeklyStats,
+    weeklyDealRows,
+    pipelineValueRows,
     activity,
   ] = await Promise.all([
     // 1) My open tasks (top 12, soonest due first, NULLs last)
@@ -128,11 +129,15 @@ export default async function TodayPage() {
 
     db.select({ code: dealStatuses.code, label: dealStatuses.label }).from(dealStatuses),
 
-    // 5) Weekly headlines for the hero
-    db.select({
-      newDeals: sql<number>`COUNT(*) FILTER (WHERE ${deals.createdAt} > ${new Date(Date.now() - 7 * DAY_MS)})::int`,
-      pipelineValue: sql<number>`COALESCE(SUM(CASE WHEN ${deals.statusCode} IN ${sql.raw(`(${ACTIVE_DEAL_STAGES.map((s) => `'${s}'`).join(",")})`)} THEN ${deals.listPrice}::numeric ELSE 0 END), 0)::bigint`,
-    }).from(deals),
+    // 5a) New deals this week
+    db.select({ count: sql<number>`count(*)::int` })
+      .from(deals)
+      .where(sql`${deals.createdAt} > ${new Date(Date.now() - 7 * DAY_MS)}`),
+
+    // 5b) Pipeline value across all active stages
+    db.select({ total: sql<number>`COALESCE(SUM(${deals.listPrice}::numeric), 0)::bigint` })
+      .from(deals)
+      .where(inArray(deals.statusCode, ACTIVE_DEAL_STAGES)),
 
     fetchRecentActivity(20),
   ]);
@@ -142,7 +147,8 @@ export default async function TodayPage() {
   const overdueCount = myOpenTasks.filter((t) => t.dueAt && t.dueAt < today).length;
   const dueTodayCount = myOpenTasks.filter((t) => t.dueAt && t.dueAt >= today && t.dueAt < tomorrow).length;
 
-  const headlines = weeklyStats[0] ?? { newDeals: 0, pipelineValue: 0 };
+  const newDealsThisWeek = Number(weeklyDealRows[0]?.count ?? 0);
+  const pipelineValue = Number(pipelineValueRows[0]?.total ?? 0);
 
   return (
     <PageShell title={greeting(session.user.name)} subtitle={new Date().toLocaleDateString(undefined, { weekday: "long", month: "long", day: "numeric" })}>
@@ -165,8 +171,8 @@ export default async function TodayPage() {
         />
         <StatTile
           label="Pipeline value"
-          value={headlines.pipelineValue ? `$${(Number(headlines.pipelineValue) / 1_000_000).toFixed(1)}M` : "—"}
-          hint={`${headlines.newDeals} new this week`}
+          value={pipelineValue ? `$${(pipelineValue / 1_000_000).toFixed(1)}M` : "—"}
+          hint={`${newDealsThisWeek} new this week`}
         />
       </div>
 
