@@ -24,7 +24,14 @@ const TEAMS: Array<{ key: Team; label: string; tagline: string }> = [
   { key: "dispo",        label: "Dispo",        tagline: "Disposing to an end buyer — we broker" },
 ];
 
-const JOURNEYS: Record<Team, { intro: string; stages: Array<{ title: string; description: string }> }> = {
+/**
+ * A stage can carry an optional `accent` that recolors its timeline
+ * dot — useful for flagging recurring touchpoints (e.g. monthly
+ * investor reports) so they stand out from the main one-time stages.
+ */
+type StageAccent = "lime" | "sky" | "rose" | "amber";
+
+const JOURNEYS: Record<Team, { intro: string; stages: Array<{ title: string; description: string; accent?: StageAccent }> }> = {
   acquisitions: {
     intro:
       "The Acquisitions Team owns sourcing. Bird dogs hunt deals in the field, the BD manager qualifies the intake, and clean leads get handed to a closer. Goal: every qualified lead in front of a closer within 48 hours.",
@@ -71,6 +78,7 @@ const JOURNEYS: Record<Team, { intro: string; stages: Array<{ title: string; des
       { title: "Day 14-60: Operating playbook live",   description: "Pricing model, rent-bump letters, online listings on Hipcamp + Campendium + RoverPass, lease standardization. Vendor list locked (plumber, HVAC, lawn)." },
       { title: "Month 2-6: Stabilization",             description: "Drive occupancy. Address rent collection delinquencies. Inspect every pad quarterly. P&L reviewed monthly against the UW model." },
       { title: "Month 6-12: Portfolio integration",    description: "Park reports up to Kevin's portfolio dashboard. Refinance if leverage makes sense. Document SOPs so the next take-down ramps faster." },
+      { title: "Monthly: Report to investors",          description: "Provide updated reports to investors and partners for review — occupancy, P&L, NOI vs UW model, capex, stabilization milestones. Built off Kevin's portfolio dashboard, signed off by Reza before send.", accent: "sky" },
     ],
   },
   dispo: {
@@ -147,7 +155,13 @@ export default async function JourneyPage({
             const descScope  = `journey.${activeKey}.stage.${i}.description`;
             return (
               <li key={i} className="relative pl-10">
-                <span className="absolute left-1.5 top-1.5 size-3 rounded-full bg-lime-400 ring-4 ring-background" aria-hidden />
+                <span
+                  className={cn(
+                    "absolute left-1.5 top-1.5 size-3 rounded-full ring-4 ring-background",
+                    accentDotClass(s.accent),
+                  )}
+                  aria-hidden
+                />
                 <div className="text-sm font-semibold">
                   <EditableBlock
                     scope={titleScope}
@@ -169,6 +183,17 @@ export default async function JourneyPage({
       </div>
     </>
   );
+}
+
+/** Map a per-stage accent to its tailwind dot color. */
+function accentDotClass(a: StageAccent | undefined): string {
+  switch (a) {
+    case "sky":   return "bg-sky-500";
+    case "rose":  return "bg-rose-500";
+    case "amber": return "bg-amber-500";
+    case "lime":
+    default:      return "bg-lime-400";
+  }
 }
 
 function labelForKey(k: Team): string {
