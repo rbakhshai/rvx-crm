@@ -13,6 +13,7 @@ const PARENT_PATHS: Record<string, string> = {
   deals: "/deals",
   companies: "/companies",
   bird_dogs: "/bird-dogs",
+  issues: "/issues",
 };
 
 const ALLOWED_PARENTS = new Set(Object.keys(PARENT_PATHS));

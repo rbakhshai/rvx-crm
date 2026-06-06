@@ -57,6 +57,7 @@ const GROUPS: NavItem[] = [
     ],
   },
   { href: "/tasks", label: "Tasks" },
+  { href: "/issues", label: "Issues" },
   { href: "/trash", label: "Trash", requires: "view_trash" },
 ];
 

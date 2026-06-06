@@ -10,7 +10,7 @@ export function DeleteNoteButton({
   parentId,
 }: {
   noteId: string;
-  parentTable: "contacts" | "deals" | "companies" | "bird_dogs";
+  parentTable: "contacts" | "deals" | "companies" | "bird_dogs" | "issues";
   parentId: string;
 }) {
   const router = useRouter();

@@ -12,6 +12,7 @@ export const activityParentTable = pgEnum("activity_parent_table", [
   "deals",
   "companies",
   "bird_dogs",
+  "issues",
 ]);
 
 export const noteType = pgEnum("note_type", [

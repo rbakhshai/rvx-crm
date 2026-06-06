@@ -81,7 +81,7 @@ export function parseMentions(body: string, roster: ActiveUser[]): string[] {
  */
 export async function recordMentions(args: {
   noteId: string;
-  parentTable: "contacts" | "deals" | "companies" | "bird_dogs";
+  parentTable: "contacts" | "deals" | "companies" | "bird_dogs" | "issues";
   parentId: string;
   mentionedUserIds: string[];
 }): Promise<void> {
@@ -102,7 +102,7 @@ export type OutstandingMention = {
   body: string;
   authorId: string | null;
   authorName: string | null;
-  parentTable: "contacts" | "deals" | "companies" | "bird_dogs";
+  parentTable: "contacts" | "deals" | "companies" | "bird_dogs" | "issues";
   parentId: string;
   mentionedAt: Date;
 };

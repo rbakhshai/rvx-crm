@@ -6,7 +6,7 @@ import { DeleteNoteButton } from "./delete-note-button";
 import { Section } from "./section";
 import { fmtDate } from "@/lib/date-format";
 
-type ParentTable = "contacts" | "deals" | "companies" | "bird_dogs";
+type ParentTable = "contacts" | "deals" | "companies" | "bird_dogs" | "issues";
 
 /**
  * Render a note body with @FirstName tokens highlighted. A token matches if

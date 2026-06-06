@@ -22,6 +22,7 @@ const PARENT_LABEL: Record<SerializableMention["parentTable"], string> = {
   deals: "Deal",
   companies: "Seller",
   bird_dogs: "Bird dog",
+  issues: "Issue",
 };
 
 const PARENT_PATH: Record<SerializableMention["parentTable"], string> = {
@@ -29,6 +30,7 @@ const PARENT_PATH: Record<SerializableMention["parentTable"], string> = {
   deals: "/deals",
   companies: "/companies",
   bird_dogs: "/bird-dogs",
+  issues: "/issues",
 };
 
 function relativeTime(iso: string): string {

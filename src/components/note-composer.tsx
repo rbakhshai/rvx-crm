@@ -29,7 +29,7 @@ export function NoteComposer({
   parentId,
   mentionableUsers,
 }: {
-  parentTable: "contacts" | "deals" | "companies" | "bird_dogs";
+  parentTable: "contacts" | "deals" | "companies" | "bird_dogs" | "issues";
   parentId: string;
   mentionableUsers: MentionableUser[];
 }) {
