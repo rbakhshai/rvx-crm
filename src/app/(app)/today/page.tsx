@@ -27,6 +27,8 @@ import { PageShell } from "../page-shell";
 import { ActivityPulse } from "@/components/activity-pulse";
 import { Widget, ListLink, EmptyHint, StatTile, PriorityBadge, StaleBadge } from "../dashboard/widgets";
 import { Badge } from "@/components/badge";
+import { DailyBrief } from "@/components/daily-brief";
+import { getOrCreateDailyBrief } from "@/app/actions/daily-brief";
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 
@@ -83,6 +85,7 @@ export default async function TodayPage() {
     weeklyDealRows,
     pipelineValueRows,
     activity,
+    brief,
   ] = await Promise.all([
     // 1) My open tasks (top 12, soonest due first, NULLs last)
     db
@@ -140,6 +143,7 @@ export default async function TodayPage() {
       .where(and(inArray(deals.statusCode, ACTIVE_DEAL_STAGES), isNull(deals.deletedAt))),
 
     fetchRecentActivity(20),
+    getOrCreateDailyBrief(me),
   ]);
 
   const statusLabel = new Map(statusRows.map((s) => [s.code, s.label]));
@@ -152,6 +156,9 @@ export default async function TodayPage() {
 
   return (
     <PageShell title={greeting(session.user.name)} subtitle={new Date().toLocaleDateString(undefined, { weekday: "long", month: "long", day: "numeric" })} width="wide">
+      {/* ===== AI morning brief ===== */}
+      <DailyBrief contentMd={brief.contentMd} createdAt={brief.createdAt} />
+
       {/* ===== Hero stats ===== */}
       <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-3 mb-6">
         <StatTile
