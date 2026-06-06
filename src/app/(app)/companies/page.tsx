@@ -1,4 +1,4 @@
-import { and, asc, desc, eq, ilike, isNull, or, sql, type SQL } from "drizzle-orm";
+import { and, asc, desc, eq, ilike, isNull, or, sql, type SQL, type SQLWrapper } from "drizzle-orm";
 import { db } from "@/db";
 import { companies, user } from "@/db/schema";
 import { PageShell } from "../page-shell";
@@ -24,18 +24,40 @@ const relationshipLabel: Record<string, string> = {
   owner_realtor: "Owner + Realtor",
 };
 
+function fmtDate(d: Date): string {
+  // Short year-stripped format if the date is in the current year, full otherwise.
+  const now = new Date();
+  if (d.getFullYear() === now.getFullYear()) {
+    return d.toLocaleDateString(undefined, { month: "short", day: "numeric" });
+  }
+  return d.toLocaleDateString(undefined, { month: "short", day: "numeric", year: "2-digit" });
+}
+
 const columns: Column<Row>[] = [
+  {
+    key: "created",
+    header: "Added",
+    sortKey: "created",
+    className: "w-20 text-muted tabular-nums",
+    render: (r) => <span title={r.createdAt.toLocaleString()}>{fmtDate(r.createdAt)}</span>,
+  },
   { key: "fresh", header: "", className: "w-6", render: (r) => <StaleDot since={r.updatedAt} /> },
-  { key: "name", header: "Name", render: (r) => r.name },
-  { key: "relationship", header: "Relationship", render: (r) => <Badge>{relationshipLabel[r.relationshipToPark] ?? r.relationshipToPark}</Badge> },
+  { key: "name", header: "Name", sortKey: "name", render: (r) => r.name },
+  {
+    key: "relationship",
+    header: "Relationship",
+    sortKey: "relationship",
+    render: (r) => <Badge>{relationshipLabel[r.relationshipToPark] ?? r.relationshipToPark}</Badge>,
+  },
   {
     key: "seller",
     header: "Seller / broker",
+    sortKey: "seller",
     render: (r) => [r.sellerFirstName, r.sellerLastName].filter(Boolean).join(" ") || <span className="text-muted">—</span>,
   },
-  { key: "email", header: "Email", className: "text-muted", render: (r) => r.email ?? "—" },
-  { key: "phone", header: "Phone", className: "text-muted", render: (r) => r.phone ?? "—" },
-  { key: "state", header: "State", render: (r) => r.state ?? <span className="text-muted">—</span> },
+  { key: "email", header: "Email", sortKey: "email", className: "text-muted", render: (r) => r.email ?? "—" },
+  { key: "phone", header: "Phone", sortKey: "phone", className: "text-muted", render: (r) => r.phone ?? "—" },
+  { key: "state", header: "State", sortKey: "state", render: (r) => r.state ?? <span className="text-muted">—</span> },
   {
     key: "owner",
     header: "Owner",
@@ -44,7 +66,17 @@ const columns: Column<Row>[] = [
   },
 ];
 
-type SearchParams = Promise<{ q?: string; relationship?: string; state?: string; owner?: string }>;
+const SORT_COLUMNS: Record<string, SQLWrapper> = {
+  created: companies.createdAt,
+  name: companies.name,
+  relationship: companies.relationshipToPark,
+  seller: companies.sellerFirstName,
+  email: companies.email,
+  phone: companies.phone,
+  state: companies.state,
+};
+
+type SearchParams = Promise<{ q?: string; relationship?: string; state?: string; owner?: string; sort?: string; dir?: string }>;
 
 export default async function CompaniesListPage({ searchParams }: { searchParams: SearchParams }) {
   const params = await searchParams;
@@ -62,9 +94,17 @@ export default async function CompaniesListPage({ searchParams }: { searchParams
 
   const where = filters.length ? and(...filters) : undefined;
 
+  // Sort: ?sort=created|name|relationship|seller|email|phone|state, ?dir=asc|desc.
+  // Default: newest first.
+  const sortKey = params.sort && SORT_COLUMNS[params.sort] ? params.sort : null;
+  const sortDir: "asc" | "desc" = params.dir === "desc" ? "desc" : params.dir === "asc" ? "asc" : "asc";
+  const orderBy = sortKey
+    ? (sortDir === "asc" ? asc(SORT_COLUMNS[sortKey]) : desc(SORT_COLUMNS[sortKey]))
+    : desc(companies.createdAt);
+
   const session = await auth.api.getSession({ headers: await headers() });
   const [rawRows, [{ count }], users, savedViews] = await Promise.all([
-    db.select().from(companies).where(where).orderBy(desc(companies.createdAt)).limit(100),
+    db.select().from(companies).where(where).orderBy(orderBy).limit(100),
     db.select({ count: sql<number>`count(*)::int` }).from(companies).where(where),
     db.select({ id: user.id, name: user.name }).from(user).orderBy(asc(user.name)),
     session ? listSavedViews("companies", session.user.id) : Promise.resolve([]),
@@ -78,6 +118,17 @@ export default async function CompaniesListPage({ searchParams }: { searchParams
 
   const pathname = "/companies";
   const ownerOptions = users.map((u) => ({ value: u.id, label: u.name }));
+
+  function buildSortHref(key: string, nextDir: "asc" | "desc"): string {
+    const qs = new URLSearchParams();
+    for (const [k, v] of Object.entries(params)) {
+      if (k === "sort" || k === "dir") continue;
+      if (typeof v === "string" && v.length > 0) qs.set(k, v);
+    }
+    qs.set("sort", key);
+    qs.set("dir", nextDir);
+    return `${pathname}?${qs.toString()}`;
+  }
 
   return (
     <PageShell
@@ -100,6 +151,7 @@ export default async function CompaniesListPage({ searchParams }: { searchParams
         rows={rows}
         columns={columns}
         rowHref={(r) => `/companies/${r.id}`}
+        sort={{ current: sortKey, dir: sortDir, hrefFor: buildSortHref }}
         empty={
           <EmptyState
             icon="🏢"

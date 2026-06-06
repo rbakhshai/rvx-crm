@@ -36,7 +36,6 @@ function fmtDate(d: Date): string {
 }
 
 const columns: Column<Row>[] = [
-  { key: "fresh", header: "", className: "w-6", render: (r) => <StaleDot since={r.updatedAt} /> },
   {
     key: "created",
     header: "Added",
@@ -44,6 +43,7 @@ const columns: Column<Row>[] = [
     className: "w-20 text-muted tabular-nums",
     render: (r) => <span title={r.createdAt.toLocaleString()}>{fmtDate(r.createdAt)}</span>,
   },
+  { key: "fresh", header: "", className: "w-6", render: (r) => <StaleDot since={r.updatedAt} /> },
   {
     key: "name",
     header: "Name",
