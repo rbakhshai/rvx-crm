@@ -70,7 +70,7 @@ export function InviteUserForm() {
           <label className="block text-[10px] uppercase tracking-widest text-muted font-medium mb-0.5">Role</label>
           <select
             name="role"
-            defaultValue="viewer"
+            defaultValue="closer"
             className="w-full rounded-md border border-border bg-background px-3 py-1.5 text-sm focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary cursor-pointer"
           >
             {ROLES.map((r) => (

@@ -12,6 +12,16 @@ import { CommandPaletteTrigger } from "@/components/command-palette-trigger";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { MobileNavToggle } from "@/components/mobile-nav";
 import { getPermissionsFor } from "@/lib/has-permission";
+import { ROLES } from "@/lib/permissions";
+
+/**
+ * Map a DB role value to its display label. Falls back to "—" rather than
+ * "Viewer" so users on the deprecated viewer role don't see a stale label.
+ */
+function roleLabelOf(role: string | null | undefined): string {
+  if (!role) return "—";
+  return ROLES.find((r) => r.value === role)?.label ?? role;
+}
 
 export default async function AppLayout(props: {
   children: React.ReactNode;
@@ -66,7 +76,7 @@ export default async function AppLayout(props: {
             <div className="text-muted truncate">{session.user.email}</div>
             <div className="mt-1 inline-flex items-center gap-1.5">
               <span className="size-1.5 rounded-full bg-green-500" />
-              <span className="text-muted capitalize">{(session.user as { role?: string }).role ?? "viewer"}</span>
+              <span className="text-muted">{roleLabelOf((session.user as { role?: string }).role)}</span>
             </div>
           </div>
           <div className="mt-3">

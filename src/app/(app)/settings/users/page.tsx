@@ -173,6 +173,11 @@ export default async function UsersSettingsPage({
 // ============================================================================
 
 function ChangeRoleForm({ userId, currentRole }: { userId: string; currentRole: string }) {
+  // If the user is on a deprecated role (e.g. "viewer"), show it as a
+  // disabled deprecated option so the selection stays put until an admin
+  // picks something current. Prevents silent accidental promotion when
+  // saving without changing the dropdown.
+  const isDeprecated = !ROLES.some((r) => r.value === currentRole);
   return (
     <form action={setUserRoleAction} className="inline-flex items-center gap-1.5">
       <input type="hidden" name="userId" value={userId} />
@@ -181,6 +186,11 @@ function ChangeRoleForm({ userId, currentRole }: { userId: string; currentRole: 
         defaultValue={currentRole}
         className="rounded-md border border-border bg-background px-2 py-1 text-xs focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary cursor-pointer w-36"
       >
+        {isDeprecated && (
+          <option value={currentRole}>
+            {currentRole} (deprecated — pick new)
+          </option>
+        )}
         {ROLES.map((r) => (
           <option key={r.value} value={r.value}>
             {r.label}

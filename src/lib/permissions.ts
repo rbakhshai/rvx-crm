@@ -8,6 +8,12 @@
  * Use the `PermissionKey` type everywhere a permission is checked.
  */
 
+/**
+ * Role values must still match the database pgEnum (`user_role` in
+ * src/db/schema/auth.ts). The DB enum still carries `viewer` for
+ * compatibility, but it is no longer offered as an internal role —
+ * users on `viewer` keep working but have no granted permissions.
+ */
 export type Role =
   | "admin"
   | "acquisitions_manager"
@@ -21,18 +27,28 @@ export type Role =
   | "due_diligence"
   | "viewer";
 
+/**
+ * Visible roles, in display order. Order is the canonical org hierarchy
+ * the user pinned: Admin, COS, COO, Closer, Underwriter, DD, Dispo, CFO, TC.
+ *
+ * acquisitions_manager and bird_dog_manager are relabeled in place to
+ * COS / COO so existing role assignments (Reza, Erica) keep their granted
+ * permissions — only the display label changes.
+ *
+ * Viewer is intentionally absent. bird_dog is omitted because it's an
+ * external-portal role assigned automatically, not a CRM role anyone
+ * picks from a dropdown.
+ */
 export const ROLES: ReadonlyArray<{ value: Role; label: string; description: string }> = [
-  { value: "admin",                label: "Admin",                description: "Full access. Reserved for owners." },
-  { value: "acquisitions_manager", label: "Acquisitions Manager", description: "Sources and triages deals." },
-  { value: "closer",               label: "Closer",               description: "Negotiates with sellers." },
-  { value: "bird_dog_manager",     label: "Bird Dog Manager",     description: "Recruits and oversees scouts." },
-  { value: "transaction_coord",    label: "Transaction Coord",    description: "Owns PSA + escrow paperwork." },
-  { value: "underwriter",          label: "Underwriter",          description: "Phase 2 financial review." },
-  { value: "dispo_manager",        label: "Dispo Manager",        description: "Routes deals to buyer network." },
-  { value: "cfo",                  label: "CFO",                  description: "Reads financials + revenue." },
-  { value: "due_diligence",        label: "Due Diligence",        description: "Runs DD on under-contract deals." },
-  { value: "viewer",               label: "Viewer",               description: "Read-only access to records." },
-  { value: "bird_dog",             label: "Bird Dog",             description: "External scout — sees portal only." },
+  { value: "admin",                label: "Admin",       description: "Full access. Reserved for owners." },
+  { value: "acquisitions_manager", label: "COS",         description: "Chief of Staff — runs acquisitions + triage." },
+  { value: "bird_dog_manager",     label: "COO",         description: "Chief Operating Officer — owns scouts + ops." },
+  { value: "closer",               label: "Closer",      description: "Negotiates with sellers." },
+  { value: "underwriter",          label: "Underwriter", description: "Phase 2 financial review." },
+  { value: "due_diligence",        label: "DD",          description: "Runs DD on under-contract deals." },
+  { value: "dispo_manager",        label: "Dispo",       description: "Routes deals to buyer network." },
+  { value: "cfo",                  label: "CFO",         description: "Reads financials + revenue." },
+  { value: "transaction_coord",    label: "TC",          description: "Owns PSA + escrow paperwork." },
 ];
 
 // ============================================================================
@@ -192,9 +208,9 @@ export const DEFAULT_PERMISSIONS: Record<Role, Record<PermissionKey, boolean>> =
     "view_pipeline_value",
   ),
 
-  viewer: grant(
-    "view_pipeline_value",
-  ),
+  // viewer is deprecated — kept for DB-enum compatibility only.
+  // Any user still on this role gets zero permissions until reassigned.
+  viewer: grant(),
 
   // Bird dogs go to the external portal, not the CRM — no perms here.
   bird_dog: grant(),
