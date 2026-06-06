@@ -15,7 +15,6 @@ const TABS = [
   { href: "/ops/initiatives", label: "Initiatives" },
   { href: "/ops/team",        label: "Team" },
   { href: "/ops/success",     label: "Success" },
-  { href: "/ops/recruiting",  label: "Recruiting" },
   { href: "/ops/journey",     label: "Journey" },
   { href: "/ops/flywheel",    label: "Flywheel" },
   { href: "/ops/strategy",    label: "Strategy" },
