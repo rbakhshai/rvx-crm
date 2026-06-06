@@ -6,7 +6,7 @@ import { birdDogs, companies, deals } from "@/db/schema";
 import { auth } from "@/lib/auth";
 import { PageShell } from "../page-shell";
 import { GoogleMap } from "@/components/google-map";
-import { listQueue, listStatusOptions } from "./actions";
+import { listQueue, listQueueCounts, listStatusOptions } from "./actions";
 import { QUEUE_LABELS, buildTriageUrl, type Queue } from "./lib";
 import { TriageClient } from "./triage-client";
 
@@ -25,9 +25,10 @@ export default async function TriagePage({
   const session = await auth.api.getSession({ headers: await headers() });
   if (!session) return null;
 
-  const [queueRows, statusOptions] = await Promise.all([
+  const [queueRows, statusOptions, queueCounts] = await Promise.all([
     listQueue(queue, session.user.id),
     listStatusOptions(),
+    listQueueCounts(session.user.id),
   ]);
 
   // Pick the current deal: ?id= if it's still in the queue, else first item.
@@ -83,7 +84,7 @@ export default async function TriagePage({
       title="Triage"
       subtitle="One deal at a time — call, log, advance, next."
       width="wide"
-      action={<QueueTabs current={queue} counts={null} />}
+      action={<QueueTabs current={queue} counts={queueCounts} />}
     >
       {queueRows.length === 0 ? (
         <div className="rounded-xl border border-dashed border-border bg-foreground/[0.02] p-12 text-center">
@@ -157,23 +158,34 @@ export default async function TriagePage({
   );
 }
 
-function QueueTabs({ current }: { current: Queue; counts: null }) {
+function QueueTabs({ current, counts }: { current: Queue; counts: Record<Queue, number> }) {
   return (
     <div className="flex gap-1 text-xs">
       {(Object.keys(QUEUE_LABELS) as Queue[]).map((q) => {
         const active = q === current;
+        const count = counts[q];
         return (
           <Link
             key={q}
             href={buildTriageUrl(q, null) as never}
             className={
-              "rounded-md px-2.5 py-1 border " +
+              "inline-flex items-center gap-1.5 rounded-md px-2.5 py-1 border " +
               (active
                 ? "border-primary/40 bg-primary/[0.06] text-primary"
                 : "border-border text-foreground/70 hover:bg-foreground/[0.04]")
             }
           >
-            {QUEUE_LABELS[q]}
+            <span>{QUEUE_LABELS[q]}</span>
+            <span
+              className={
+                "tabular-nums rounded px-1.5 text-[10px] font-medium " +
+                (active
+                  ? "bg-primary/15 text-primary"
+                  : "bg-foreground/[0.06] text-foreground/70")
+              }
+            >
+              {count}
+            </span>
           </Link>
         );
       })}

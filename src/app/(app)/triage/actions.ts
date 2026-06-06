@@ -81,6 +81,19 @@ export async function listQueue(queue: Queue, userId: string): Promise<QueueDeal
     .limit(50);
 }
 
+/**
+ * Cheap aggregate — just COUNT(*) per queue. Three small queries in
+ * parallel; faster than fetching all rows + filtering client-side.
+ */
+export async function listQueueCounts(userId: string): Promise<Record<Queue, number>> {
+  const [n, m, s] = await Promise.all([
+    db.select({ c: sql<number>`count(*)::int` }).from(deals).where(queueWhere("new", userId)),
+    db.select({ c: sql<number>`count(*)::int` }).from(deals).where(queueWhere("mine", userId)),
+    db.select({ c: sql<number>`count(*)::int` }).from(deals).where(queueWhere("stale", userId)),
+  ]);
+  return { new: n[0]?.c ?? 0, mine: m[0]?.c ?? 0, stale: s[0]?.c ?? 0 };
+}
+
 export async function listStatusOptions() {
   return await db
     .select({

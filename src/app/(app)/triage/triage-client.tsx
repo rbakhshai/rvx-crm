@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState, useTransition } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Badge } from "@/components/badge";
@@ -106,8 +106,28 @@ export function TriageClient({
   const [bdMessage, setBdMessage] = useState(deal.updateToBirdDog ?? "");
   const [statusCode, setStatusCode] = useState<string>(deal.statusCode ?? "");
   const [notifyBd, setNotifyBd] = useState(true);
+  const [showShortcuts, setShowShortcuts] = useState(false);
+  const [isPending, startTransition] = useTransition();
   const noteRef = useRef<HTMLTextAreaElement>(null);
   const formRef = useRef<HTMLFormElement>(null);
+
+  // Quick lookup so queue items can render a human stage label.
+  const statusLabelMap = useMemo(
+    () => new Map(statusOptions.map((s) => [s.code, s.label])),
+    [statusOptions],
+  );
+
+  // Current index in the queue, used for j/k navigation.
+  const currentIdx = useMemo(
+    () => queueRows.findIndex((r) => r.id === deal.id),
+    [queueRows, deal.id],
+  );
+
+  function jumpToQueueIdx(idx: number) {
+    const target = queueRows[idx];
+    if (!target) return;
+    router.push(buildTriageUrl(queue, target.id) as never);
+  }
 
   // Reset local state when navigating to a different deal
   useEffect(() => {
@@ -126,7 +146,15 @@ export function TriageClient({
     if (suggested) setStatusCode(suggested);
   }
 
-  // Keyboard shortcuts: 1-7 outcome, n note, b bd message, ⌘↩ save & next, esc skip
+  // Keyboard shortcuts:
+  //   1-7      pick call outcome
+  //   n        focus internal note
+  //   j        next deal in queue (without saving)
+  //   k        prev deal in queue
+  //   ⌘↩       save + next deal
+  //   →        skip to next without saving
+  //   ?        show shortcut overlay
+  //   esc      close shortcut overlay
   useEffect(() => {
     function onKey(e: KeyboardEvent) {
       const target = e.target as HTMLElement | null;
@@ -135,6 +163,12 @@ export function TriageClient({
       if ((e.metaKey || e.ctrlKey) && e.key === "Enter") {
         e.preventDefault();
         submit("next");
+        return;
+      }
+
+      // Esc always closes the overlay, even from inside a field
+      if (e.key === "Escape" && showShortcuts) {
+        setShowShortcuts(false);
         return;
       }
 
@@ -147,19 +181,24 @@ export function TriageClient({
         return;
       }
       if (e.key === "n") { e.preventDefault(); noteRef.current?.focus(); return; }
+      if (e.key === "j") { e.preventDefault(); jumpToQueueIdx(currentIdx + 1); return; }
+      if (e.key === "k") { e.preventDefault(); jumpToQueueIdx(currentIdx - 1); return; }
       if (e.key === "ArrowRight") { e.preventDefault(); submit("skip"); return; }
+      if (e.key === "?" || (e.shiftKey && e.key === "/")) { e.preventDefault(); setShowShortcuts((v) => !v); return; }
     }
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [currentIdx, queueRows, showShortcuts]);
 
   function submit(action: "next" | "stay" | "skip") {
     const form = formRef.current;
     if (!form) return;
     const fd = new FormData(form);
     fd.set("action", action);
-    triageDealAction(fd);
+    startTransition(() => {
+      triageDealAction(fd);
+    });
   }
 
   const title = deal.name || deal.parkAddress || "(unnamed deal)";
@@ -357,16 +396,25 @@ export function TriageClient({
           </label>
 
           <div className="flex items-center justify-between gap-2 pt-3 border-t border-border">
-            <div className="text-[11px] text-muted">⌘↩ Save &amp; next · → Skip</div>
+            <div className="text-[11px] text-muted">
+              ⌘↩ save · → skip · j/k queue ·{" "}
+              <button
+                type="button"
+                onClick={() => setShowShortcuts(true)}
+                className="underline-offset-2 hover:underline"
+              >
+                ? all shortcuts
+              </button>
+            </div>
             <div className="flex gap-2">
-              <Button type="button" variant="ghost" onClick={() => submit("skip")}>
+              <Button type="button" variant="ghost" disabled={isPending} onClick={() => submit("skip")}>
                 Skip
               </Button>
-              <Button type="button" variant="secondary" onClick={() => submit("stay")}>
-                Save &amp; stay
+              <Button type="button" variant="secondary" disabled={isPending} onClick={() => submit("stay")}>
+                {isPending ? "Saving…" : "Save & stay"}
               </Button>
-              <Button type="button" onClick={() => submit("next")}>
-                Save &amp; next deal →
+              <Button type="button" disabled={isPending} onClick={() => submit("next")}>
+                {isPending ? "Saving…" : "Save & next deal →"}
               </Button>
             </div>
           </div>
@@ -375,12 +423,20 @@ export function TriageClient({
 
       {/* SIDE: queue list */}
       <aside className="space-y-2">
-        <div className="text-xs uppercase tracking-widest text-muted font-medium px-1">
-          Queue ({queueLength})
+        <div className="text-xs uppercase tracking-widest text-muted font-medium px-1 flex items-baseline justify-between">
+          <span>Queue ({queueLength})</span>
+          <span className="text-[10px] normal-case tracking-normal text-muted/80">j/k to step</span>
         </div>
         <ul className="space-y-1 max-h-[75vh] overflow-y-auto pr-1">
           {queueRows.map((r) => {
             const active = r.id === deal.id;
+            // Stale-queue items care about "last touched" since that's the
+            // sort key; everywhere else "created N days ago" is more useful.
+            const timeLabel =
+              queue === "stale"
+                ? `last touched ${fmtRelative(r.closerLastTouch)}`
+                : `created ${fmtRelative(r.createdAt)}`;
+            const statusLabel = r.statusCode ? statusLabelMap.get(r.statusCode) ?? r.statusCode : null;
             return (
               <li key={r.id}>
                 <button
@@ -393,9 +449,18 @@ export function TriageClient({
                       : "border-transparent hover:bg-foreground/[0.04] hover:border-border")
                   }
                 >
-                  <div className="font-medium truncate">{r.title}</div>
-                  <div className="text-[11px] text-muted truncate">
-                    {r.sub || "—"} · created {fmtRelative(r.createdAt)}
+                  <div className="flex items-baseline justify-between gap-2">
+                    <div className="font-medium truncate flex-1">{r.title}</div>
+                    {active && <span className="text-[10px] text-primary font-medium shrink-0">●</span>}
+                  </div>
+                  <div className="text-[11px] text-muted truncate">{r.sub || "—"}</div>
+                  <div className="mt-1 flex items-center gap-1.5 text-[10px]">
+                    {statusLabel && (
+                      <span className="inline-block rounded-sm bg-foreground/[0.06] px-1.5 py-0.5 text-foreground/70 truncate max-w-[160px]">
+                        {statusLabel}
+                      </span>
+                    )}
+                    <span className="text-muted tabular-nums">{timeLabel}</span>
                   </div>
                 </button>
               </li>
@@ -403,6 +468,61 @@ export function TriageClient({
           })}
         </ul>
       </aside>
+
+      {showShortcuts && (
+        <ShortcutOverlay onClose={() => setShowShortcuts(false)} outcomeCount={CALL_OUTCOMES.length} />
+      )}
+    </div>
+  );
+}
+
+function ShortcutOverlay({ onClose, outcomeCount }: { onClose: () => void; outcomeCount: number }) {
+  const rows: Array<[string, string]> = [
+    [`1–${outcomeCount}`, "Pick call outcome"],
+    ["n", "Focus the internal note"],
+    ["j", "Next deal in queue"],
+    ["k", "Previous deal in queue"],
+    ["→", "Skip — next without saving"],
+    ["⌘↩", "Save + advance to next deal"],
+    ["?", "Show / hide this cheatsheet"],
+    ["esc", "Close this cheatsheet"],
+  ];
+  return (
+    <div
+      className="fixed inset-0 z-40 grid place-items-center bg-foreground/30 backdrop-blur-sm"
+      onClick={onClose}
+      role="dialog"
+      aria-modal
+      aria-label="Keyboard shortcuts"
+    >
+      <div
+        className="bg-background border border-border rounded-xl shadow-xl p-5 w-[360px] max-w-[90vw]"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="flex items-center justify-between mb-3">
+          <h3 className="text-sm font-semibold">Keyboard shortcuts</h3>
+          <button
+            type="button"
+            onClick={onClose}
+            className="text-xs text-muted hover:text-foreground"
+            aria-label="Close"
+          >
+            esc
+          </button>
+        </div>
+        <dl className="space-y-1.5">
+          {rows.map(([key, label]) => (
+            <div key={key} className="flex items-center justify-between text-xs">
+              <dt className="text-muted">{label}</dt>
+              <dd>
+                <kbd className="font-mono bg-foreground/[0.06] border border-border rounded px-1.5 py-0.5 text-[11px] text-foreground">
+                  {key}
+                </kbd>
+              </dd>
+            </div>
+          ))}
+        </dl>
+      </div>
     </div>
   );
 }
