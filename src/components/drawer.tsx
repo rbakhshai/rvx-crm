@@ -2,7 +2,6 @@
 
 import { useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
-import Link from "next/link";
 
 /**
  * Side-drawer used by intercepted routes (e.g. (.)/deals/[id]/page.tsx
@@ -14,6 +13,12 @@ import Link from "next/link";
  *   - ESC key          -> router.back()
  *   - "Open full" link -> hard-navigate to fullHref so browser back returns
  *                        to the list with the drawer NOT open.
+ *
+ * IMPORTANT: "Open full" uses window.location.href, NOT next/link. A Link
+ * would trigger client-side navigation to the same /deals/[id] URL, which
+ * the intercept at @drawer/(.)deals/[id] catches — re-rendering the drawer
+ * we're already in. Clicking would appear to do nothing. A hard nav bypasses
+ * the intercept entirely.
  *
  * Body scroll is locked while the drawer is open.
  */
@@ -86,13 +91,20 @@ export function Drawer({
             <div className="text-sm font-semibold truncate">{title}</div>
             {subtitle && <div className="text-xs text-muted truncate">{subtitle}</div>}
           </div>
-          <Link
-            href={fullHref as never}
+          <a
+            href={fullHref}
+            onClick={(e) => {
+              // Hard nav to the full page. Plain href works because no Link
+              // wraps it; this avoids the intercept that would re-render
+              // the drawer we're already inside.
+              e.preventDefault();
+              window.location.href = fullHref;
+            }}
             className="text-xs text-muted hover:text-foreground hover:underline shrink-0"
             title="Open in full page"
           >
             Open full ↗
-          </Link>
+          </a>
           <button
             type="button"
             onClick={() => router.back()}
