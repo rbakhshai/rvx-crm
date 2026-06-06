@@ -10,6 +10,10 @@ import { SearchInput } from "@/components/search-input";
 import { FilterChips } from "@/components/filter-chips";
 import { Avatar } from "@/components/avatar";
 import { StaleDot } from "@/components/stale-dot";
+import { SavedViewsBar } from "@/components/saved-views";
+import { listSavedViews } from "@/app/actions/saved-views";
+import { headers } from "next/headers";
+import { auth } from "@/lib/auth";
 import { BD_ACQUISITION_LEVEL_OPTIONS } from "@/lib/options";
 
 type Row = typeof birdDogs.$inferSelect & { ownerName?: string | null };
@@ -47,11 +51,13 @@ export default async function BirdDogsListPage({ searchParams }: { searchParams:
 
   const where = filters.length ? and(...filters) : undefined;
 
-  const [rawRows, [{ count }], statuses, users] = await Promise.all([
+  const session = await auth.api.getSession({ headers: await headers() });
+  const [rawRows, [{ count }], statuses, users, savedViews] = await Promise.all([
     db.select().from(birdDogs).where(where).orderBy(desc(birdDogs.createdAt)).limit(100),
     db.select({ count: sql<number>`count(*)::int` }).from(birdDogs).where(where),
     db.select().from(birdDogStatuses).orderBy(asc(birdDogStatuses.sortOrder)),
     db.select({ id: user.id, name: user.name }).from(user).orderBy(asc(user.name)),
+    session ? listSavedViews("bird_dogs", session.user.id) : Promise.resolve([]),
   ]);
 
   const userMap = new Map(users.map((u) => [u.id, u.name]));
@@ -72,6 +78,7 @@ export default async function BirdDogsListPage({ searchParams }: { searchParams:
       action={<LinkButton href="/bird-dogs/new" size="sm">+ New bird dog</LinkButton>}
     >
       <div className="space-y-3 mb-5">
+        <SavedViewsBar scope="bird_dogs" views={savedViews} />
         <SearchInput scope="scoped" placeholder="Search bird dogs by name, email…" />
         <FilterChips label="Level" paramKey="level" current={level} pathname={pathname} searchParams={params} options={BD_ACQUISITION_LEVEL_OPTIONS} />
         <FilterChips label="Status" paramKey="status" current={status} pathname={pathname} searchParams={params} options={statusOptions} />

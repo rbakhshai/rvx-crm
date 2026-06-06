@@ -10,3 +10,4 @@ export * from "./templates";
 export * from "./due-diligence";
 export * from "./permissions";
 export * from "./audit-log";
+export * from "./saved-views";

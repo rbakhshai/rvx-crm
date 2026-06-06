@@ -10,6 +10,10 @@ import { SearchInput } from "@/components/search-input";
 import { FilterChips } from "@/components/filter-chips";
 import { Avatar } from "@/components/avatar";
 import { StaleDot } from "@/components/stale-dot";
+import { SavedViewsBar } from "@/components/saved-views";
+import { listSavedViews } from "@/app/actions/saved-views";
+import { headers } from "next/headers";
+import { auth } from "@/lib/auth";
 import { COMPANY_RELATIONSHIP_OPTIONS, US_STATES } from "@/lib/options";
 
 type Row = typeof companies.$inferSelect & { ownerName?: string | null };
@@ -58,10 +62,12 @@ export default async function CompaniesListPage({ searchParams }: { searchParams
 
   const where = filters.length ? and(...filters) : undefined;
 
-  const [rawRows, [{ count }], users] = await Promise.all([
+  const session = await auth.api.getSession({ headers: await headers() });
+  const [rawRows, [{ count }], users, savedViews] = await Promise.all([
     db.select().from(companies).where(where).orderBy(desc(companies.createdAt)).limit(100),
     db.select({ count: sql<number>`count(*)::int` }).from(companies).where(where),
     db.select({ id: user.id, name: user.name }).from(user).orderBy(asc(user.name)),
+    session ? listSavedViews("companies", session.user.id) : Promise.resolve([]),
   ]);
 
   const userMap = new Map(users.map((u) => [u.id, u.name]));
@@ -81,6 +87,7 @@ export default async function CompaniesListPage({ searchParams }: { searchParams
       action={<LinkButton href="/companies/new" size="sm">+ New seller</LinkButton>}
     >
       <div className="space-y-3 mb-5">
+        <SavedViewsBar scope="companies" views={savedViews} />
         <SearchInput scope="scoped" placeholder="Search sellers by company, broker name, email…" />
         <FilterChips label="Relationship" paramKey="relationship" current={relationship} pathname={pathname} searchParams={params} options={COMPANY_RELATIONSHIP_OPTIONS} />
         <FilterChips label="State" paramKey="state" current={state} pathname={pathname} searchParams={params} options={US_STATES} />

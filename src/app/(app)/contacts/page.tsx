@@ -11,6 +11,10 @@ import { SearchInput } from "@/components/search-input";
 import { FilterChips } from "@/components/filter-chips";
 import { Avatar } from "@/components/avatar";
 import { StaleDot } from "@/components/stale-dot";
+import { SavedViewsBar } from "@/components/saved-views";
+import { listSavedViews } from "@/app/actions/saved-views";
+import { headers } from "next/headers";
+import { auth } from "@/lib/auth";
 import {
   BUYER_STATUS_OPTIONS,
   QUALIFICATION_TIER_OPTIONS,
@@ -76,10 +80,12 @@ export default async function ContactsListPage({ searchParams }: { searchParams:
 
   const where = filters.length ? and(...filters) : undefined;
 
-  const [rawRows, [{ count }], users] = await Promise.all([
+  const session = await auth.api.getSession({ headers: await headers() });
+  const [rawRows, [{ count }], users, savedViews] = await Promise.all([
     db.select().from(contacts).where(where).orderBy(desc(contacts.createdAt)).limit(100),
     db.select({ count: sql<number>`count(*)::int` }).from(contacts).where(where),
     db.select({ id: user.id, name: user.name }).from(user).orderBy(asc(user.name)),
+    session ? listSavedViews("contacts", session.user.id) : Promise.resolve([]),
   ]);
 
   const userMap = new Map(users.map((u) => [u.id, u.name]));
@@ -99,6 +105,7 @@ export default async function ContactsListPage({ searchParams }: { searchParams:
       action={<LinkButton href="/contacts/new" size="sm">+ New buyer</LinkButton>}
     >
       <div className="space-y-3 mb-5">
+        <SavedViewsBar scope="contacts" views={savedViews} />
         <SearchInput scope="scoped" placeholder="Search buyers by name, email, phone…" />
         <FilterChips label="Status" paramKey="status" current={status} pathname={pathname} searchParams={params} options={BUYER_STATUS_OPTIONS} />
         <FilterChips label="Tier" paramKey="tier" current={tier} pathname={pathname} searchParams={params}

@@ -12,6 +12,10 @@ import { SearchInput } from "@/components/search-input";
 import { FilterChips } from "@/components/filter-chips";
 import { Avatar } from "@/components/avatar";
 import { StaleDot } from "@/components/stale-dot";
+import { SavedViewsBar } from "@/components/saved-views";
+import { listSavedViews } from "@/app/actions/saved-views";
+import { headers } from "next/headers";
+import { auth } from "@/lib/auth";
 import { DEAL_PRIORITY_OPTIONS, US_STATES } from "@/lib/options";
 import { DEAL_PHASE_ROLES, isDealPhaseRole, isPipelineStageKey, labelForStage, statusesForStage } from "@/lib/pipeline-stages";
 
@@ -118,7 +122,8 @@ export default async function DealsListPage({ searchParams }: { searchParams: Se
     ? (sortDir === "asc" ? asc(SORT_COLUMNS[sortKey]) : desc(SORT_COLUMNS[sortKey]))
     : desc(deals.createdAt);
 
-  const [rawRows, [{ count }], statuses, users, phaseCounts] = await Promise.all([
+  const session = await auth.api.getSession({ headers: await headers() });
+  const [rawRows, [{ count }], statuses, users, phaseCounts, savedViews] = await Promise.all([
     db.select().from(deals).where(where).orderBy(orderBy).limit(500),
     db.select({ count: sql<number>`count(*)::int` }).from(deals).where(where),
     db.select().from(dealStatuses).orderBy(asc(dealStatuses.sortOrder)),
@@ -129,6 +134,7 @@ export default async function DealsListPage({ searchParams }: { searchParams: Se
       .from(dealStatuses)
       .leftJoin(deals, eq(deals.statusCode, dealStatuses.code))
       .groupBy(dealStatuses.role),
+    session ? listSavedViews("deals", session.user.id) : Promise.resolve([]),
   ]);
   const phaseCountMap = new Map<string, number>(phaseCounts.map((p) => [p.role, p.n]));
 
@@ -172,6 +178,7 @@ export default async function DealsListPage({ searchParams }: { searchParams: Se
       }
     >
       <div className="space-y-3 mb-5">
+        <SavedViewsBar scope="deals" views={savedViews} />
         {stageKey && (
           <div className="flex items-center justify-between rounded-md border border-primary/30 bg-primary/[0.04] px-3 py-2 text-sm">
             <span>
