@@ -38,3 +38,36 @@ export const level10Meetings = pgTable(
 
 export type Level10Meeting = typeof level10Meetings.$inferSelect;
 export type NewLevel10Meeting = typeof level10Meetings.$inferInsert;
+
+/**
+ * Frozen snapshot of the L10 scorecard at the moment a meeting was run.
+ * One row per (meetingDate, position).
+ *
+ *   - `actualNum` is the LIVE-computed number captured at snapshot time.
+ *   - `metric` + `target` are stored as strings (free-form, edited by
+ *     the team), so the snapshot reflects what was actually shown.
+ *   - `format` lets the renderer reapply the right %/$/n display.
+ *
+ * Why this exists: when you open last Monday's L10 next month, you want
+ * to see what the numbers were last Monday — not what they are right now.
+ */
+export const level10ScorecardSnapshots = pgTable(
+  "level10_scorecard_snapshots",
+  {
+    id: text("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
+    meetingDate: date("meeting_date").notNull(),
+    position: integer("position").notNull(),
+    metric: text("metric").notNull(),
+    target: text("target").notNull(),
+    actualNum: integer("actual_num").notNull(),
+    format: text("format").notNull(),
+    snapshotAt: timestamp("snapshot_at").notNull().defaultNow(),
+  },
+  (t) => ({
+    byDateUnique: uniqueIndex("level10_snap_by_date_pos_unique").on(t.meetingDate, t.position),
+    byMeeting:    index("level10_snap_by_meeting_idx").on(t.meetingDate),
+  }),
+);
+
+export type Level10ScorecardSnapshot = typeof level10ScorecardSnapshots.$inferSelect;
+export type NewLevel10ScorecardSnapshot = typeof level10ScorecardSnapshots.$inferInsert;

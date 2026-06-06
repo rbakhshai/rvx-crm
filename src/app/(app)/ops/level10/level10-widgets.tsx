@@ -7,7 +7,9 @@ import {
   saveSegueNotesAction,
   saveConcludeNotesAction,
   setMeetingRatingAction,
+  snapshotScorecardAction,
 } from "@/app/actions/level10";
+import { toast } from "sonner";
 
 /**
  * Multi-line editor bound to a single (meetingDate, field) pair. Saves
@@ -136,5 +138,43 @@ export function MeetingRating({
         </span>
       )}
     </div>
+  );
+}
+
+/**
+ * "Lock in scorecard" / "Refresh snapshot" button. Either way, it calls
+ * the same upsert action — text is just framing for which week is open.
+ */
+export function RefreshSnapshotButton({
+  meetingDate,
+  label,
+}: {
+  meetingDate: string;
+  label: string;
+}) {
+  const router = useRouter();
+  const [isPending, startTransition] = useTransition();
+
+  function snap() {
+    startTransition(async () => {
+      try {
+        const r = await snapshotScorecardAction(meetingDate);
+        toast.success(`Snapshot saved · ${r.count} metrics frozen`);
+        router.refresh();
+      } catch (e) {
+        toast.error("Couldn't snapshot", { description: e instanceof Error ? e.message : "Try again" });
+      }
+    });
+  }
+
+  return (
+    <button
+      type="button"
+      onClick={snap}
+      disabled={isPending}
+      className="inline-flex items-center gap-1.5 rounded-md border border-border bg-background px-2.5 py-1 text-[11px] text-foreground/80 hover:bg-foreground/[0.04] transition disabled:opacity-50"
+    >
+      {isPending ? "Snapshotting…" : label}
+    </button>
   );
 }

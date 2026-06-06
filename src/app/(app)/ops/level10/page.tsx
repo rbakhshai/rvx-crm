@@ -3,156 +3,26 @@
  * Six sections with EOS time budgets. Issues section embeds /issues by link.
  */
 import Link from "next/link";
-import { and, desc, eq, gte, inArray, isNull, ne, sql } from "drizzle-orm";
+import { and, asc, desc, eq, gte, inArray, isNull, ne, sql } from "drizzle-orm";
 import { db } from "@/db";
-import { birdDogs, deals, level10Meetings, user } from "@/db/schema";
+import { birdDogs, deals, level10Meetings, level10ScorecardSnapshots, user } from "@/db/schema";
 import { getOpsBlocks } from "@/lib/ops-content";
 import { OpsHeader, StatusPill } from "../ops-primitives";
 import { EditableBlock } from "@/components/editable-block";
-import { MeetingTextarea, MeetingRating } from "./level10-widgets";
+import { MeetingTextarea, MeetingRating, RefreshSnapshotButton } from "./level10-widgets";
 import { mondayOf } from "@/lib/level10-week";
 import { fmtDate } from "@/lib/date-format";
-
-const DAY_MS = 24 * 60 * 60 * 1000;
-
-/**
- * Status-code mapping for the scorecard, based on Reza's L10 spec.
- *
- *   - Active bird dogs:        bird_dogs with status_code = "active"
- *   - Total new leads:         deals created within window (week here)
- *   - Qualified leads:         deals that reached negotiation, doc-
- *                              gathering, or any stage past that — i.e.
- *                              didn't get drip'd or kicked back to BD
- *   - LOIs submitted (total):  deals at LOI stage or beyond
- *   - PSAs signed (month):     deals updated to psa_accepted this month
- *   - In progress (PSAs):      tc_writing_psa | tc_psa_submitted | psa_accepted
- *   - Dispo:                   dm_dispo_initiated
- *   - DD:                      tc_dd_in_escrow | dd_completed_in_escrow
- */
-const QUALIFIED_OR_BEYOND = [
-  "closer_under_negotiation", "closer_gathering_docs",
-  "uw_ready_phase_2", "uw_under_phase_2",
-  "loi_ready", "loi_submitted", "loi_in_negotiation",
-  "loi_signed_by_seller", "loi_accepted_both_sides",
-  "tc_writing_psa", "tc_psa_submitted",
-  "psa_accepted", "dm_dispo_initiated",
-  "tc_dd_in_escrow", "dd_completed_in_escrow",
-  "closed_rvx_acquired", "closed_rvx_network",
-];
-
-const LOI_OR_BEYOND = [
-  "loi_submitted", "loi_in_negotiation",
-  "loi_signed_by_seller", "loi_accepted_both_sides",
-  "tc_writing_psa", "tc_psa_submitted",
-  "psa_accepted", "dm_dispo_initiated",
-  "tc_dd_in_escrow", "dd_completed_in_escrow",
-  "closed_rvx_acquired", "closed_rvx_network",
-];
-
-const IN_PROGRESS_PSAS  = ["tc_writing_psa", "tc_psa_submitted", "psa_accepted"];
-const IN_DD             = ["tc_dd_in_escrow", "dd_completed_in_escrow"];
-const CLOSED_RVX        = ["closed_rvx_acquired", "closed_rvx_network"];
-
-type Tone = "on_track" | "off_track" | "behind" | "ahead";
-
-/** Compare actual against target to derive the status pill tone. */
-function toneFor(actual: number, target: number): Tone {
-  if (target <= 0) return "on_track";
-  const pct = actual / target;
-  if (pct >= 1) return "on_track";
-  if (pct >= 0.8) return "behind";
-  return "off_track";
-}
+import {
+  SCORECARD_DEFINITIONS,
+  computeScorecardActuals,
+  formatScoreVal,
+  scoreTone,
+} from "@/lib/level10-scorecard";
 
 const REVALIDATE = "/ops/level10";
 
-// Default metric NAMES + TARGETS (both still click-to-edit per L10).
-// Actuals are computed live from the CRM — see the queries in
-// computeScorecardActuals() below.
-const SCORECARD_METRICS: Array<{
-  metric: string;
-  target: number;
-  /** How to display the target: "n" | "pct" | "$" */
-  format: "n" | "pct";
-}> = [
-  { metric: "Active bird dogs",                  target: 10, format: "n"   },
-  { metric: "Total new leads submitted (week)",  target: 50, format: "n"   },
-  { metric: "Qualified leads submitted (total)", target: 20, format: "n"   },
-  { metric: "Close rate",                        target: 25, format: "pct" },
-  { metric: "LOIs submitted (total)",            target: 15, format: "n"   },
-  { metric: "Signed PSAs (this month)",          target:  3, format: "n"   },
-  { metric: "Deals in progress (assigned PSAs)", target:  8, format: "n"   },
-  { metric: "Deals in dispo",                    target:  4, format: "n"   },
-  { metric: "Deals in due diligence",            target:  3, format: "n"   },
-];
-
-async function computeScorecardActuals(): Promise<number[]> {
-  const now = new Date();
-  const weekAgo = new Date(now.getTime() - 7 * DAY_MS);
-  const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
-
-  // Inline COUNT(*) helper — drizzle returns rows so we destructure.
-  const count = async (where: ReturnType<typeof and> | undefined): Promise<number> => {
-    const [row] = await db
-      .select({ c: sql<number>`COUNT(*)::int` })
-      .from(deals)
-      .where(where);
-    return row?.c ?? 0;
-  };
-
-  const [
-    activeBd,
-    newLeadsWeek,
-    qualifiedTotal,
-    loisTotal,
-    psasMonth,
-    inProgress,
-    inDispo,
-    inDd,
-    closedRvxTotal,
-  ] = await Promise.all([
-    // Bird dogs flagged "active" by lookup status code
-    db.select({ c: sql<number>`COUNT(*)::int` }).from(birdDogs)
-      .where(and(isNull(birdDogs.deletedAt), eq(birdDogs.statusCode, "active")))
-      .then((r) => r[0]?.c ?? 0),
-    count(and(isNull(deals.deletedAt), gte(deals.createdAt, weekAgo))),
-    count(and(isNull(deals.deletedAt), inArray(deals.statusCode, QUALIFIED_OR_BEYOND))),
-    count(and(isNull(deals.deletedAt), inArray(deals.statusCode, LOI_OR_BEYOND))),
-    // PSAs signed this month: status flipped to psa_accepted with updatedAt in month
-    count(and(
-      isNull(deals.deletedAt),
-      eq(deals.statusCode, "psa_accepted"),
-      gte(deals.updatedAt, monthStart),
-    )),
-    count(and(isNull(deals.deletedAt), inArray(deals.statusCode, IN_PROGRESS_PSAS))),
-    count(and(isNull(deals.deletedAt), eq(deals.statusCode, "dm_dispo_initiated"))),
-    count(and(isNull(deals.deletedAt), inArray(deals.statusCode, IN_DD))),
-    count(and(isNull(deals.deletedAt), inArray(deals.statusCode, CLOSED_RVX))),
-  ]);
-
-  // Close rate = closed / (closed + qualified currently in pipeline). Crude
-  // first pass — tune with you once we have meaningful volume.
-  const closeRate = qualifiedTotal + closedRvxTotal > 0
-    ? Math.round((closedRvxTotal / (qualifiedTotal + closedRvxTotal)) * 100)
-    : 0;
-
-  return [
-    activeBd,
-    newLeadsWeek,
-    qualifiedTotal,
-    closeRate,
-    loisTotal,
-    psasMonth,
-    inProgress,
-    inDispo,
-    inDd,
-  ];
-}
-
-function formatVal(n: number, fmt: "n" | "pct"): string {
-  if (fmt === "pct") return `${n}%`;
-  return String(n);
-}
+// Scorecard metric defs + live-actual query live in @/lib/level10-scorecard
+// so the snapshot server action can reuse them.
 
 const ROCKS_DEFAULTS = [
   { title: "Brokerage flywheel documented", owner: "Reza / Q4",       progress: 40, status: "on_track" as const },
@@ -178,9 +48,11 @@ export default async function Level10Page({
   const thisMonday = mondayOf(new Date());
   const isCurrentWeek = weekMonday === thisMonday;
 
-  const [blocks, actuals, meetingRow, recentMeetings] = await Promise.all([
+  // Live actuals for the current week; for past weeks we'll lean on
+  // the snapshot rows instead (computed below).
+  const [blocks, liveActuals, meetingRow, recentMeetings, snapshotRows] = await Promise.all([
     getOpsBlocks("level10."),
-    computeScorecardActuals(),
+    isCurrentWeek ? computeScorecardActuals() : Promise.resolve(null),
     db
       .select()
       .from(level10Meetings)
@@ -198,7 +70,19 @@ export default async function Level10Page({
       .from(level10Meetings)
       .orderBy(desc(level10Meetings.meetingDate))
       .limit(12),
+    db
+      .select()
+      .from(level10ScorecardSnapshots)
+      .where(eq(level10ScorecardSnapshots.meetingDate, weekMonday))
+      .orderBy(asc(level10ScorecardSnapshots.position)),
   ]);
+
+  // Decide whether the displayed scorecard comes from live counts or
+  // a frozen snapshot — and stamp a "captured at" timestamp for the UI.
+  const hasSnapshot = snapshotRows.length === SCORECARD_DEFINITIONS.length;
+  const scorecardSource: "live" | "snapshot" | "stale" =
+    isCurrentWeek ? "live" : hasSnapshot ? "snapshot" : "stale";
+  const snapshotTakenAt = hasSnapshot ? snapshotRows[0]?.snapshotAt : null;
 
   // Roster for the attendees byline + history "logged by" labels.
   const teammates = await db
@@ -245,6 +129,31 @@ export default async function Level10Page({
       </Section>
 
       <Section title="Scorecard" minutes={5}>
+        {/* Provenance banner — snapshot vs live vs stale */}
+        <div className="mb-2 flex items-center justify-between gap-3 flex-wrap">
+          {scorecardSource === "live" && (
+            <p className="text-[11px] text-muted">
+              Live numbers · auto-snapshotted on every save
+            </p>
+          )}
+          {scorecardSource === "snapshot" && snapshotTakenAt && (
+            <p className="text-[11px] text-emerald-700 dark:text-emerald-400">
+              📸 Snapshot from {fmtDate(snapshotTakenAt)} — what the team saw at this meeting
+            </p>
+          )}
+          {scorecardSource === "stale" && (
+            <p className="text-[11px] text-amber-700 dark:text-amber-400">
+              ⚠ No snapshot taken — showing today's live numbers (not this meeting's)
+            </p>
+          )}
+          {!isCurrentWeek && (
+            <RefreshSnapshotButton meetingDate={weekMonday} label="Refresh from current CRM data" />
+          )}
+          {isCurrentWeek && (
+            <RefreshSnapshotButton meetingDate={weekMonday} label="📸 Lock in scorecard now" />
+          )}
+        </div>
+
         <div className="overflow-x-auto rounded-lg border border-border">
           <table className="w-full text-sm">
             <thead className="bg-foreground/[0.02]">
@@ -256,23 +165,44 @@ export default async function Level10Page({
               </tr>
             </thead>
             <tbody>
-              {SCORECARD_METRICS.map((m, i) => {
+              {SCORECARD_DEFINITIONS.map((m, i) => {
                 const metricScope = `level10.scorecard.${i}.metric`;
                 const targetScope = `level10.scorecard.${i}.target`;
-                const targetStr = blocks.get(targetScope) ?? formatVal(m.target, m.format);
-                const targetNum = parseFloat(targetStr.replace(/[^\d.]/g, "")) || m.target;
-                const actualNum = actuals[i] ?? 0;
-                const tone = toneFor(actualNum, targetNum);
+                const snap = snapshotRows[i];
+                const liveActual = liveActuals ? liveActuals[i] ?? 0 : 0;
+                // Choose displayed values based on source
+                const displayMetric = scorecardSource === "snapshot" && snap
+                  ? snap.metric
+                  : blocks.get(metricScope) ?? m.metric;
+                const displayTarget = scorecardSource === "snapshot" && snap
+                  ? snap.target
+                  : blocks.get(targetScope) ?? formatScoreVal(m.target, m.format);
+                const actualNum = scorecardSource === "snapshot" && snap
+                  ? snap.actualNum
+                  : liveActual;
+                const targetNum = parseFloat(displayTarget.replace(/[^\d.]/g, "")) || m.target;
+                const tone = scoreTone(actualNum, targetNum);
                 return (
                   <tr key={i} className="border-t border-border">
                     <td className="px-3 py-2.5">
-                      <EditableBlock scope={metricScope} initial={blocks.get(metricScope) ?? m.metric} revalidate={REVALIDATE} />
+                      {scorecardSource === "snapshot" ? (
+                        displayMetric
+                      ) : (
+                        <EditableBlock scope={metricScope} initial={displayMetric} revalidate={REVALIDATE} />
+                      )}
                     </td>
                     <td className="px-3 py-2.5">
-                      <EditableBlock scope={targetScope} initial={targetStr} revalidate={REVALIDATE} className="tabular-nums" />
+                      {scorecardSource === "snapshot" ? (
+                        <span className="tabular-nums">{displayTarget}</span>
+                      ) : (
+                        <EditableBlock scope={targetScope} initial={displayTarget} revalidate={REVALIDATE} className="tabular-nums" />
+                      )}
                     </td>
-                    <td className="px-3 py-2.5 tabular-nums font-medium" title="Live from CRM data">
-                      {formatVal(actualNum, m.format)}
+                    <td
+                      className="px-3 py-2.5 tabular-nums font-medium"
+                      title={scorecardSource === "snapshot" ? "Frozen at meeting time" : "Live from CRM data"}
+                    >
+                      {formatScoreVal(actualNum, snap?.format as "n" | "pct" ?? m.format)}
                     </td>
                     <td className="px-3 py-2.5"><StatusPill tone={tone}>{labelStatus(tone)}</StatusPill></td>
                   </tr>
