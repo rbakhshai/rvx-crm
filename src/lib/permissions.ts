@@ -25,30 +25,40 @@ export type Role =
   | "dispo_manager"
   | "cfo"
   | "due_diligence"
-  | "viewer";
+  | "viewer"
+  | "bd_level_1"
+  | "bd_level_2"
+  | "bd_level_3";
 
 /**
- * Visible roles, in display order. Order is the canonical org hierarchy
- * the user pinned: Admin, COS, COO, Closer, Underwriter, DD, Dispo, CFO, TC.
+ * Visible roles, in the canonical org hierarchy you pinned:
+ *   ADMN · COS · COO · CFO · BD level 1/2/3 · Closer · UW · DD · TC · Dispo
  *
  * acquisitions_manager and bird_dog_manager are relabeled in place to
  * COS / COO so existing role assignments (Reza, Erica) keep their granted
  * permissions — only the display label changes.
  *
- * Viewer is intentionally absent. bird_dog is omitted because it's an
- * external-portal role assigned automatically, not a CRM role anyone
- * picks from a dropdown.
+ * `bd_level_1/2/3` are new internal seats under COO (Erica) for the
+ * bird-dog ops team; they ship with the same starter permissions as the
+ * existing COO grant, and can be tuned per-role in /settings/roles.
+ *
+ * Viewer is intentionally absent. `bird_dog` (lowercase) is also omitted
+ * because it's the external-portal role assigned to scouts, not a CRM
+ * role anyone picks from a dropdown.
  */
 export const ROLES: ReadonlyArray<{ value: Role; label: string; description: string }> = [
-  { value: "admin",                label: "Admin",       description: "Full access. Reserved for owners." },
+  { value: "admin",                label: "ADMN",        description: "Full access. Reserved for owners." },
   { value: "acquisitions_manager", label: "COS",         description: "Chief of Staff — runs acquisitions + triage." },
   { value: "bird_dog_manager",     label: "COO",         description: "Chief Operating Officer — owns scouts + ops." },
-  { value: "closer",               label: "Closer",      description: "Negotiates with sellers." },
-  { value: "underwriter",          label: "Underwriter", description: "Phase 2 financial review." },
-  { value: "due_diligence",        label: "DD",          description: "Runs DD on under-contract deals." },
-  { value: "dispo_manager",        label: "Dispo",       description: "Routes deals to buyer network." },
   { value: "cfo",                  label: "CFO",         description: "Reads financials + revenue." },
+  { value: "bd_level_1",           label: "BD level 1",  description: "Senior bird-dog seat under COO." },
+  { value: "bd_level_2",           label: "BD level 2",  description: "Mid-tier bird-dog seat under COO." },
+  { value: "bd_level_3",           label: "BD level 3",  description: "Junior bird-dog seat under COO." },
+  { value: "closer",               label: "Closer",      description: "Negotiates with sellers." },
+  { value: "underwriter",          label: "UW",          description: "Phase 2 financial review." },
+  { value: "due_diligence",        label: "DD",          description: "Runs DD on under-contract deals." },
   { value: "transaction_coord",    label: "TC",          description: "Owns PSA + escrow paperwork." },
+  { value: "dispo_manager",        label: "Dispo",       description: "Routes deals to buyer network." },
 ];
 
 // ============================================================================
@@ -214,4 +224,24 @@ export const DEFAULT_PERMISSIONS: Record<Role, Record<PermissionKey, boolean>> =
 
   // Bird dogs go to the external portal, not the CRM — no perms here.
   bird_dog: grant(),
+
+  // Bird-dog tier seats. Starter grants mirror COO (bird_dog_manager) so
+  // the new accounts are functional out of the box; tune via /settings/roles.
+  bd_level_1: grant(
+    "create_deals", "edit_deals",
+    "create_contacts", "edit_contacts",
+    "create_bird_dogs", "edit_bird_dogs",
+    "view_pipeline_value",
+  ),
+  bd_level_2: grant(
+    "edit_deals",
+    "edit_contacts",
+    "create_bird_dogs", "edit_bird_dogs",
+    "view_pipeline_value",
+  ),
+  bd_level_3: grant(
+    "edit_contacts",
+    "edit_bird_dogs",
+    "view_pipeline_value",
+  ),
 };

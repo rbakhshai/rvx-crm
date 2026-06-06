@@ -2,8 +2,16 @@ import { pgEnum, pgTable, text, timestamp, boolean } from "drizzle-orm/pg-core";
 
 /**
  * User roles — drives per-role dashboards and permissions.
- * Maps to the team: Marco (closer), Reza (acquisitions_manager/admin),
- * Erica (bird_dog_manager), Kevin (cfo), Kerry (due_diligence).
+ * Maps to the team: Marco (closer), Reza (acquisitions_manager → COS),
+ * Erica (bird_dog_manager → COO), Kevin (cfo), Kerry (due_diligence).
+ *
+ * `bd_level_1/2/3` are internal seats on the bird-dog ops side
+ * (ranked tiers under COO); they're distinct from `bird_dog` which is
+ * the external portal account assigned to scouts.
+ *
+ * Postgres enums can have values added but not dropped without a full
+ * type rebuild — `viewer` is left here for back-compat but is no
+ * longer shown as a pickable role.
  */
 export const userRole = pgEnum("user_role", [
   "admin",
@@ -17,6 +25,9 @@ export const userRole = pgEnum("user_role", [
   "cfo",
   "due_diligence",
   "viewer",
+  "bd_level_1",
+  "bd_level_2",
+  "bd_level_3",
 ]);
 
 export const user = pgTable("user", {
