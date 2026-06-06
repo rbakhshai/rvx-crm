@@ -15,6 +15,7 @@ export const AUDIT_ACTIONS = {
   USER_DELETED: "user.deleted",
   USER_RESTORED: "user.restored",
   USER_PURGED: "user.purged",
+  USER_PASSWORD_RESET: "user.password_reset",
   ROLE_PERMISSION_TOGGLED: "role.permission_toggled",
   ROLE_RESET_TO_DEFAULTS: "role.reset_to_defaults",
 } as const;

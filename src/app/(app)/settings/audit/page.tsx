@@ -97,6 +97,8 @@ function humanizeAction(action: string, meta: unknown): string {
       return "restored";
     case "user.purged":
       return "permanently deleted";
+    case "user.password_reset":
+      return "reset password for";
     case "role.permission_toggled":
       return `${m.enabled ? "granted" : "revoked"} "${m.permissionKey}" on`;
     case "role.reset_to_defaults":

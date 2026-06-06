@@ -17,6 +17,7 @@ import {
   restoreUserAction,
 } from "../actions";
 import { InviteUserForm } from "./invite-form";
+import { ResetPasswordButton } from "./reset-password-button";
 
 function relativeAgo(d: Date | null): string {
   if (!d) return "";
@@ -138,6 +139,7 @@ export default async function UsersSettingsPage({
                       ) : (
                         <>
                           <ChangeRoleForm userId={u.id} currentRole={u.role} />
+                          <ResetPasswordButton userId={u.id} userName={u.name} />
                           {!isSelf && (
                             <SuspendUserButton
                               userId={u.id}

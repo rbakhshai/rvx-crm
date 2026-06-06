@@ -4,7 +4,7 @@ import { revalidatePath } from "next/cache";
 import { headers } from "next/headers";
 import { and, eq } from "drizzle-orm";
 import { db } from "@/db";
-import { rolePermissions, user as userTable } from "@/db/schema";
+import { rolePermissions, user as userTable, account as accountTable } from "@/db/schema";
 import { auth } from "@/lib/auth";
 import { requirePermission } from "@/lib/has-permission";
 import { AUDIT_ACTIONS, recordAudit } from "@/lib/audit";
@@ -159,7 +159,11 @@ function generateTempPassword(): string {
 /**
  * Create a new user with a temp password. Returns the temp password so the
  * admin can copy it from the toast and share it with the team member.
- * Phase B will replace this with an email invitation.
+ *
+ * Direct DB insertion (not auth.api.signUpEmail) so we don't accidentally
+ * auto-sign-in as the new user — that's what kicked the admin out before.
+ *
+ * Phase B will swap this for a real Resend invite email.
  */
 export async function inviteUserAction(formData: FormData): Promise<{ tempPassword: string; email: string; name: string }> {
   const actor = await requireAdmin();
@@ -178,32 +182,67 @@ export async function inviteUserAction(formData: FormData): Promise<{ tempPasswo
   if (existing.length > 0) throw new Error("A user with that email already exists");
 
   const tempPassword = generateTempPassword();
+  const ctx = await auth.$context;
+  const hashed = await ctx.password.hash(tempPassword);
 
-  // Use better-auth's signup so the password gets hashed + account row created.
-  const result = await auth.api.signUpEmail({
-    body: { email, password: tempPassword, name },
-    headers: await headers(),
-    asResponse: false,
+  const userId = crypto.randomUUID();
+  await db.insert(userTable).values({
+    id: userId,
+    name,
+    email,
+    role,
+    emailVerified: false,
   });
-
-  if (!result || !("user" in result)) {
-    throw new Error("Failed to create user");
-  }
-
-  // Assign the chosen role (signup defaults to "viewer").
-  if (role !== "viewer") {
-    await db.update(userTable).set({ role, updatedAt: new Date() }).where(eq(userTable.id, result.user.id));
-  }
+  await db.insert(accountTable).values({
+    id: crypto.randomUUID(),
+    userId,
+    accountId: email,
+    providerId: "credential",
+    password: hashed,
+  });
 
   await recordAudit({
     actor: { id: actor.id, name: actor.name, email: actor.email },
     action: AUDIT_ACTIONS.USER_INVITED,
-    target: { kind: "user", id: result.user.id, label: name },
+    target: { kind: "user", id: userId, label: name },
     meta: { email, role },
   });
 
   revalidatePath("/settings/users");
   return { tempPassword, email, name };
+}
+
+/**
+ * Generate a fresh temp password for an existing user. Used when a team
+ * member forgets their password — admin clicks "Reset password" and shares
+ * the new temp password with them.
+ */
+export async function resetUserPasswordAction(userId: string): Promise<{ tempPassword: string; name: string; email: string }> {
+  const actor = await requireAdmin();
+  await requirePermission(actor, "manage_users");
+
+  if (!userId) throw new Error("Missing userId");
+
+  const [target] = await db.select({ id: userTable.id, name: userTable.name, email: userTable.email }).from(userTable).where(eq(userTable.id, userId)).limit(1);
+  if (!target) throw new Error("User not found");
+
+  const tempPassword = generateTempPassword();
+  const ctx = await auth.$context;
+  const hashed = await ctx.password.hash(tempPassword);
+
+  await db
+    .update(accountTable)
+    .set({ password: hashed, updatedAt: new Date() })
+    .where(and(eq(accountTable.userId, userId), eq(accountTable.providerId, "credential")));
+
+  await recordAudit({
+    actor: { id: actor.id, name: actor.name, email: actor.email },
+    action: AUDIT_ACTIONS.USER_PASSWORD_RESET,
+    target: { kind: "user", id: userId, label: target.name ?? target.email },
+  });
+
+  revalidatePath("/settings/users");
+  return { tempPassword, name: target.name, email: target.email };
 }
 
 export async function setUserSuspendedAction(userId: string, suspend: boolean): Promise<void> {
