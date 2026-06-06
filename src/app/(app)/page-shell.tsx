@@ -26,15 +26,15 @@ export function PageShell({
   width?: Width;
 }) {
   return (
-    <div className={`${widthClass[width]} mx-auto px-8 py-10`}>
-      <header className="flex items-start justify-between gap-4 pb-6 border-b border-border">
-        <div>
-          <h1 className="text-2xl font-semibold tracking-tight">{title}</h1>
+    <div className={`${widthClass[width]} mx-auto px-4 sm:px-8 py-6 sm:py-10`}>
+      <header className="flex items-start justify-between gap-4 pb-4 sm:pb-6 border-b border-border flex-wrap">
+        <div className="min-w-0">
+          <h1 className="text-xl sm:text-2xl font-semibold tracking-tight">{title}</h1>
           {subtitle && <p className="text-sm text-muted mt-1">{subtitle}</p>}
         </div>
         {action && <div className="shrink-0">{action}</div>}
       </header>
-      <div className="pt-6">{children}</div>
+      <div className="pt-4 sm:pt-6">{children}</div>
     </div>
   );
 }

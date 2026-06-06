@@ -182,3 +182,32 @@ button, a, [role="button"], .lift-row {
   50%      { opacity: 0.55; }
 }
 .animate-pulse { animation: skeleton-pulse 1.6s ease-in-out infinite; }
+
+/* ============================================================
+   Mobile nav drawer — sidebar hides off-screen on phone widths
+   and slides in when the hamburger button toggles
+   body[data-mobile-nav="open"]. md: (≥768px) shows normally.
+   ============================================================ */
+@media (max-width: 767px) {
+  .mobile-nav {
+    position: fixed;
+    inset: 0 auto 0 0;
+    z-index: 40;
+    width: 260px;
+    transform: translateX(-100%);
+    transition: transform 0.22s cubic-bezier(0.2, 0.8, 0.2, 1);
+    box-shadow: 4px 0 24px rgba(0,0,0,0.12);
+  }
+  body[data-mobile-nav="open"] .mobile-nav {
+    transform: translateX(0);
+  }
+}
+
+/* Keep tables horizontally scrollable on narrow screens — the rounded
+   border lives on a wrapper, so the wrapper gets the scroll. */
+@media (max-width: 767px) {
+  .rounded-xl > table,
+  .rounded-lg > table {
+    min-width: 100%;
+  }
+}
