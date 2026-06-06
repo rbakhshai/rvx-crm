@@ -10,7 +10,6 @@ import { SignOutButton } from "./sign-out-button";
 import { CommandPalette } from "@/components/command-palette";
 import { CommandPaletteTrigger } from "@/components/command-palette-trigger";
 import { ThemeToggle } from "@/components/theme-toggle";
-import { KeyboardShortcuts } from "@/components/keyboard-shortcuts";
 import { MobileNavToggle } from "@/components/mobile-nav";
 import { getPermissionsFor } from "@/lib/has-permission";
 
@@ -80,11 +79,6 @@ export default async function AppLayout(props: {
           <MobileNavToggle />
           <CommandPaletteTrigger />
           <div className="ml-auto flex items-center gap-2">
-            <span className="hidden sm:inline-flex items-center gap-1 text-[10px] text-muted">
-              Press
-              <kbd className="border border-border rounded px-1 py-0.5 font-sans bg-background">?</kbd>
-              for shortcuts
-            </span>
             <ThemeToggle />
           </div>
         </header>
@@ -93,7 +87,6 @@ export default async function AppLayout(props: {
       {/* Intercepted-route drawer (slot is empty unless an entity row was clicked) */}
       {drawer}
       <CommandPalette />
-      <KeyboardShortcuts />
     </div>
   );
 }
