@@ -95,14 +95,16 @@ async function gatherContext(userId: string): Promise<string> {
       .orderBy(desc(contacts.createdAt))
       .limit(6),
 
-    // Recent notes on my owned deals (so I know what changed)
+    // Recent notes on my owned deals (so I know what changed).
+    // Note: postgres driver can't bind Date in raw sql templates, hence
+    // the ISO-string param.
     db.execute(sql`
       SELECT n.body, n.created_at, d.name as deal_name, d.park_address
       FROM notes n
       JOIN deals d ON d.id = n.parent_id AND n.parent_table = 'deals'
       WHERE d.owner_id = ${userId}
         AND d.deleted_at IS NULL
-        AND n.created_at > ${sevenDaysAgo}
+        AND n.created_at > ${sevenDaysAgo.toISOString()}
       ORDER BY n.created_at DESC
       LIMIT 6
     `),

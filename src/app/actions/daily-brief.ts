@@ -27,31 +27,38 @@ export async function getOrCreateDailyBrief(userId: string): Promise<{
   contentMd: string;
   createdAt: Date;
   cached: boolean;
-}> {
+} | null> {
   const forDate = todayUtcDate();
 
-  const [existing] = await db
-    .select({ contentMd: dailyBriefs.contentMd, createdAt: dailyBriefs.createdAt })
-    .from(dailyBriefs)
-    .where(and(eq(dailyBriefs.userId, userId), eq(dailyBriefs.forDate, forDate)))
-    .limit(1);
+  try {
+    const [existing] = await db
+      .select({ contentMd: dailyBriefs.contentMd, createdAt: dailyBriefs.createdAt })
+      .from(dailyBriefs)
+      .where(and(eq(dailyBriefs.userId, userId), eq(dailyBriefs.forDate, forDate)))
+      .limit(1);
 
-  if (existing) return { ...existing, cached: true };
+    if (existing) return { ...existing, cached: true };
 
-  const result = await generateDailyBrief(userId);
-  const [row] = await db
-    .insert(dailyBriefs)
-    .values({
-      userId,
-      forDate,
-      contentMd: result.contentMd,
-      model: result.model,
-      tokensIn: result.tokensIn,
-      tokensOut: result.tokensOut,
-    })
-    .returning({ contentMd: dailyBriefs.contentMd, createdAt: dailyBriefs.createdAt });
+    const result = await generateDailyBrief(userId);
+    const [row] = await db
+      .insert(dailyBriefs)
+      .values({
+        userId,
+        forDate,
+        contentMd: result.contentMd,
+        model: result.model,
+        tokensIn: result.tokensIn,
+        tokensOut: result.tokensOut,
+      })
+      .returning({ contentMd: dailyBriefs.contentMd, createdAt: dailyBriefs.createdAt });
 
-  return { ...row, cached: false };
+    return { ...row, cached: false };
+  } catch (err) {
+    // Don't kill the whole /today page if the brief fails (no API key,
+    // Claude timeout, bad context query, etc.). Sentry will capture.
+    console.error("[daily-brief] failed:", err);
+    return null;
+  }
 }
 
 /** Force a fresh brief — called from the refresh button. */

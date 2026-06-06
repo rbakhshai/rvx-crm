@@ -150,8 +150,8 @@ export default async function TodayPage() {
 
     fetchRecentActivity(20),
     getOrCreateDailyBrief(me),
-    detectAtRiskForUser(me),
-    getDoNextItems(me, 5),
+    detectAtRiskForUser(me).catch((e) => { console.error("[at-risk] failed:", e); return []; }),
+    getDoNextItems(me, 5).catch((e) => { console.error("[do-next] failed:", e); return []; }),
   ]);
 
   const statusLabel = new Map(statusRows.map((s) => [s.code, s.label]));
@@ -165,7 +165,7 @@ export default async function TodayPage() {
   return (
     <PageShell title={greeting(session.user.name)} subtitle={new Date().toLocaleDateString(undefined, { weekday: "long", month: "long", day: "numeric" })} width="wide">
       {/* ===== AI morning brief ===== */}
-      <DailyBrief contentMd={brief.contentMd} createdAt={brief.createdAt} />
+      {brief && <DailyBrief contentMd={brief.contentMd} createdAt={brief.createdAt} />}
 
       {/* ===== Hero stats ===== */}
       <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-3 mb-6">
