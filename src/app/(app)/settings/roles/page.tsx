@@ -50,15 +50,34 @@ export default async function RolesSettingsPage() {
       active="/settings/roles"
       subtitle={`Toggle which permissions each role has. Changes save immediately.`}
     >
-      <div className="overflow-x-auto -mx-8 px-8">
+      {/*
+        overflow-y-clip (not the default auto) so the container doesn't
+        become its own vertical scroll context. Sticky header inside
+        anchors to the page scroll instead, which is what we want.
+      */}
+      <div className="overflow-x-auto overflow-y-clip -mx-8 px-8">
         <table className="min-w-full text-xs border border-border rounded-lg bg-background">
           <thead>
+            {/*
+              Header row floats while you scroll. The app shell already has
+              a 48px sticky bar at top-0, so we sit at top-12 to land just
+              under it.
+                - Column headers: sticky top-12, z-20, opaque background so
+                  rows scrolling underneath don't bleed through.
+                - Top-left "Permission" cell: sticky in BOTH directions
+                  (left-0 + top-12) at z-30 so it stays above neighboring
+                  sticky cells when both axes are scrolling.
+            */}
             <tr className="border-b border-border">
-              <th className="sticky left-0 bg-background px-3 py-2 text-left font-medium text-foreground min-w-[280px] z-10">
+              <th className="sticky left-0 top-12 bg-background px-3 py-2 text-left font-medium text-foreground min-w-[280px] z-30">
                 Permission
               </th>
               {ROLES_IN_MATRIX.map((r) => (
-                <th key={r.value} className="px-2 py-2 text-center font-medium text-foreground whitespace-nowrap" title={r.description}>
+                <th
+                  key={r.value}
+                  className="sticky top-12 bg-background px-2 py-2 text-center font-medium text-foreground whitespace-nowrap z-20"
+                  title={r.description}
+                >
                   {r.label}
                 </th>
               ))}
