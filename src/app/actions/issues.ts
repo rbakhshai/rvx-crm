@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { headers } from "next/headers";
-import { and, asc, eq, isNull, sql } from "drizzle-orm";
+import { and, eq, isNull, sql } from "drizzle-orm";
 import { db } from "@/db";
 import { issues, notes } from "@/db/schema";
 import { auth } from "@/lib/auth";
@@ -196,18 +196,3 @@ export async function deleteIssueAction(issueId: string): Promise<void> {
   revalidatePath("/issues");
 }
 
-/** Used by the priority sort so callers get the same canonical order. */
-export function priorityOrder(p: Priority): number {
-  return p === "red" ? 0 : p === "orange" ? 1 : 2;
-}
-
-export async function listIssues() {
-  return await db
-    .select()
-    .from(issues)
-    .where(isNull(issues.deletedAt))
-    .orderBy(
-      sql`CASE ${issues.priority} WHEN 'red' THEN 0 WHEN 'orange' THEN 1 ELSE 2 END`,
-      asc(issues.position),
-    );
-}
