@@ -4,10 +4,11 @@
  * pill, progress bar %, and a checklist of milestones.
  */
 import { getOpsBlocks } from "@/lib/ops-content";
-import { OpsHeader, SectionLabel, TimeToggle, StatusPill, AccentCard } from "../ops-primitives";
+import { OpsHeader, SectionLabel, TimeToggle, StatusPill, AccentCard, parsePeriod } from "../ops-primitives";
 import { EditableBlock } from "@/components/editable-block";
 
 const REVALIDATE = "/ops/initiatives";
+const PATHNAME = "/ops/initiatives";
 
 const SECTIONS: Array<{
   label: string;
@@ -132,7 +133,14 @@ const SECTIONS: Array<{
   },
 ];
 
-export default async function InitiativesPage() {
+export default async function InitiativesPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ period?: string }>;
+}) {
+  const params = await searchParams;
+  const period = parsePeriod(params.period);
+
   const blocks = await getOpsBlocks("initiatives.");
 
   return (
@@ -140,7 +148,7 @@ export default async function InitiativesPage() {
       <OpsHeader eyebrow="Business Strategy Initiatives" title="Initiatives" />
 
       <div className="mb-6">
-        <TimeToggle active="This Quarter" />
+        <TimeToggle pathname={PATHNAME} period={period} />
       </div>
 
       <div className="space-y-10">

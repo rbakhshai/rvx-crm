@@ -37,6 +37,7 @@ type NavItem = {
  * which is the daily-driver view for closers + admin.
  */
 const GROUPS: NavItem[] = [
+  { href: "/ops/command", label: "Ops Machine" },
   { href: "/today", label: "Today" },
   {
     href: "/triage",
@@ -58,7 +59,6 @@ const GROUPS: NavItem[] = [
   },
   { href: "/tasks", label: "Tasks" },
   { href: "/issues", label: "Issues" },
-  { href: "/ops/command", label: "Ops Machine" },
   { href: "/trash", label: "Trash", requires: "view_trash" },
 ];
 

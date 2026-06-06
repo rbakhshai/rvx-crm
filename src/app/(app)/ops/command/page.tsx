@@ -6,16 +6,17 @@
  * existing tasks table.
  */
 import { headers } from "next/headers";
-import { and, asc, eq, isNull, ne, sql } from "drizzle-orm";
+import { and, asc, eq, gte, isNull, lte, ne, or, sql } from "drizzle-orm";
 import { db } from "@/db";
 import { tasks, user } from "@/db/schema";
 import { auth } from "@/lib/auth";
 import { getOpsBlocks } from "@/lib/ops-content";
-import { OpsHeader, AccentCard, TimeToggle } from "../ops-primitives";
+import { OpsHeader, AccentCard, TimeToggle, parsePeriod, periodDays } from "../ops-primitives";
 import { EditableBlock } from "@/components/editable-block";
 import { fmtDate } from "@/lib/date-format";
 
 const REVALIDATE = "/ops/command";
+const PATHNAME = "/ops/command";
 
 const DEFAULT_PRIORITIES = [
   "Migrate fully off Ontraport",
@@ -25,9 +26,16 @@ const DEFAULT_PRIORITIES = [
   "Brokerage flywheel documented",
 ] as const;
 
-export default async function CommandPage() {
+export default async function CommandPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ period?: string }>;
+}) {
   const session = await auth.api.getSession({ headers: await headers() });
   if (!session) return null;
+
+  const params = await searchParams;
+  const period = parsePeriod(params.period);
 
   const blocks = await getOpsBlocks("command.");
 
@@ -38,6 +46,16 @@ export default async function CommandPage() {
     .where(and(isNull(user.suspendedAt), isNull(user.deletedAt), ne(user.role, "bird_dog")))
     .orderBy(asc(user.name));
 
+  // Period window: now → now + N days. Tasks with no due date are always
+  // included (they're either always-on or someone hasn't scoped them yet).
+  const now = new Date();
+  const windowEnd = new Date(now.getTime() + periodDays(period) * 24 * 60 * 60 * 1000);
+
+  const inPeriod = or(
+    isNull(tasks.dueAt),
+    and(gte(tasks.dueAt, now), lte(tasks.dueAt, windowEnd)),
+  );
+
   const taskCounts = await db
     .select({
       assigneeId: tasks.assigneeId,
@@ -45,16 +63,17 @@ export default async function CommandPage() {
       done: sql<number>`COUNT(*) FILTER (WHERE ${tasks.completedAt} IS NOT NULL)::int`,
     })
     .from(tasks)
+    .where(inPeriod)
     .groupBy(tasks.assigneeId);
   const counts = new Map(taskCounts.map((c) => [c.assigneeId, { open: c.open, done: c.done }]));
 
-  // Pull each teammate's 5 next-due open tasks for the column display
+  // Pull each teammate's 5 next-due open tasks within the period.
   const tasksByUser = new Map<string, Array<{ id: string; subject: string; dueAt: Date | null; parentTable: string; parentId: string }>>();
   for (const t of teammates) {
     const rows = await db
       .select({ id: tasks.id, subject: tasks.subject, dueAt: tasks.dueAt, parentTable: tasks.parentTable, parentId: tasks.parentId })
       .from(tasks)
-      .where(and(eq(tasks.assigneeId, t.id), isNull(tasks.completedAt)))
+      .where(and(eq(tasks.assigneeId, t.id), isNull(tasks.completedAt), inPeriod))
       .orderBy(sql`${tasks.dueAt} ASC NULLS LAST`)
       .limit(5);
     tasksByUser.set(t.id, rows);
@@ -100,7 +119,7 @@ export default async function CommandPage() {
 
       {/* Time toggle */}
       <div className="mb-4">
-        <TimeToggle active="This Quarter" />
+        <TimeToggle pathname={PATHNAME} period={period} />
       </div>
 
       <div className="text-[11px] uppercase tracking-widest text-muted font-semibold mb-3">People</div>

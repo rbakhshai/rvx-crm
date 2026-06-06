@@ -75,29 +75,62 @@ export function AccentCard({
   );
 }
 
-/** Small time-chip toggles (visual only for V1). */
-export function TimeToggle({ active = "This Quarter" }: { active?: string }) {
-  const options = ["This Week", "This Month", "This Quarter"];
+/**
+ * Clickable time-chip toggles. Backed by ?period=week|month|quarter in
+ * the URL — the page reads that param and filters accordingly.
+ *
+ *   <TimeToggle pathname="/ops/command" period="quarter" />
+ *
+ * Server component (no client state) — each chip is a Link.
+ */
+import Link from "next/link";
+
+export type Period = "week" | "month" | "quarter";
+
+const OPTIONS: Array<{ key: Period; label: string }> = [
+  { key: "week",    label: "This Week" },
+  { key: "month",   label: "This Month" },
+  { key: "quarter", label: "This Quarter" },
+];
+
+export function TimeToggle({
+  pathname,
+  period = "quarter",
+}: {
+  pathname: string;
+  period?: Period;
+}) {
   return (
     <div className="inline-flex gap-1.5">
-      {options.map((o) => {
-        const isActive = o === active;
+      {OPTIONS.map((o) => {
+        const isActive = o.key === period;
+        const href = o.key === "quarter" ? pathname : `${pathname}?period=${o.key}`;
         return (
-          <span
-            key={o}
+          <Link
+            key={o.key}
+            href={href as never}
             className={
-              "inline-flex items-center rounded-full px-3 py-1 text-xs border " +
+              "inline-flex items-center rounded-full px-3 py-1 text-xs border transition " +
               (isActive
                 ? "bg-foreground text-background border-foreground font-semibold"
-                : "bg-background text-foreground/70 border-border")
+                : "bg-background text-foreground/70 border-border hover:bg-foreground/[0.04]")
             }
           >
-            {o}
-          </span>
+            {o.label}
+          </Link>
         );
       })}
     </div>
   );
+}
+
+export function parsePeriod(p: string | undefined): Period {
+  return p === "week" || p === "month" ? p : "quarter";
+}
+
+/** Window in milliseconds for a Period, used to filter due dates. */
+export function periodDays(p: Period): number {
+  return p === "week" ? 7 : p === "month" ? 30 : 90;
 }
 
 /** Status pill, mirroring the Founder OS look. */
