@@ -57,7 +57,12 @@ export async function ActivityTimeline({
               <li key={n.id} className="rounded-lg border border-border bg-background p-3">
                 <div className="flex items-baseline justify-between gap-3 mb-1">
                   <div className="flex items-baseline gap-2 text-xs">
-                    <span className="font-medium text-foreground">{author?.name ?? "Unknown"}</span>
+                    <span className="font-medium text-foreground">
+                      {author?.name ?? n.legacyAuthorName ?? "Unknown"}
+                      {!author?.name && n.legacyAuthorName && (
+                        <span className="text-muted font-normal text-[10px] ml-1">(imported)</span>
+                      )}
+                    </span>
                     <span className="text-muted">·</span>
                     <span className="text-muted" title={n.createdAt.toLocaleString()}>
                       {formatRelative(n.createdAt)}

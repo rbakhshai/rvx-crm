@@ -1,4 +1,4 @@
-import { pgEnum, pgTable, text, timestamp, index } from "drizzle-orm/pg-core";
+import { pgEnum, pgTable, text, timestamp, index, integer } from "drizzle-orm/pg-core";
 import { user } from "./auth";
 
 // ===== shared parent enum =====
@@ -34,12 +34,18 @@ export const notes = pgTable(
     body: text("body").notNull(),
     type: noteType("type").notNull().default("manual"),
     authorId: text("author_id").references(() => user.id, { onDelete: "set null" }),
+    // Optional Ontraport note id — set during sync so re-runs skip duplicates.
+    legacyOntraportId: integer("legacy_ontraport_id"),
+    // Author name as recorded in Ontraport, used when we can't match the
+    // Ontraport user to a local user (e.g. Erica not yet invited).
+    legacyAuthorName: text("legacy_author_name"),
     createdAt: timestamp("created_at").notNull().defaultNow(),
     updatedAt: timestamp("updated_at").notNull().defaultNow(),
   },
   (t) => ({
     parentIdx: index("notes_parent_idx").on(t.parentTable, t.parentId, t.createdAt),
     authorIdx: index("notes_author_idx").on(t.authorId),
+    legacyIdx: index("notes_legacy_idx").on(t.legacyOntraportId),
   }),
 );
 
