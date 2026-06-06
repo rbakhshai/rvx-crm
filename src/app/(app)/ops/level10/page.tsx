@@ -9,14 +9,23 @@ import { EditableBlock } from "@/components/editable-block";
 
 const REVALIDATE = "/ops/level10";
 
+// Order matches the L10 scorecard you dictated — bird-dog pulse at the
+// top, then lead funnel, then conversion math, then deal-stage counts.
+//   - "Qualified leads submitted" = leads that advanced past first
+//     intake into stage progression. Drips + bird-dog kickbacks don't
+//     count toward this number.
+//   - "LOIs submitted" = TOTAL, not this-week.
+//   - "Signed PSAs" = this-month cadence.
 const SCORECARD_DEFAULTS: Array<{ metric: string; target: string; actual: string; status: "on_track" | "off_track" | "behind" | "ahead" }> = [
-  { metric: "Deals closed (month)",       target: "2",         actual: "1",      status: "behind"    },
-  { metric: "New buyer leads (week)",     target: "10",        actual: "12",     status: "on_track"  },
-  { metric: "LOIs submitted (week)",      target: "3",         actual: "2",      status: "behind"    },
-  { metric: "Pipeline value (active)",    target: "$30M",      actual: "$24M",   status: "behind"    },
-  { metric: "Close rate (rolling 90d)",   target: "25%",       actual: "22%",    status: "behind"    },
-  { metric: "Active bird dogs",           target: "10",        actual: "6",      status: "off_track" },
-  { metric: "Owned-park revenue (month)", target: "$50K",      actual: "$52K",   status: "on_track"  },
+  { metric: "Active bird dogs",                          target: "10",   actual: "6",   status: "off_track" },
+  { metric: "Total new leads submitted",                 target: "50",   actual: "42",  status: "behind"    },
+  { metric: "Qualified leads submitted",                 target: "20",   actual: "14",  status: "behind"    },
+  { metric: "Close rate",                                target: "25%",  actual: "22%", status: "behind"    },
+  { metric: "LOIs submitted (total)",                    target: "15",   actual: "11",  status: "behind"    },
+  { metric: "Signed PSAs (this month)",                  target: "3",    actual: "2",   status: "behind"    },
+  { metric: "Deals in progress (assigned PSAs)",         target: "8",    actual: "6",   status: "behind"    },
+  { metric: "Deals in dispo",                            target: "4",    actual: "3",   status: "behind"    },
+  { metric: "Deals in due diligence",                    target: "3",    actual: "2",   status: "behind"    },
 ];
 
 const ROCKS_DEFAULTS = [
