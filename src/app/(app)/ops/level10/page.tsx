@@ -5,11 +5,11 @@
 import Link from "next/link";
 import { and, asc, desc, eq, gte, inArray, isNull, ne, sql } from "drizzle-orm";
 import { db } from "@/db";
-import { birdDogs, deals, level10Meetings, level10ScorecardSnapshots, user } from "@/db/schema";
+import { level10ActionItems, level10Meetings, level10ScorecardSnapshots, user } from "@/db/schema";
 import { getOpsBlocks } from "@/lib/ops-content";
 import { OpsHeader, StatusPill } from "../ops-primitives";
 import { EditableBlock } from "@/components/editable-block";
-import { MeetingTextarea, MeetingRating, RefreshSnapshotButton } from "./level10-widgets";
+import { MeetingTextarea, MeetingRating, RefreshSnapshotButton, ActionItemsBlock } from "./level10-widgets";
 import { mondayOf } from "@/lib/level10-week";
 import { fmtDate } from "@/lib/date-format";
 import {
@@ -48,9 +48,23 @@ export default async function Level10Page({
   const thisMonday = mondayOf(new Date());
   const isCurrentWeek = weekMonday === thisMonday;
 
+  // Find the most recent meeting BEFORE this one — we use its open items
+  // to populate the "review last week" panel.
+  const [previousMeeting] = await db
+    .select({ meetingDate: level10Meetings.meetingDate })
+    .from(level10Meetings)
+    .where(sql`${level10Meetings.meetingDate} < ${weekMonday}::date`)
+    .orderBy(desc(level10Meetings.meetingDate))
+    .limit(1);
+  const previousMeetingDate: string | null = previousMeeting
+    ? (typeof previousMeeting.meetingDate === "string"
+        ? previousMeeting.meetingDate
+        : (previousMeeting.meetingDate as Date).toISOString().slice(0, 10))
+    : null;
+
   // Live actuals for the current week; for past weeks we'll lean on
   // the snapshot rows instead (computed below).
-  const [blocks, liveActuals, meetingRow, recentMeetings, snapshotRows] = await Promise.all([
+  const [blocks, liveActuals, meetingRow, recentMeetings, snapshotRows, thisMeetingItems, carryItems] = await Promise.all([
     getOpsBlocks("level10."),
     isCurrentWeek ? computeScorecardActuals() : Promise.resolve(null),
     db
@@ -75,6 +89,18 @@ export default async function Level10Page({
       .from(level10ScorecardSnapshots)
       .where(eq(level10ScorecardSnapshots.meetingDate, weekMonday))
       .orderBy(asc(level10ScorecardSnapshots.position)),
+    db
+      .select()
+      .from(level10ActionItems)
+      .where(eq(level10ActionItems.meetingDate, weekMonday))
+      .orderBy(asc(level10ActionItems.position)),
+    isCurrentWeek && previousMeetingDate
+      ? db
+          .select()
+          .from(level10ActionItems)
+          .where(and(eq(level10ActionItems.meetingDate, previousMeetingDate), isNull(level10ActionItems.completedAt)))
+          .orderBy(asc(level10ActionItems.position))
+      : Promise.resolve([] as never[]),
   ]);
 
   // Decide whether the displayed scorecard comes from live counts or
@@ -124,6 +150,7 @@ export default async function Level10Page({
           meetingDate={weekMonday}
           field="segue"
           initial={meetingRow?.segueNotes ?? ""}
+          initialSavedAt={meetingRow?.updatedAt ?? null}
           placeholder="Notes from segue…"
         />
       </Section>
@@ -265,9 +292,32 @@ export default async function Level10Page({
           meetingDate={weekMonday}
           field="conclude"
           initial={meetingRow?.concludeNotes ?? ""}
-          placeholder="Meeting notes and action items…"
-          rows={4}
+          initialSavedAt={meetingRow?.updatedAt ?? null}
+          placeholder="Meeting recap / cascading messages…"
+          rows={3}
         />
+
+        <div className="mt-5 rounded-lg border border-border bg-foreground/[0.015] p-4">
+          <ActionItemsBlock
+            meetingDate={weekMonday}
+            items={thisMeetingItems.map((i) => ({
+              id: i.id,
+              body: i.body,
+              assigneeId: i.assigneeId,
+              completedAt: i.completedAt?.toISOString() ?? null,
+              meetingDate: typeof i.meetingDate === "string" ? i.meetingDate : (i.meetingDate as Date).toISOString().slice(0, 10),
+            }))}
+            carryFromPrevious={carryItems.map((i) => ({
+              id: i.id,
+              body: i.body,
+              assigneeId: i.assigneeId,
+              completedAt: i.completedAt?.toISOString() ?? null,
+              meetingDate: typeof i.meetingDate === "string" ? i.meetingDate : (i.meetingDate as Date).toISOString().slice(0, 10),
+            }))}
+            teammates={teammates.map((t) => ({ id: t.id, name: t.name }))}
+            isCurrentWeek={isCurrentWeek}
+          />
+        </div>
       </Section>
 
       {/* History — last 12 meetings, newest first */}
@@ -279,7 +329,7 @@ export default async function Level10Page({
           </span>
         </div>
         <p className="text-xs text-muted mb-4">
-          One row per Monday. Trend the rating, scan the notes, click in to read a prior week.
+          One row per Monday. Trend the rating, scan the notes, click any row to open + edit a prior week.
         </p>
         {recentMeetings.length === 0 ? (
           <div className="rounded-xl border border-dashed border-border bg-foreground/[0.02] p-8 text-center text-sm text-muted">

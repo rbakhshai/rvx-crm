@@ -71,3 +71,38 @@ export const level10ScorecardSnapshots = pgTable(
 
 export type Level10ScorecardSnapshot = typeof level10ScorecardSnapshots.$inferSelect;
 export type NewLevel10ScorecardSnapshot = typeof level10ScorecardSnapshots.$inferInsert;
+
+/**
+ * To-Do / action items captured during the Conclude section of an L10.
+ *
+ * In EOS practice, you review the previous meeting's open items at the
+ * top of the next week — "done?" / "not done?" / "carry forward". This
+ * table is the source of truth for that review.
+ *
+ *   - body is freeform ("Marco to call Smith Park by EOD Wed")
+ *   - assigneeId is who owns it
+ *   - completedAt + completedById close the loop when it's done
+ *   - meetingDate ties the item back to the meeting it was set in
+ */
+export const level10ActionItems = pgTable(
+  "level10_action_items",
+  {
+    id: text("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
+    meetingDate: date("meeting_date").notNull(),
+    position: integer("position").notNull().default(0),
+    body: text("body").notNull(),
+    assigneeId: text("assignee_id").references(() => user.id, { onDelete: "set null" }),
+    completedAt: timestamp("completed_at"),
+    completedById: text("completed_by_id").references(() => user.id, { onDelete: "set null" }),
+    createdById: text("created_by_id").references(() => user.id, { onDelete: "set null" }),
+    createdAt: timestamp("created_at").notNull().defaultNow(),
+    updatedAt: timestamp("updated_at").notNull().defaultNow(),
+  },
+  (t) => ({
+    byMeeting:  index("level10_action_by_meeting_idx").on(t.meetingDate, t.position),
+    byAssignee: index("level10_action_by_assignee_idx").on(t.assigneeId),
+  }),
+);
+
+export type Level10ActionItem = typeof level10ActionItems.$inferSelect;
+export type NewLevel10ActionItem = typeof level10ActionItems.$inferInsert;
