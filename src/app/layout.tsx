@@ -18,6 +18,19 @@ const rubik = Rubik({
 export const metadata: Metadata = {
   title: "RVX CRM",
   description: "Brokerage operating system for rvparkexchange.com",
+  // PWA / iOS home-screen install
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: "default",
+    title: "RVX",
+  },
+};
+
+export const viewport = {
+  themeColor: [
+    { media: "(prefers-color-scheme: light)", color: "#F7F6F2" },
+    { media: "(prefers-color-scheme: dark)", color: "#13141A" },
+  ],
 };
 
 /**
