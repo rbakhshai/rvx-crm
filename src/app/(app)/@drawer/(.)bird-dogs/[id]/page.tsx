@@ -10,7 +10,7 @@ import { auth } from "@/lib/auth";
 import { Drawer } from "@/components/drawer";
 import { Badge } from "@/components/badge";
 import { Avatar } from "@/components/avatar";
-import { LinkButton } from "@/components/button";
+import { HardNavButton } from "@/components/hard-nav-button";
 import { ActivityTimeline } from "@/components/activity-timeline";
 import { TaskList } from "@/components/task-list";
 
@@ -45,7 +45,7 @@ export default async function BirdDogDrawerPage({ params }: { params: Promise<{ 
     <Drawer title={name} subtitle={sub} fullHref={`/bird-dogs/${id}`} width="600px">
       <div className="space-y-5">
         <div className="flex flex-wrap items-center gap-2">
-          <LinkButton href={`/bird-dogs/${id}/edit`} variant="secondary" size="sm">Edit</LinkButton>
+          <HardNavButton href={`/bird-dogs/${id}/edit`} variant="secondary" size="sm">Edit</HardNavButton>
           {bd.acquisitionLevel && <Badge>{bd.acquisitionLevel}</Badge>}
           {bd.isInDiscord && <Badge tone="success">In Discord</Badge>}
         </div>

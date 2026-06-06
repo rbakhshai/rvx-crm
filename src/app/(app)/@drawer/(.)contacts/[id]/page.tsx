@@ -14,7 +14,7 @@ import { auth } from "@/lib/auth";
 import { Drawer } from "@/components/drawer";
 import { Badge } from "@/components/badge";
 import { Avatar } from "@/components/avatar";
-import { LinkButton } from "@/components/button";
+import { HardNavButton } from "@/components/hard-nav-button";
 import { ActivityTimeline } from "@/components/activity-timeline";
 import { TaskList } from "@/components/task-list";
 import { MatchingDeals } from "@/components/matching-deals";
@@ -61,7 +61,7 @@ export default async function ContactDrawerPage({ params }: { params: Promise<{ 
     <Drawer title={name} subtitle={sub || undefined} fullHref={`/contacts/${id}`} width="600px">
       <div className="space-y-5">
         <div className="flex flex-wrap items-center gap-2">
-          <LinkButton href={`/contacts/${id}/edit`} variant="secondary" size="sm">Edit</LinkButton>
+          <HardNavButton href={`/contacts/${id}/edit`} variant="secondary" size="sm">Edit</HardNavButton>
           {contact.qualificationTier && (
             <Badge tone="info">{tierLabel.get(contact.qualificationTier) ?? contact.qualificationTier}</Badge>
           )}

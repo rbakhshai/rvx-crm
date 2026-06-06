@@ -10,7 +10,7 @@ import { auth } from "@/lib/auth";
 import { Drawer } from "@/components/drawer";
 import { Badge } from "@/components/badge";
 import { Avatar } from "@/components/avatar";
-import { LinkButton } from "@/components/button";
+import { HardNavButton } from "@/components/hard-nav-button";
 import { ActivityTimeline } from "@/components/activity-timeline";
 import { TaskList } from "@/components/task-list";
 
@@ -51,7 +51,7 @@ export default async function CompanyDrawerPage({ params }: { params: Promise<{ 
     <Drawer title={company.name} subtitle={sub || undefined} fullHref={`/companies/${id}`} width="600px">
       <div className="space-y-5">
         <div className="flex flex-wrap items-center gap-2">
-          <LinkButton href={`/companies/${id}/edit`} variant="secondary" size="sm">Edit</LinkButton>
+          <HardNavButton href={`/companies/${id}/edit`} variant="secondary" size="sm">Edit</HardNavButton>
           <Badge>{relationshipLabel[company.relationshipToPark] ?? company.relationshipToPark}</Badge>
         </div>
 

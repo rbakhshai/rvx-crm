@@ -22,7 +22,7 @@ import { auth } from "@/lib/auth";
 import { Drawer } from "@/components/drawer";
 import { Badge } from "@/components/badge";
 import { Avatar } from "@/components/avatar";
-import { LinkButton } from "@/components/button";
+import { HardNavButton } from "@/components/hard-nav-button";
 import { GoogleMap } from "@/components/google-map";
 import { ActivityTimeline } from "@/components/activity-timeline";
 import { TaskList } from "@/components/task-list";
@@ -95,11 +95,12 @@ export default async function DealDrawerPage({ params }: { params: Promise<{ id:
       width="640px"
     >
       <div className="space-y-5">
-        {/* Quick actions */}
+        {/* Quick actions — hard-nav to bypass the parallel-route intercept
+            so we land on the real edit/dispo/DD page, not the same drawer. */}
         <div className="flex flex-wrap items-center gap-2">
-          <LinkButton href={`/deals/${id}/edit`} variant="secondary" size="sm">Edit</LinkButton>
-          <LinkButton href={`/deals/${id}/dispo`} variant="gold" size="sm">Dispo to buyers →</LinkButton>
-          <LinkButton href={`/deals/${id}/due-diligence`} variant="secondary" size="sm">DD</LinkButton>
+          <HardNavButton href={`/deals/${id}/edit`} variant="secondary" size="sm">Edit</HardNavButton>
+          <HardNavButton href={`/deals/${id}/dispo`} variant="gold" size="sm">Dispo to buyers →</HardNavButton>
+          <HardNavButton href={`/deals/${id}/due-diligence`} variant="secondary" size="sm">DD</HardNavButton>
           {deal.dealPriority && (
             <Badge tone={priorityTone[deal.dealPriority as keyof typeof priorityTone] ?? "default"}>
               {priorityLabel.get(deal.dealPriority)}
