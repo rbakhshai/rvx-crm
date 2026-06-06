@@ -14,13 +14,14 @@ import { cn } from "@/lib/cn";
 
 const REVALIDATE = "/ops/journey";
 
-type Team = "acquisitions" | "closing" | "dd" | "operations";
+type Team = "acquisitions" | "closing" | "dd" | "operations" | "dispo";
 
 const TEAMS: Array<{ key: Team; label: string; tagline: string }> = [
-  { key: "acquisitions", label: "Acquisitions",      tagline: "Bird-dog → first contact → qualified" },
-  { key: "closing",      label: "Closing",           tagline: "First call → LOI → PSA signed" },
-  { key: "dd",           label: "DD",                tagline: "Inspection → underwriting → cleared to close" },
-  { key: "operations",   label: "Operations",        tagline: "Post-close → dispo → buyer match → sold" },
+  { key: "acquisitions", label: "Acquisitions", tagline: "Bird-dog → first contact → qualified" },
+  { key: "closing",      label: "Closing",      tagline: "First call → LOI → PSA signed" },
+  { key: "dd",           label: "DD",           tagline: "Inspection → underwriting → cleared to close" },
+  { key: "operations",   label: "Operations",   tagline: "RVX takes down — we acquire + operate" },
+  { key: "dispo",        label: "Dispo",        tagline: "Disposing to an end buyer — we broker" },
 ];
 
 const JOURNEYS: Record<Team, { intro: string; stages: Array<{ title: string; description: string }> }> = {
@@ -62,14 +63,26 @@ const JOURNEYS: Record<Team, { intro: string; stages: Array<{ title: string; des
   },
   operations: {
     intro:
-      "The Operations Team owns everything after the close — listing the park to our buyer network, matching it, and getting it sold. Goal: every closed park goes under contract to a buyer within 60 days.",
+      "The Operations Team takes the keys when RVX is the buyer. Deal cleared DD, we wired funds, we own the park. Now we run it — stand up the operating playbook, get cash flowing, stabilize, and integrate the park into the portfolio. Goal: every owned park is at 90%+ stabilized occupancy within 12 months.",
     stages: [
-      { title: "Day 0: Closed + recorded",             description: "Deed recorded. Park is in inventory. Operations gets the handoff package from DD." },
-      { title: "Day 1-3: Listing assets built",        description: "Photos, marketing flyer, financials packet, video walk-through. Listed on rvparkexchange.com." },
-      { title: "Day 3-7: Buyer match run",             description: "Buyer-matching engine surfaces 10-30 buyers whose criteria fit. Auto-email blast with the listing." },
-      { title: "Day 7-21: Buyer triage",               description: "Inbound buyer interest funneled to dispo manager. Tour requests scheduled. NDAs signed." },
-      { title: "Day 21-45: LOI from buyer",            description: "Best offer surfaces. Counter, negotiate, accept. Buyer PSA signed." },
-      { title: "Day 45-60: Buyer DD + close",          description: "Buyer runs their own DD. We support docs. Close, hand keys, collect commission." },
+      { title: "Day 0: Funded + recorded",             description: "Wire sent, deed recorded. Park is on the books. DD's final report hands over to Operations with the operating gaps map." },
+      { title: "Day 1-7: Possession + key transfer",   description: "Walk every utility hookup. Change locks. Get on-site contacts for water/sewer/electric. Existing tenant rent roll verified against bank deposits." },
+      { title: "Day 7-30: On-site manager installed",  description: "Hire / reassign. Train on rent collection, hookup repairs, vendor management. Set monthly cadence with HQ." },
+      { title: "Day 14-60: Operating playbook live",   description: "Pricing model, rent-bump letters, online listings on Hipcamp + Campendium + RoverPass, lease standardization. Vendor list locked (plumber, HVAC, lawn)." },
+      { title: "Month 2-6: Stabilization",             description: "Drive occupancy. Address rent collection delinquencies. Inspect every pad quarterly. P&L reviewed monthly against the UW model." },
+      { title: "Month 6-12: Portfolio integration",    description: "Park reports up to Kevin's portfolio dashboard. Refinance if leverage makes sense. Document SOPs so the next take-down ramps faster." },
+    ],
+  },
+  dispo: {
+    intro:
+      "The Dispo Team brokers the park to an end buyer. We don't own it — we list it, match it, and close the buyer side for a commission. Goal: every closed-on-our-side park goes under contract to a buyer within 60 days.",
+    stages: [
+      { title: "Day 0: Listing package built",         description: "Photos, marketing flyer, financials packet, video walk-through. Listed on rvparkexchange.com + sent to the buyer network." },
+      { title: "Day 1-7: Buyer match run",             description: "Buyer-matching engine surfaces 10-30 buyers whose criteria fit. Personalized email blast with the listing + financial snapshot." },
+      { title: "Day 7-21: Buyer triage",               description: "Inbound buyer interest funneled to the dispo manager. Tour requests scheduled. NDAs signed. Qualified buyers move to LOI conversation." },
+      { title: "Day 21-45: LOI from buyer",            description: "Best offer surfaces. Counter, negotiate, accept. Buyer PSA signed. Earnest money to escrow." },
+      { title: "Day 45-60: Buyer DD + close",          description: "Buyer runs their own DD. We support docs + access. Close, hand keys, collect commission. Park out of inventory." },
+      { title: "Post-close: Buyer retention",          description: "Buyer added to the 'recent close' list. 60-day check-in call. Goal: they refer one new buyer to the list within 6 months." },
     ],
   },
 };
@@ -163,6 +176,7 @@ function labelForKey(k: Team): string {
     case "acquisitions": return "Acquisitions Team Journey";
     case "closing":      return "Closing Team Journey";
     case "dd":           return "DD Team Journey";
-    case "operations":   return "Operations Team Journey";
+    case "operations":   return "Operations Team Journey · RVX takes down";
+    case "dispo":        return "Dispo Team Journey · Brokered to end buyer";
   }
 }
