@@ -51,11 +51,15 @@ export default async function RolesSettingsPage() {
       subtitle={`Toggle which permissions each role has. Changes save immediately.`}
     >
       {/*
-        overflow-y-clip (not the default auto) so the container doesn't
-        become its own vertical scroll context. Sticky header inside
-        anchors to the page scroll instead, which is what we want.
+        No overflow wrapper here on purpose. Wrapping the table in
+        overflow-x-auto would make THAT wrapper the scroll context for
+        position:sticky, so the floating header would only stick within
+        the wrapper (which has no vertical scroll of its own) instead of
+        the page. The table is wide but it fits typical desktop widths;
+        if it overflows on narrower screens, the page itself scrolls
+        horizontally — acceptable for an admin-only matrix.
       */}
-      <div className="overflow-x-auto overflow-y-clip -mx-8 px-8">
+      <div className="-mx-8 px-8">
         <table className="min-w-full text-xs border border-border rounded-lg bg-background">
           <thead>
             {/*
