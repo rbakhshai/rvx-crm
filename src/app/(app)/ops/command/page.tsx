@@ -39,12 +39,30 @@ export default async function CommandPage({
 
   const blocks = await getOpsBlocks("command.");
 
-  // People + their open task counts
-  const teammates = await db
+  // People + their open task counts. Sort uses a fixed rank for the
+  // leadership team (so Kevin sits left of Kerry per your request);
+  // everyone else falls in alphabetically afterward.
+  const teammatesRaw = await db
     .select({ id: user.id, name: user.name, role: user.role })
     .from(user)
     .where(and(isNull(user.suspendedAt), isNull(user.deletedAt), ne(user.role, "bird_dog")))
     .orderBy(asc(user.name));
+
+  const PEOPLE_RANK: Record<string, number> = {
+    reza:  1,
+    erica: 2,
+    kevin: 3,
+    kerry: 4,
+    marco: 5,
+  };
+  const teammates = [...teammatesRaw].sort((a, b) => {
+    const aFirst = a.name.split(/\s+/)[0]?.toLowerCase() ?? "";
+    const bFirst = b.name.split(/\s+/)[0]?.toLowerCase() ?? "";
+    const ra = PEOPLE_RANK[aFirst] ?? 100;
+    const rb = PEOPLE_RANK[bFirst] ?? 100;
+    if (ra !== rb) return ra - rb;
+    return a.name.localeCompare(b.name);
+  });
 
   // Period window: now → now + N days. Tasks with no due date are always
   // included (they're either always-on or someone hasn't scoped them yet).

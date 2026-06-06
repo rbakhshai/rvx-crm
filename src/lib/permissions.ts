@@ -206,18 +206,23 @@ const STANDARD_NAV: PermissionKey[] = [
 export const DEFAULT_PERMISSIONS: Record<Role, Record<PermissionKey, boolean>> = {
   admin: ALL,
 
+  // COS role (Erica). Effectively a working admin: keeps delete + trash
+  // permissions so she can clean up records (you noted only you + Erica
+  // should ever delete), but the title chip reads "COS" everywhere.
   acquisitions_manager: grant(
     ...STANDARD_NAV,
-    "create_deals", "edit_deals",
-    "create_contacts", "edit_contacts",
-    "create_companies", "edit_companies",
-    "create_bird_dogs", "edit_bird_dogs",
+    "create_deals", "edit_deals", "delete_deals",
+    "create_contacts", "edit_contacts", "delete_contacts",
+    "create_companies", "edit_companies", "delete_companies",
+    "create_bird_dogs", "edit_bird_dogs", "delete_bird_dogs",
     "use_triage_cockpit", "dispo_to_buyers",
     "view_pipeline_value",
+    "view_trash", "restore_from_trash", "purge_permanently",
   ),
 
-  // Closer gets Park Performance — Marco needs to see what owned-park
-  // revenue is contributing while he's working live deals.
+  // Closer — generic role for future hires. View Park Performance was
+  // an exception granted for Marco; new closers can be flipped on per
+  // role in /settings/roles if desired.
   closer: grant(
     ...STANDARD_NAV,
     "create_deals", "edit_deals",
@@ -225,16 +230,18 @@ export const DEFAULT_PERMISSIONS: Record<Role, Record<PermissionKey, boolean>> =
     "edit_companies",
     "use_triage_cockpit", "dispo_to_buyers",
     "view_pipeline_value",
-    "view_revenue",
   ),
 
-  // COO (Erica) intentionally does NOT see Park Performance.
+  // COO role (Marco). Keeps the closer workflow — triage cockpit +
+  // dispo. Also gets Park Performance since Marco needs the revenue
+  // signal while he's closing live deals.
   bird_dog_manager: grant(
     ...STANDARD_NAV,
     "create_deals", "edit_deals",
     "create_contacts", "edit_contacts",
     "create_bird_dogs", "edit_bird_dogs",
-    "view_pipeline_value",
+    "use_triage_cockpit", "dispo_to_buyers",
+    "view_pipeline_value", "view_revenue",
   ),
 
   transaction_coord: grant(
