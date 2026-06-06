@@ -29,6 +29,8 @@ import { Widget, ListLink, EmptyHint, StatTile, PriorityBadge, StaleBadge } from
 import { Badge } from "@/components/badge";
 import { DailyBrief } from "@/components/daily-brief";
 import { getOrCreateDailyBrief } from "@/app/actions/daily-brief";
+import { AtRiskWidget } from "@/components/at-risk-widget";
+import { detectAtRiskForUser } from "@/lib/at-risk";
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 
@@ -86,6 +88,7 @@ export default async function TodayPage() {
     pipelineValueRows,
     activity,
     brief,
+    atRisk,
   ] = await Promise.all([
     // 1) My open tasks (top 12, soonest due first, NULLs last)
     db
@@ -144,6 +147,7 @@ export default async function TodayPage() {
 
     fetchRecentActivity(20),
     getOrCreateDailyBrief(me),
+    detectAtRiskForUser(me),
   ]);
 
   const statusLabel = new Map(statusRows.map((s) => [s.code, s.label]));
@@ -185,8 +189,9 @@ export default async function TodayPage() {
 
       {/* ===== Main 3-column grid ===== */}
       <div className="grid lg:grid-cols-12 gap-4">
-        {/* Left col: my tasks — primary */}
+        {/* Left col: at-risk + my tasks — primary */}
         <div className="lg:col-span-5 space-y-4">
+          <AtRiskWidget risks={atRisk} />
           <Widget
             title="My tasks"
             hint="Sorted by due date. Click through to act."
