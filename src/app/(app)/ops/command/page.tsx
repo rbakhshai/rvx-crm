@@ -130,17 +130,31 @@ export default async function CommandPage({
           const total = open + done;
           const pct = total > 0 ? Math.round((done / total) * 100) : 0;
           const rowTasks = tasksByUser.get(t.id) ?? [];
+          const profile = profileFor(t.name);
+          const titleScope = `command.user.${t.id}.title`;
+          const titleInitial = blocks.get(titleScope) ?? profile.title ?? labelRole(t.role);
           return (
             <div key={t.id} className="rounded-xl border border-border bg-background p-4">
               <div className="flex items-center justify-between mb-3">
-                <div className="flex items-center gap-2.5">
-                  <div className="size-10 rounded-full bg-foreground/10 grid place-items-center text-sm font-semibold">
+                <div className="flex items-center gap-2.5 min-w-0">
+                  <div
+                    className={
+                      "size-10 rounded-full grid place-items-center text-sm font-semibold shrink-0 " +
+                      (profile.avatarBg ?? "bg-foreground/10") +
+                      " " +
+                      (profile.avatarText ?? "text-foreground")
+                    }
+                  >
                     {initials(t.name)}
                   </div>
-                  <div>
-                    <div className="font-semibold text-sm">{t.name}</div>
+                  <div className="min-w-0">
+                    <div className="font-semibold text-sm truncate">{t.name}</div>
                     <div className="text-[10px] uppercase tracking-widest text-muted font-medium">
-                      {labelRole(t.role)}
+                      <EditableBlock
+                        scope={titleScope}
+                        initial={titleInitial}
+                        revalidate={REVALIDATE}
+                      />
                     </div>
                   </div>
                 </div>
@@ -192,6 +206,29 @@ function labelRole(role: string | null): string {
     bd_level_3: "BD L3",
   };
   return role ? map[role] ?? role : "—";
+}
+
+/**
+ * Per-person overrides for the Command Center avatar + title chip.
+ * Keyed by lowercase first name so they survive a role change.
+ *
+ * Titles can still be edited per-user inline (scope: command.user.<id>
+ * .title) — this map is just the starting value.
+ */
+const PROFILE_OVERRIDES: Record<
+  string,
+  { title?: string; avatarBg?: string; avatarText?: string }
+> = {
+  reza:  { title: "Cofounder / CEO", avatarBg: "bg-foreground", avatarText: "text-background" },
+  erica: { title: "COS / Admin",     avatarBg: "bg-pink-400",   avatarText: "text-white" },
+  marco: { title: "COO",             avatarBg: "bg-violet-800", avatarText: "text-white" },
+  kerry: { title: "Due Diligence",   avatarBg: "bg-amber-800",  avatarText: "text-white" },
+  kevin: { title: "CFO",             avatarBg: "bg-blue-500",   avatarText: "text-white" },
+};
+
+function profileFor(name: string) {
+  const first = name.split(/\s+/)[0]?.toLowerCase() ?? "";
+  return PROFILE_OVERRIDES[first] ?? {};
 }
 
 function ProgressRing({ pct }: { pct: number }) {
