@@ -4,11 +4,23 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import type { PermissionKey } from "@/lib/permissions";
 
+type NavChild = {
+  href: string;
+  label: string;
+  requires?: PermissionKey;
+  /**
+   * Roles for which this child should NOT appear. Used to give Marco
+   * (closer) and Reza (admin) a Triage-only Pipeline experience while
+   * leaving the other lenses visible to UW / Dispo / TC / COS / COO etc.
+   */
+  hideForRoles?: string[];
+};
+
 type NavItem = {
   href: string;
   label: string;
   /** When set, the item belongs to a labeled group of children. */
-  children?: Array<{ href: string; label: string; requires?: PermissionKey }>;
+  children?: NavChild[];
   /** Hide the whole group unless the user has this permission. */
   requires?: PermissionKey;
 };
@@ -16,20 +28,23 @@ type NavItem = {
 /**
  * 5-group information architecture, verb-driven not noun-driven:
  *   Today      — what needs me right now (default landing)
- *   Pipeline   — every active deal, four lenses
+ *   Pipeline   — every active deal, three lenses (triage / list / board)
  *   Contacts   — buyers · sellers · bird dogs, unified directory
  *   Tasks      — full queue across every record
  *   Insights   — revenue + future analytics (admin only)
+ *
+ * Pipeline parent links to /triage so the default click lands on triage,
+ * which is the daily-driver view for closers + admin.
  */
 const GROUPS: NavItem[] = [
   { href: "/today", label: "Today" },
   {
-    href: "/deals",
+    href: "/triage",
     label: "Pipeline",
     children: [
-      { href: "/deals/board", label: "Board" },
-      { href: "/deals", label: "List" },
       { href: "/triage", label: "Triage" },
+      { href: "/deals", label: "List view", hideForRoles: ["admin", "closer"] },
+      { href: "/deals/board", label: "Board view", hideForRoles: ["admin", "closer"] },
     ],
   },
   {
@@ -64,12 +79,24 @@ const ADMIN_GROUPS: NavItem[] = [
   },
 ];
 
-export function Nav({ permissions }: { permissions: Partial<Record<PermissionKey, boolean>> }) {
+export function Nav({
+  permissions,
+  role,
+}: {
+  permissions: Partial<Record<PermissionKey, boolean>>;
+  role: string | null | undefined;
+}) {
   const pathname = usePathname();
 
   function allowed(req?: PermissionKey): boolean {
     if (!req) return true;
     return permissions[req] === true;
+  }
+
+  function visibleChild(c: NavChild): boolean {
+    if (!allowed(c.requires)) return false;
+    if (c.hideForRoles && role && c.hideForRoles.includes(role)) return false;
+    return true;
   }
 
   const visibleGroups = GROUPS.filter((g) => allowed(g.requires));
@@ -78,7 +105,7 @@ export function Nav({ permissions }: { permissions: Partial<Record<PermissionKey
   return (
     <nav className="space-y-2 text-sm">
       {visibleGroups.map((g) => (
-        <NavGroup key={g.label} group={g} pathname={pathname} allowed={allowed} />
+        <NavGroup key={g.label} group={g} pathname={pathname} visibleChild={visibleChild} />
       ))}
 
       {visibleAdmin.length > 0 && (
@@ -87,7 +114,7 @@ export function Nav({ permissions }: { permissions: Partial<Record<PermissionKey
             Admin
           </div>
           {visibleAdmin.map((g) => (
-            <NavGroup key={g.label} group={g} pathname={pathname} allowed={allowed} />
+            <NavGroup key={g.label} group={g} pathname={pathname} visibleChild={visibleChild} />
           ))}
         </>
       )}
@@ -98,15 +125,17 @@ export function Nav({ permissions }: { permissions: Partial<Record<PermissionKey
 function NavGroup({
   group,
   pathname,
-  allowed,
+  visibleChild,
 }: {
   group: NavItem;
   pathname: string;
-  allowed: (req?: PermissionKey) => boolean;
+  visibleChild: (c: NavChild) => boolean;
 }) {
-  const visibleChildren = (group.children ?? []).filter((c) => allowed(c.requires));
+  const visibleChildren = (group.children ?? []).filter(visibleChild);
   const groupActive = isActive(pathname, group.href, visibleChildren.map((c) => c.href));
-  const hasChildren = visibleChildren.length > 0;
+  // If only one child remains after gating, fold the group — the parent
+  // already links to the same place, so a single child is visual noise.
+  const hasChildren = visibleChildren.length > 1;
 
   return (
     <div>

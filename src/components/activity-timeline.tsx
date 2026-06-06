@@ -4,6 +4,7 @@ import { notes, user } from "@/db/schema";
 import { NoteComposer } from "./note-composer";
 import { DeleteNoteButton } from "./delete-note-button";
 import { Section } from "./section";
+import { fmtDate } from "@/lib/date-format";
 
 type ParentTable = "contacts" | "deals" | "companies" | "bird_dogs";
 
@@ -17,7 +18,7 @@ function formatRelative(d: Date) {
   if (diffMs < hr) return `${Math.floor(diffMs / min)}m ago`;
   if (diffMs < day) return `${Math.floor(diffMs / hr)}h ago`;
   if (diffMs < 7 * day) return `${Math.floor(diffMs / day)}d ago`;
-  return d.toLocaleDateString();
+  return fmtDate(d);
 }
 
 export async function ActivityTimeline({

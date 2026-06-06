@@ -58,7 +58,7 @@ export default async function AppLayout(props: {
           </div>
         </div>
         <div className="p-3 flex-1">
-          <Nav permissions={permissions} />
+          <Nav permissions={permissions} role={role} />
         </div>
         <div className="p-3 border-t border-border">
           <div className="text-xs">

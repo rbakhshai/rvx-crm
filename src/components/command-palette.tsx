@@ -21,9 +21,9 @@ type StaticItem = {
 
 const STATIC_ITEMS: StaticItem[] = [
   { id: "p_today", group: "Pages", title: "Today", subtitle: "Daily driver view", icon: "☀️", href: "/today", keywords: "today home dashboard" },
-  { id: "p_board", group: "Pages", title: "Pipeline board", subtitle: "Kanban", icon: "📋", href: "/deals/board", keywords: "pipeline kanban board deals" },
-  { id: "p_deals", group: "Pages", title: "Pipeline list", subtitle: "All deals", icon: "📑", href: "/deals", keywords: "deals list pipeline" },
-  { id: "p_triage", group: "Pages", title: "Triage cockpit", subtitle: "Closer's queue", icon: "🎯", href: "/triage", keywords: "triage cockpit closer" },
+  { id: "p_triage", group: "Pages", title: "Triage", subtitle: "Closer's cockpit", icon: "🎯", href: "/triage", keywords: "triage cockpit closer pipeline" },
+  { id: "p_deals", group: "Pages", title: "Pipeline · List view", subtitle: "All deals as a table", icon: "📑", href: "/deals", keywords: "deals list pipeline" },
+  { id: "p_board", group: "Pages", title: "Pipeline · Board view", subtitle: "Kanban", icon: "📋", href: "/deals/board", keywords: "pipeline kanban board deals" },
   { id: "p_buyers", group: "Pages", title: "Buyers", subtitle: "Buyer directory", icon: "👤", href: "/contacts", keywords: "buyers contacts" },
   { id: "p_sellers", group: "Pages", title: "Sellers", subtitle: "Seller companies", icon: "🏢", href: "/companies", keywords: "sellers companies" },
   { id: "p_bd", group: "Pages", title: "Bird dogs", subtitle: "Bird dog roster", icon: "🦅", href: "/bird-dogs", keywords: "bird dogs bd" },

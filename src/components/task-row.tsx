@@ -4,6 +4,7 @@ import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { cn } from "@/lib/cn";
 import { completeTaskAction, uncompleteTaskAction, deleteTaskAction } from "@/app/actions/tasks";
+import { fmtDate } from "@/lib/date-format";
 
 const typeBadge: Record<string, string> = {
   task: "Task",
@@ -23,7 +24,7 @@ function fmtDue(d: Date | null): { label: string; overdue: boolean; soon: boolea
   }
   if (diff < day) return { label: "due today", overdue: false, soon: true };
   if (diff < 7 * day) return { label: `due in ${Math.ceil(diff / day)}d`, overdue: false, soon: true };
-  return { label: `due ${d.toLocaleDateString()}`, overdue: false, soon: false };
+  return { label: `due ${fmtDate(d)}`, overdue: false, soon: false };
 }
 
 export function TaskRow({

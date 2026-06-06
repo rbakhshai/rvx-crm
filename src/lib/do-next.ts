@@ -14,6 +14,7 @@ import { and, asc, desc, eq, gt, inArray, isNull, lt, sql } from "drizzle-orm";
 import { db } from "@/db";
 import { contacts, deals, doNextSkips, tasks } from "@/db/schema";
 import { detectAtRiskForUser, describeRisk, type Risk } from "./at-risk";
+import { fmtDate } from "./date-format";
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 
@@ -99,7 +100,7 @@ export async function getDoNextItems(userId: string, limit = 5): Promise<DoNextI
       id: t.id,
       score: overdue ? 1000 + daysOverdue * 10 : dueToday ? 500 : 100,
       icon: "✓",
-      badge: overdue ? `Overdue ${daysOverdue}d` : dueToday ? "Due today" : `Due ${t.dueAt.toLocaleDateString()}`,
+      badge: overdue ? `Overdue ${daysOverdue}d` : dueToday ? "Due today" : `Due ${fmtDate(t.dueAt)}`,
       title: t.subject,
       subtitle: t.body ?? undefined,
       reason: overdue ? `${daysOverdue} day${daysOverdue === 1 ? "" : "s"} past due — close it or push it` : "Scheduled for today",

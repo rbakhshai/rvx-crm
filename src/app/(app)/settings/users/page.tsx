@@ -18,6 +18,7 @@ import {
 } from "../actions";
 import { InviteUserForm } from "./invite-form";
 import { ResetPasswordButton } from "./reset-password-button";
+import { fmtDate } from "@/lib/date-format";
 
 function relativeAgo(d: Date | null): string {
   if (!d) return "";
@@ -27,7 +28,7 @@ function relativeAgo(d: Date | null): string {
   if (days === 1) return "1d ago";
   if (days < 30) return `${days}d ago`;
   if (days < 365) return `${Math.floor(days / 30)}mo ago`;
-  return new Date(d).toLocaleDateString();
+  return fmtDate(d);
 }
 
 export default async function UsersSettingsPage({

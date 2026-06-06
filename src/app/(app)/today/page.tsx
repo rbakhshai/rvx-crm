@@ -33,6 +33,7 @@ import { AtRiskWidget } from "@/components/at-risk-widget";
 import { detectAtRiskForUser } from "@/lib/at-risk";
 import { DoNextStack } from "@/components/do-next-stack";
 import { getDoNextItems } from "@/lib/do-next";
+import { fmtDate, fmtDateWithWeekday } from "@/lib/date-format";
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 
@@ -70,7 +71,7 @@ function dueLabel(d: Date | null): { label: string; tone: "danger" | "warning" |
   }
   if (diff < DAY_MS) return { label: "due today", tone: "warning" };
   if (diff < 7 * DAY_MS) return { label: `${Math.ceil(diff / DAY_MS)}d`, tone: "muted" };
-  return { label: d.toLocaleDateString(), tone: "muted" };
+  return { label: fmtDate(d), tone: "muted" };
 }
 
 export default async function TodayPage() {
@@ -163,7 +164,7 @@ export default async function TodayPage() {
   const pipelineValue = Number(pipelineValueRows[0]?.total ?? 0);
 
   return (
-    <PageShell title={greeting(session.user.name)} subtitle={new Date().toLocaleDateString(undefined, { weekday: "long", month: "long", day: "numeric" })} width="wide">
+    <PageShell title={greeting(session.user.name)} subtitle={fmtDateWithWeekday(new Date())} width="wide">
       {/* ===== AI morning brief ===== */}
       {brief && <DailyBrief contentMd={brief.contentMd} createdAt={brief.createdAt} />}
 

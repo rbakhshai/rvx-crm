@@ -1,5 +1,6 @@
 import Link from "next/link";
 import type { ActivityEvent } from "@/lib/dashboard-queries";
+import { fmtDate } from "@/lib/date-format";
 
 function fmtRelative(d: Date): string {
   const ms = Date.now() - d.getTime();
@@ -10,7 +11,7 @@ function fmtRelative(d: Date): string {
   if (hrs < 24) return `${hrs}h ago`;
   const days = Math.floor(hrs / 24);
   if (days < 7) return `${days}d ago`;
-  return d.toLocaleDateString();
+  return fmtDate(d);
 }
 
 const KIND_ACCENT: Record<ActivityEvent["kind"], string> = {

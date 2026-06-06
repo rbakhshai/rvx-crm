@@ -3,6 +3,7 @@
 import { useTransition } from "react";
 import { toast } from "sonner";
 import { regenerateDailyBriefAction } from "@/app/actions/daily-brief";
+import { fmtDate } from "@/lib/date-format";
 
 /**
  * Renders Claude's morning brief at the top of /today, with a refresh
@@ -73,7 +74,7 @@ function timeAgo(d: Date): string {
   if (mins < 60) return `${mins}m ago`;
   const hrs = Math.floor(mins / 60);
   if (hrs < 24) return `${hrs}h ago`;
-  return d.toLocaleDateString();
+  return fmtDate(d);
 }
 
 /**

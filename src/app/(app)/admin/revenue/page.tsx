@@ -4,6 +4,7 @@ import { auth } from "@/lib/auth";
 import { hasPermission } from "@/lib/has-permission";
 import { PageShell } from "../../page-shell";
 import { fmtStripeAmount, getRevenueSummary } from "@/lib/stripe";
+import { fmtDate } from "@/lib/date-format";
 
 export const dynamic = "force-dynamic"; // always pull fresh from Stripe
 
@@ -81,7 +82,7 @@ export default async function RevenuePage() {
                 {summary.recent.map((r) => (
                   <tr key={r.id} className="border-t border-border">
                     <td className="px-3 py-2 text-foreground/80 tabular-nums">
-                      {r.created.toLocaleDateString()}
+                      {fmtDate(r.created)}
                     </td>
                     <td className="px-3 py-2 truncate max-w-[240px]">
                       <div className="font-medium">{r.customerName ?? "—"}</div>

@@ -28,6 +28,7 @@ import { DealsMap } from "@/components/deals-map";
 import { PipelineFunnel } from "@/components/pipeline-funnel";
 import { ActivityPulse } from "@/components/activity-pulse";
 import { fetchActiveDealsForMap, fetchPipelineFunnel, fetchRecentActivity } from "@/lib/dashboard-queries";
+import { fmtDate } from "@/lib/date-format";
 
 export default async function DashboardPage() {
   const session = await auth.api.getSession({ headers: await headers() });
@@ -101,7 +102,7 @@ async function MyTasks({ userId }: { userId: string }) {
             <ListLink
               href={`/${t.parentTable === "bird_dogs" ? "bird-dogs" : t.parentTable}/${t.parentId}`}
               primary={t.subject}
-              secondary={t.dueAt ? `due ${new Date(t.dueAt).toLocaleDateString()}` : "no due date"}
+              secondary={t.dueAt ? `due ${fmtDate(t.dueAt)}` : "no due date"}
               trailing={<span className="text-[10px] uppercase tracking-widest text-muted">{t.type}</span>}
             />
           </li>
@@ -417,7 +418,7 @@ async function CfoBoard() {
                 <ListLink
                   href={`/deals/${d.id}`}
                   primary={d.name ?? d.parkAddress ?? "(unnamed)"}
-                  secondary={d.psaCoeDate ? `COE ${new Date(d.psaCoeDate).toLocaleDateString()}` : "no COE date"}
+                  secondary={d.psaCoeDate ? `COE ${fmtDate(d.psaCoeDate)}` : "no COE date"}
                   trailing={<span className="text-xs text-muted tabular-nums">{money(d.agreedPurchasePrice ?? null)}</span>}
                 />
               </li>
@@ -447,7 +448,7 @@ async function DueDiligenceBoard() {
                 <ListLink
                   href={`/deals/${d.id}`}
                   primary={d.name ?? d.parkAddress ?? "(unnamed)"}
-                  secondary={d.inspectionPeriodEnd ? `inspection ends ${new Date(d.inspectionPeriodEnd).toLocaleDateString()}` : "no inspection-end date"}
+                  secondary={d.inspectionPeriodEnd ? `inspection ends ${fmtDate(d.inspectionPeriodEnd)}` : "no inspection-end date"}
                 />
               </li>
             ))}

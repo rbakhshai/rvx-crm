@@ -15,6 +15,7 @@ import { listSavedViews } from "@/app/actions/saved-views";
 import { headers } from "next/headers";
 import { auth } from "@/lib/auth";
 import { COMPANY_RELATIONSHIP_OPTIONS, US_STATES } from "@/lib/options";
+import { fmtDate } from "@/lib/date-format";
 
 type Row = typeof companies.$inferSelect & { ownerName?: string | null };
 
@@ -24,21 +25,12 @@ const relationshipLabel: Record<string, string> = {
   owner_realtor: "Owner + Realtor",
 };
 
-function fmtDate(d: Date): string {
-  // Short year-stripped format if the date is in the current year, full otherwise.
-  const now = new Date();
-  if (d.getFullYear() === now.getFullYear()) {
-    return d.toLocaleDateString(undefined, { month: "short", day: "numeric" });
-  }
-  return d.toLocaleDateString(undefined, { month: "short", day: "numeric", year: "2-digit" });
-}
-
 const columns: Column<Row>[] = [
   {
     key: "created",
     header: "Added",
     sortKey: "created",
-    className: "w-20 text-muted tabular-nums",
+    className: "w-24 text-muted tabular-nums",
     render: (r) => <span title={r.createdAt.toLocaleString()}>{fmtDate(r.createdAt)}</span>,
   },
   { key: "fresh", header: "", className: "w-6", render: (r) => <StaleDot since={r.updatedAt} /> },

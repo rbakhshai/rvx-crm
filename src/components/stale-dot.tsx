@@ -7,6 +7,7 @@
  * Default zone (3–6 days) shows no dot, so the eye is only drawn to outliers.
  */
 import { cn } from "@/lib/cn";
+import { fmtDate } from "@/lib/date-format";
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 
@@ -37,7 +38,7 @@ function relative(d: Date | null | undefined): string {
   if (days === 1) return "touched yesterday";
   if (days < 7) return `touched ${days}d ago`;
   if (days < 30) return `${days}d ago`;
-  return new Date(d).toLocaleDateString();
+  return fmtDate(d);
 }
 
 export function StaleDot({
