@@ -52,6 +52,36 @@ export const notes = pgTable(
 export type Note = typeof notes.$inferSelect;
 export type NewNote = typeof notes.$inferInsert;
 
+/**
+ * One row per @-mention inside a note body. Lets us answer "what notes
+ * mention me, unread?" with a cheap indexed query instead of regex-scanning
+ * every note. Persisted at note save time by parsing @FirstName tokens
+ * against the active user roster.
+ *
+ *   - readAt is null until the mentioned user dismisses it.
+ *   - parentTable/parentId duplicate the note's parent so we can link
+ *     straight to the record without joining notes.
+ */
+export const noteMentions = pgTable(
+  "note_mentions",
+  {
+    id: text("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
+    noteId: text("note_id").notNull().references(() => notes.id, { onDelete: "cascade" }),
+    mentionedUserId: text("mentioned_user_id").notNull().references(() => user.id, { onDelete: "cascade" }),
+    parentTable: activityParentTable("parent_table").notNull(),
+    parentId: text("parent_id").notNull(),
+    createdAt: timestamp("created_at").notNull().defaultNow(),
+    readAt: timestamp("read_at"),
+  },
+  (t) => ({
+    forUserIdx: index("note_mentions_for_user_idx").on(t.mentionedUserId, t.readAt, t.createdAt),
+    noteIdx: index("note_mentions_note_idx").on(t.noteId),
+  }),
+);
+
+export type NoteMention = typeof noteMentions.$inferSelect;
+export type NewNoteMention = typeof noteMentions.$inferInsert;
+
 // ===== tasks =====
 
 export const taskType = pgEnum("task_type", [
