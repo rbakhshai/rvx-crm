@@ -54,8 +54,8 @@ const GROUPS: NavItem[] = [
     requires: "view_pipeline",
     children: [
       { href: "/triage",      label: "Triage" },
-      { href: "/deals",       label: "List view", hideForRoles: ["admin", "closer", "bird_dog_manager"] },
-      { href: "/deals/board", label: "Board view", hideForRoles: ["admin", "closer", "bird_dog_manager"] },
+      { href: "/deals",       label: "List view" },
+      { href: "/deals/board", label: "Board view" },
     ],
   },
   {
