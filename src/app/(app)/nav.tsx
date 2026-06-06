@@ -36,47 +36,54 @@ type NavItem = {
  * Pipeline parent links to /triage so the default click lands on triage,
  * which is the daily-driver view for closers + admin.
  */
+/**
+ * Sidebar order matches the org's mental model: command-center first,
+ * then daily-driver, then the work itself, then the people, then the
+ * gated stuff at the bottom. Every entry's visibility is permission-
+ * gated so admins can toggle from /settings/roles.
+ */
 const GROUPS: NavItem[] = [
-  { href: "/ops/command", label: "Ops Machine" },
-  { href: "/today", label: "Today" },
+  { href: "/ops/command", label: "Mission Control", requires: "view_mission_control" },
+  { href: "/dashboard",   label: "Dashboard",       requires: "view_dashboard" },
+  { href: "/today",       label: "Today",           requires: "view_today" },
+  { href: "/tasks",       label: "Tasks",           requires: "view_tasks" },
+  { href: "/issues",      label: "Issues",          requires: "view_issues" },
   {
     href: "/triage",
     label: "Pipeline",
+    requires: "view_pipeline",
     children: [
-      { href: "/triage", label: "Triage" },
-      { href: "/deals", label: "List view", hideForRoles: ["admin", "closer"] },
+      { href: "/triage",      label: "Triage" },
+      { href: "/deals",       label: "List view", hideForRoles: ["admin", "closer"] },
       { href: "/deals/board", label: "Board view", hideForRoles: ["admin", "closer"] },
     ],
   },
   {
     href: "/contacts",
     label: "Contacts",
+    requires: "view_contacts",
     children: [
-      { href: "/contacts", label: "Buyers" },
+      { href: "/contacts",  label: "Buyers" },
       { href: "/companies", label: "Sellers" },
-      { href: "/bird-dogs", label: "Bird dogs" },
     ],
   },
-  { href: "/tasks", label: "Tasks" },
-  { href: "/issues", label: "Issues" },
-  { href: "/trash", label: "Trash", requires: "view_trash" },
+  { href: "/bird-dogs",    label: "Bird Dogs",        requires: "view_bird_dogs_directory" },
+  // Park Performance is renamed from Insights and gated to roles that
+  // explicitly grant view_revenue (Reza/Marco/Kevin by default; Erica
+  // intentionally not).
+  { href: "/admin/revenue", label: "Park Performance", requires: "view_revenue" },
+  { href: "/trash",         label: "Trash",            requires: "view_trash" },
 ];
 
 const ADMIN_GROUPS: NavItem[] = [
   {
-    href: "/admin/revenue",
-    label: "Insights",
-    requires: "view_revenue",
-    children: [{ href: "/admin/revenue", label: "Revenue", requires: "view_revenue" }],
-  },
-  {
-    href: "/settings/roles",
-    label: "Settings",
-    requires: "manage_roles",
+    href: "/settings/users",
+    label: "Admin",
+    requires: "manage_users",
     children: [
+      { href: "/settings/users", label: "Team & roles" },
       { href: "/settings/roles", label: "Role permissions", requires: "manage_roles" },
-      { href: "/settings/users", label: "Team & roles", requires: "manage_users" },
-      { href: "/settings/audit", label: "Audit log", requires: "manage_users" },
+      { href: "/settings/audit", label: "Audit log" },
     ],
   },
 ];

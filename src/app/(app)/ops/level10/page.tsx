@@ -3,30 +3,153 @@
  * Six sections with EOS time budgets. Issues section embeds /issues by link.
  */
 import Link from "next/link";
+import { and, eq, gte, inArray, isNull, sql } from "drizzle-orm";
+import { db } from "@/db";
+import { birdDogs, deals } from "@/db/schema";
 import { getOpsBlocks } from "@/lib/ops-content";
 import { OpsHeader, StatusPill } from "../ops-primitives";
 import { EditableBlock } from "@/components/editable-block";
 
+const DAY_MS = 24 * 60 * 60 * 1000;
+
+/**
+ * Status-code mapping for the scorecard, based on Reza's L10 spec.
+ *
+ *   - Active bird dogs:        bird_dogs with status_code = "active"
+ *   - Total new leads:         deals created within window (week here)
+ *   - Qualified leads:         deals that reached negotiation, doc-
+ *                              gathering, or any stage past that — i.e.
+ *                              didn't get drip'd or kicked back to BD
+ *   - LOIs submitted (total):  deals at LOI stage or beyond
+ *   - PSAs signed (month):     deals updated to psa_accepted this month
+ *   - In progress (PSAs):      tc_writing_psa | tc_psa_submitted | psa_accepted
+ *   - Dispo:                   dm_dispo_initiated
+ *   - DD:                      tc_dd_in_escrow | dd_completed_in_escrow
+ */
+const QUALIFIED_OR_BEYOND = [
+  "closer_under_negotiation", "closer_gathering_docs",
+  "uw_ready_phase_2", "uw_under_phase_2",
+  "loi_ready", "loi_submitted", "loi_in_negotiation",
+  "loi_signed_by_seller", "loi_accepted_both_sides",
+  "tc_writing_psa", "tc_psa_submitted",
+  "psa_accepted", "dm_dispo_initiated",
+  "tc_dd_in_escrow", "dd_completed_in_escrow",
+  "closed_rvx_acquired", "closed_rvx_network",
+];
+
+const LOI_OR_BEYOND = [
+  "loi_submitted", "loi_in_negotiation",
+  "loi_signed_by_seller", "loi_accepted_both_sides",
+  "tc_writing_psa", "tc_psa_submitted",
+  "psa_accepted", "dm_dispo_initiated",
+  "tc_dd_in_escrow", "dd_completed_in_escrow",
+  "closed_rvx_acquired", "closed_rvx_network",
+];
+
+const IN_PROGRESS_PSAS  = ["tc_writing_psa", "tc_psa_submitted", "psa_accepted"];
+const IN_DD             = ["tc_dd_in_escrow", "dd_completed_in_escrow"];
+const CLOSED_RVX        = ["closed_rvx_acquired", "closed_rvx_network"];
+
+type Tone = "on_track" | "off_track" | "behind" | "ahead";
+
+/** Compare actual against target to derive the status pill tone. */
+function toneFor(actual: number, target: number): Tone {
+  if (target <= 0) return "on_track";
+  const pct = actual / target;
+  if (pct >= 1) return "on_track";
+  if (pct >= 0.8) return "behind";
+  return "off_track";
+}
+
 const REVALIDATE = "/ops/level10";
 
-// Order matches the L10 scorecard you dictated — bird-dog pulse at the
-// top, then lead funnel, then conversion math, then deal-stage counts.
-//   - "Qualified leads submitted" = leads that advanced past first
-//     intake into stage progression. Drips + bird-dog kickbacks don't
-//     count toward this number.
-//   - "LOIs submitted" = TOTAL, not this-week.
-//   - "Signed PSAs" = this-month cadence.
-const SCORECARD_DEFAULTS: Array<{ metric: string; target: string; actual: string; status: "on_track" | "off_track" | "behind" | "ahead" }> = [
-  { metric: "Active bird dogs",                          target: "10",   actual: "6",   status: "off_track" },
-  { metric: "Total new leads submitted",                 target: "50",   actual: "42",  status: "behind"    },
-  { metric: "Qualified leads submitted",                 target: "20",   actual: "14",  status: "behind"    },
-  { metric: "Close rate",                                target: "25%",  actual: "22%", status: "behind"    },
-  { metric: "LOIs submitted (total)",                    target: "15",   actual: "11",  status: "behind"    },
-  { metric: "Signed PSAs (this month)",                  target: "3",    actual: "2",   status: "behind"    },
-  { metric: "Deals in progress (assigned PSAs)",         target: "8",    actual: "6",   status: "behind"    },
-  { metric: "Deals in dispo",                            target: "4",    actual: "3",   status: "behind"    },
-  { metric: "Deals in due diligence",                    target: "3",    actual: "2",   status: "behind"    },
+// Default metric NAMES + TARGETS (both still click-to-edit per L10).
+// Actuals are computed live from the CRM — see the queries in
+// computeScorecardActuals() below.
+const SCORECARD_METRICS: Array<{
+  metric: string;
+  target: number;
+  /** How to display the target: "n" | "pct" | "$" */
+  format: "n" | "pct";
+}> = [
+  { metric: "Active bird dogs",                  target: 10, format: "n"   },
+  { metric: "Total new leads submitted (week)",  target: 50, format: "n"   },
+  { metric: "Qualified leads submitted (total)", target: 20, format: "n"   },
+  { metric: "Close rate",                        target: 25, format: "pct" },
+  { metric: "LOIs submitted (total)",            target: 15, format: "n"   },
+  { metric: "Signed PSAs (this month)",          target:  3, format: "n"   },
+  { metric: "Deals in progress (assigned PSAs)", target:  8, format: "n"   },
+  { metric: "Deals in dispo",                    target:  4, format: "n"   },
+  { metric: "Deals in due diligence",            target:  3, format: "n"   },
 ];
+
+async function computeScorecardActuals(): Promise<number[]> {
+  const now = new Date();
+  const weekAgo = new Date(now.getTime() - 7 * DAY_MS);
+  const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+
+  // Inline COUNT(*) helper — drizzle returns rows so we destructure.
+  const count = async (where: ReturnType<typeof and> | undefined): Promise<number> => {
+    const [row] = await db
+      .select({ c: sql<number>`COUNT(*)::int` })
+      .from(deals)
+      .where(where);
+    return row?.c ?? 0;
+  };
+
+  const [
+    activeBd,
+    newLeadsWeek,
+    qualifiedTotal,
+    loisTotal,
+    psasMonth,
+    inProgress,
+    inDispo,
+    inDd,
+    closedRvxTotal,
+  ] = await Promise.all([
+    // Bird dogs flagged "active" by lookup status code
+    db.select({ c: sql<number>`COUNT(*)::int` }).from(birdDogs)
+      .where(and(isNull(birdDogs.deletedAt), eq(birdDogs.statusCode, "active")))
+      .then((r) => r[0]?.c ?? 0),
+    count(and(isNull(deals.deletedAt), gte(deals.createdAt, weekAgo))),
+    count(and(isNull(deals.deletedAt), inArray(deals.statusCode, QUALIFIED_OR_BEYOND))),
+    count(and(isNull(deals.deletedAt), inArray(deals.statusCode, LOI_OR_BEYOND))),
+    // PSAs signed this month: status flipped to psa_accepted with updatedAt in month
+    count(and(
+      isNull(deals.deletedAt),
+      eq(deals.statusCode, "psa_accepted"),
+      gte(deals.updatedAt, monthStart),
+    )),
+    count(and(isNull(deals.deletedAt), inArray(deals.statusCode, IN_PROGRESS_PSAS))),
+    count(and(isNull(deals.deletedAt), eq(deals.statusCode, "dm_dispo_initiated"))),
+    count(and(isNull(deals.deletedAt), inArray(deals.statusCode, IN_DD))),
+    count(and(isNull(deals.deletedAt), inArray(deals.statusCode, CLOSED_RVX))),
+  ]);
+
+  // Close rate = closed / (closed + qualified currently in pipeline). Crude
+  // first pass — tune with you once we have meaningful volume.
+  const closeRate = qualifiedTotal + closedRvxTotal > 0
+    ? Math.round((closedRvxTotal / (qualifiedTotal + closedRvxTotal)) * 100)
+    : 0;
+
+  return [
+    activeBd,
+    newLeadsWeek,
+    qualifiedTotal,
+    closeRate,
+    loisTotal,
+    psasMonth,
+    inProgress,
+    inDispo,
+    inDd,
+  ];
+}
+
+function formatVal(n: number, fmt: "n" | "pct"): string {
+  if (fmt === "pct") return `${n}%`;
+  return String(n);
+}
 
 const ROCKS_DEFAULTS = [
   { title: "Brokerage flywheel documented", owner: "Reza / Q4",       progress: 40, status: "on_track" as const },
@@ -36,7 +159,10 @@ const ROCKS_DEFAULTS = [
 ];
 
 export default async function Level10Page() {
-  const blocks = await getOpsBlocks("level10.");
+  const [blocks, actuals] = await Promise.all([
+    getOpsBlocks("level10."),
+    computeScorecardActuals(),
+  ]);
 
   return (
     <>
@@ -75,22 +201,25 @@ export default async function Level10Page() {
               </tr>
             </thead>
             <tbody>
-              {SCORECARD_DEFAULTS.map((m, i) => {
+              {SCORECARD_METRICS.map((m, i) => {
                 const metricScope = `level10.scorecard.${i}.metric`;
                 const targetScope = `level10.scorecard.${i}.target`;
-                const actualScope = `level10.scorecard.${i}.actual`;
+                const targetStr = blocks.get(targetScope) ?? formatVal(m.target, m.format);
+                const targetNum = parseFloat(targetStr.replace(/[^\d.]/g, "")) || m.target;
+                const actualNum = actuals[i] ?? 0;
+                const tone = toneFor(actualNum, targetNum);
                 return (
                   <tr key={i} className="border-t border-border">
                     <td className="px-3 py-2.5">
                       <EditableBlock scope={metricScope} initial={blocks.get(metricScope) ?? m.metric} revalidate={REVALIDATE} />
                     </td>
                     <td className="px-3 py-2.5">
-                      <EditableBlock scope={targetScope} initial={blocks.get(targetScope) ?? m.target} revalidate={REVALIDATE} className="tabular-nums" />
+                      <EditableBlock scope={targetScope} initial={targetStr} revalidate={REVALIDATE} className="tabular-nums" />
                     </td>
-                    <td className="px-3 py-2.5">
-                      <EditableBlock scope={actualScope} initial={blocks.get(actualScope) ?? m.actual} revalidate={REVALIDATE} className="tabular-nums" />
+                    <td className="px-3 py-2.5 tabular-nums font-medium" title="Live from CRM data">
+                      {formatVal(actualNum, m.format)}
                     </td>
-                    <td className="px-3 py-2.5"><StatusPill tone={m.status}>{labelStatus(m.status)}</StatusPill></td>
+                    <td className="px-3 py-2.5"><StatusPill tone={tone}>{labelStatus(tone)}</StatusPill></td>
                   </tr>
                 );
               })}

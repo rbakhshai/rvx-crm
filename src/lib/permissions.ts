@@ -73,7 +73,17 @@ export type PermissionKey =
   | "view_trash" | "restore_from_trash" | "purge_permanently"
   | "view_revenue" | "view_pipeline_value"
   | "dispo_to_buyers" | "use_triage_cockpit"
-  | "manage_users" | "manage_roles";
+  | "manage_users" | "manage_roles"
+  // Per-tab visibility — every left-sidebar entry has a key here so admins
+  // can toggle which roles see which tabs from /settings/roles.
+  | "view_mission_control"
+  | "view_dashboard"
+  | "view_today"
+  | "view_tasks"
+  | "view_issues"
+  | "view_pipeline"
+  | "view_contacts"
+  | "view_bird_dogs_directory";
 
 export type PermissionGroup = {
   label: string;
@@ -131,8 +141,21 @@ export const PERMISSION_GROUPS: ReadonlyArray<PermissionGroup> = [
   {
     label: "Money / Sensitive",
     permissions: [
-      { key: "view_revenue", label: "See revenue dashboard", description: "Stripe revenue on /admin/revenue" },
+      { key: "view_revenue", label: "See Park Performance", description: "Owned-park revenue + ROI dashboard" },
       { key: "view_pipeline_value", label: "See pipeline value", description: "Dollar totals across deals" },
+    ],
+  },
+  {
+    label: "Sidebar Tabs",
+    permissions: [
+      { key: "view_mission_control", label: "See Mission Control", description: "/mission-control top-level tab" },
+      { key: "view_dashboard", label: "See Dashboard", description: "/dashboard per-role dashboard" },
+      { key: "view_today", label: "See Today", description: "/today daily driver" },
+      { key: "view_tasks", label: "See Tasks", description: "/tasks queue" },
+      { key: "view_issues", label: "See Issues", description: "/issues IDS board" },
+      { key: "view_pipeline", label: "See Pipeline", description: "/triage, /deals, /deals/board" },
+      { key: "view_contacts", label: "See Contacts", description: "Buyers + Sellers tabs" },
+      { key: "view_bird_dogs_directory", label: "See Bird Dogs", description: "/bird-dogs roster top-level tab" },
     ],
   },
   {
@@ -163,10 +186,28 @@ function grant(...keys: PermissionKey[]): Record<PermissionKey, boolean> {
 /** Admin gets everything; explicit so the registry doc reads cleanly. */
 const ALL: Record<PermissionKey, boolean> = grant(...ALL_PERMISSION_KEYS);
 
+/**
+ * Standard nav-tab visibility for any internal CRM user. Every role
+ * starts with these; an admin can revoke per-role from /settings/roles.
+ * Park Performance (view_revenue) is intentionally OUT so it stays
+ * gated to roles that explicitly grant it.
+ */
+const STANDARD_NAV: PermissionKey[] = [
+  "view_mission_control",
+  "view_dashboard",
+  "view_today",
+  "view_tasks",
+  "view_issues",
+  "view_pipeline",
+  "view_contacts",
+  "view_bird_dogs_directory",
+];
+
 export const DEFAULT_PERMISSIONS: Record<Role, Record<PermissionKey, boolean>> = {
   admin: ALL,
 
   acquisitions_manager: grant(
+    ...STANDARD_NAV,
     "create_deals", "edit_deals",
     "create_contacts", "edit_contacts",
     "create_companies", "edit_companies",
@@ -175,15 +216,21 @@ export const DEFAULT_PERMISSIONS: Record<Role, Record<PermissionKey, boolean>> =
     "view_pipeline_value",
   ),
 
+  // Closer gets Park Performance — Marco needs to see what owned-park
+  // revenue is contributing while he's working live deals.
   closer: grant(
+    ...STANDARD_NAV,
     "create_deals", "edit_deals",
     "create_contacts", "edit_contacts",
     "edit_companies",
     "use_triage_cockpit", "dispo_to_buyers",
     "view_pipeline_value",
+    "view_revenue",
   ),
 
+  // COO (Erica) intentionally does NOT see Park Performance.
   bird_dog_manager: grant(
+    ...STANDARD_NAV,
     "create_deals", "edit_deals",
     "create_contacts", "edit_contacts",
     "create_bird_dogs", "edit_bird_dogs",
@@ -191,29 +238,35 @@ export const DEFAULT_PERMISSIONS: Record<Role, Record<PermissionKey, boolean>> =
   ),
 
   transaction_coord: grant(
+    ...STANDARD_NAV,
     "edit_deals",
     "edit_contacts", "edit_companies",
     "view_pipeline_value",
   ),
 
   underwriter: grant(
+    ...STANDARD_NAV,
     "edit_deals",
     "view_pipeline_value",
   ),
 
   dispo_manager: grant(
+    ...STANDARD_NAV,
     "edit_deals",
     "edit_contacts",
     "dispo_to_buyers",
     "view_pipeline_value",
   ),
 
+  // CFO (Kevin) sees Park Performance.
   cfo: grant(
+    ...STANDARD_NAV,
     "view_pipeline_value",
     "view_revenue",
   ),
 
   due_diligence: grant(
+    ...STANDARD_NAV,
     "edit_deals",
     "view_pipeline_value",
   ),
@@ -228,18 +281,21 @@ export const DEFAULT_PERMISSIONS: Record<Role, Record<PermissionKey, boolean>> =
   // Bird-dog tier seats. Starter grants mirror COO (bird_dog_manager) so
   // the new accounts are functional out of the box; tune via /settings/roles.
   bd_level_1: grant(
+    ...STANDARD_NAV,
     "create_deals", "edit_deals",
     "create_contacts", "edit_contacts",
     "create_bird_dogs", "edit_bird_dogs",
     "view_pipeline_value",
   ),
   bd_level_2: grant(
+    ...STANDARD_NAV,
     "edit_deals",
     "edit_contacts",
     "create_bird_dogs", "edit_bird_dogs",
     "view_pipeline_value",
   ),
   bd_level_3: grant(
+    ...STANDARD_NAV,
     "edit_contacts",
     "edit_bird_dogs",
     "view_pipeline_value",
