@@ -14,9 +14,12 @@ export function ResetPasswordButton({ userId, userName }: { userId: string; user
         if (!confirm(`Generate a new temp password for "${userName}"? Their current password will stop working.`)) return;
         startTransition(async () => {
           try {
-            const { tempPassword, email } = await resetUserPasswordAction(userId);
-            toast.success(`Password reset for ${userName}`, {
-              description: `Share with them: ${email} / ${tempPassword}`,
+            const { tempPassword, email, emailStatus } = await resetUserPasswordAction(userId);
+            const sent = emailStatus === "sent";
+            toast.success(sent ? `Reset email sent to ${userName}` : `Password reset for ${userName}`, {
+              description: sent
+                ? `New temp password emailed. Share again if needed: ${tempPassword}`
+                : `Share manually: ${email} / ${tempPassword}`,
               duration: 60_000,
               action: {
                 label: "Copy",

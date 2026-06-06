@@ -5,6 +5,8 @@ export const notificationKind = pgEnum("notification_kind", [
   "deal_status_changed",
   "new_lead",
   "bird_dog_application",
+  "team_invite",
+  "password_reset",
 ]);
 
 export const notificationStatus = pgEnum("notification_status", [

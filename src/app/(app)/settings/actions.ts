@@ -8,6 +8,8 @@ import { rolePermissions, user as userTable, account as accountTable } from "@/d
 import { auth } from "@/lib/auth";
 import { requirePermission } from "@/lib/has-permission";
 import { AUDIT_ACTIONS, recordAudit } from "@/lib/audit";
+import { sendNotification } from "@/lib/email";
+import { teamInviteEmail, passwordResetEmail } from "@/lib/email-templates";
 import {
   DEFAULT_PERMISSIONS,
   ROLES,
@@ -165,7 +167,7 @@ function generateTempPassword(): string {
  *
  * Phase B will swap this for a real Resend invite email.
  */
-export async function inviteUserAction(formData: FormData): Promise<{ tempPassword: string; email: string; name: string }> {
+export async function inviteUserAction(formData: FormData): Promise<{ tempPassword: string; email: string; name: string; emailStatus: "sent" | "logged_only" | "failed" }> {
   const actor = await requireAdmin();
   await requirePermission(actor, "manage_users");
 
@@ -208,8 +210,24 @@ export async function inviteUserAction(formData: FormData): Promise<{ tempPasswo
     meta: { email, role },
   });
 
+  // Fire the invite email (no-op if no provider configured; the admin will
+  // still see the temp password in the toast as a manual fallback).
+  const tmpl = teamInviteEmail({
+    name,
+    email,
+    tempPassword,
+    inviterName: actor.name ?? "An admin",
+  });
+  const send = await sendNotification({
+    kind: "team_invite",
+    to: email,
+    subject: tmpl.subject,
+    bodyMd: tmpl.bodyMd,
+    payload: { userId, role, inviterId: actor.id },
+  });
+
   revalidatePath("/settings/users");
-  return { tempPassword, email, name };
+  return { tempPassword, email, name, emailStatus: send.status };
 }
 
 /**
@@ -217,7 +235,7 @@ export async function inviteUserAction(formData: FormData): Promise<{ tempPasswo
  * member forgets their password — admin clicks "Reset password" and shares
  * the new temp password with them.
  */
-export async function resetUserPasswordAction(userId: string): Promise<{ tempPassword: string; name: string; email: string }> {
+export async function resetUserPasswordAction(userId: string): Promise<{ tempPassword: string; name: string; email: string; emailStatus: "sent" | "logged_only" | "failed" }> {
   const actor = await requireAdmin();
   await requirePermission(actor, "manage_users");
 
@@ -241,8 +259,22 @@ export async function resetUserPasswordAction(userId: string): Promise<{ tempPas
     target: { kind: "user", id: userId, label: target.name ?? target.email },
   });
 
+  const tmpl = passwordResetEmail({
+    name: target.name,
+    email: target.email,
+    tempPassword,
+    resetterName: actor.name ?? "An admin",
+  });
+  const send = await sendNotification({
+    kind: "password_reset",
+    to: target.email,
+    subject: tmpl.subject,
+    bodyMd: tmpl.bodyMd,
+    payload: { userId, resetterId: actor.id },
+  });
+
   revalidatePath("/settings/users");
-  return { tempPassword, name: target.name, email: target.email };
+  return { tempPassword, name: target.name, email: target.email, emailStatus: send.status };
 }
 
 export async function setUserSuspendedAction(userId: string, suspend: boolean): Promise<void> {

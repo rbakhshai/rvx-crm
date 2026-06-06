@@ -18,10 +18,13 @@ export function InviteUserForm() {
   function handleSubmit(formData: FormData) {
     startTransition(async () => {
       try {
-        const { tempPassword, email, name } = await inviteUserAction(formData);
-        toast.success(`Invited ${name}`, {
-          description: `Send them: ${email} / ${tempPassword}`,
-          duration: 60_000, // keep on screen for a minute
+        const { tempPassword, email, name, emailStatus } = await inviteUserAction(formData);
+        const sent = emailStatus === "sent";
+        toast.success(sent ? `Invite emailed to ${name}` : `${name} created`, {
+          description: sent
+            ? `${name} just got an invite email at ${email}. Temp password: ${tempPassword}`
+            : `Email not sent (no provider configured). Share manually: ${email} / ${tempPassword}`,
+          duration: 60_000,
           action: {
             label: copied ? "Copied!" : "Copy login",
             onClick: () => {
