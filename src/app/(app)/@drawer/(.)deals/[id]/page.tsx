@@ -11,6 +11,11 @@ import { notFound } from "next/navigation";
 import Link from "next/link";
 import { headers } from "next/headers";
 import { eq, asc, inArray } from "drizzle-orm";
+import { HardRedirect } from "@/components/hard-redirect";
+
+// Sub-routes that look like an [id] but are actually static pages —
+// the intercept must bail out so the real route can render.
+const RESERVED_SUB_ROUTES = new Set(["board", "new"]);
 import { db } from "@/db";
 import { deals, dealStatuses, contacts, companies, birdDogs, user } from "@/db/schema";
 import { auth } from "@/lib/auth";
@@ -49,6 +54,12 @@ function Field({ label, value }: { label: string; value: React.ReactNode }) {
 
 export default async function DealDrawerPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
+  // /deals/board and /deals/new look like dynamic [id] paths and the
+  // intercept caught them by mistake. Force a hard browser navigation so
+  // the real /deals/board page loads outside the intercept.
+  if (RESERVED_SUB_ROUTES.has(id)) {
+    return <HardRedirect to={`/deals/${id}`} />;
+  }
   const [deal] = await db.select().from(deals).where(eq(deals.id, id)).limit(1);
   if (!deal) notFound();
 

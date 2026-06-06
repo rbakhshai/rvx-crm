@@ -1,6 +1,9 @@
 import { notFound } from "next/navigation";
 import { headers } from "next/headers";
 import { eq } from "drizzle-orm";
+import { HardRedirect } from "@/components/hard-redirect";
+
+const RESERVED_SUB_ROUTES = new Set(["new"]);
 import { db } from "@/db";
 import { companies, user } from "@/db/schema";
 import { auth } from "@/lib/auth";
@@ -30,6 +33,9 @@ function Field({ label, value }: { label: string; value: React.ReactNode }) {
 
 export default async function CompanyDrawerPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
+  if (RESERVED_SUB_ROUTES.has(id)) {
+    return <HardRedirect to={`/companies/${id}`} />;
+  }
   const [company] = await db.select().from(companies).where(eq(companies.id, id)).limit(1);
   if (!company) notFound();
 
