@@ -221,7 +221,7 @@ const PROFILE_OVERRIDES: Record<
 > = {
   reza:  { title: "Cofounder / CEO", avatarBg: "bg-foreground", avatarText: "text-background" },
   erica: { title: "COS / Admin",     avatarBg: "bg-pink-400",   avatarText: "text-white" },
-  marco: { title: "COO",             avatarBg: "bg-violet-800", avatarText: "text-white" },
+  marco: { title: "COO",             avatarBg: "bg-emerald-600", avatarText: "text-white" },
   kerry: { title: "Due Diligence",   avatarBg: "bg-amber-800",  avatarText: "text-white" },
   kevin: { title: "CFO",             avatarBg: "bg-blue-500",   avatarText: "text-white" },
 };
