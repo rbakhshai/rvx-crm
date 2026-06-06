@@ -39,16 +39,18 @@ export function FocusBriefLine({ brief }: { brief: { contentMd: string; createdA
   );
 }
 
-type TabSpec = { key: "mentions" | "tasks" | "atrisk"; label: string; count: number };
+type TabKey = "mentions" | "tasks" | "atrisk";
+type TabSpec = { key: TabKey; label: string; count: number; content: React.ReactNode };
 
-export function MockTabs({
-  tabs,
-  children,
-}: {
-  tabs: TabSpec[];
-  children: (active: TabSpec["key"]) => React.ReactNode;
-}) {
-  const [active, setActive] = useState<TabSpec["key"]>(tabs[0]?.key ?? "mentions");
+/**
+ * MockTabs takes the per-tab content as serializable ReactNodes (NOT a
+ * render-prop function). This matters because the parent is a Server
+ * Component — RSC can pass serialized JSX across the server/client
+ * boundary, but not function values.
+ */
+export function MockTabs({ tabs }: { tabs: TabSpec[] }) {
+  const [active, setActive] = useState<TabKey>(tabs[0]?.key ?? "mentions");
+  const activeTab = tabs.find((t) => t.key === active) ?? tabs[0];
 
   return (
     <section className="rounded-xl border border-border bg-background">
@@ -80,7 +82,7 @@ export function MockTabs({
           );
         })}
       </header>
-      <div className="px-4 py-3">{children(active)}</div>
+      <div className="px-4 py-3">{activeTab?.content ?? null}</div>
     </section>
   );
 }

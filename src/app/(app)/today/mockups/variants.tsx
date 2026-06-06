@@ -129,21 +129,21 @@ function GreetingRow({ name }: { name: string | null }) {
 // ============================================================================
 
 export function FocusVariant(p: CommonProps) {
-  const tabs: Array<{ key: "mentions" | "tasks" | "atrisk"; label: string; count: number; content: ReactNode }> = [
+  const tabs = [
     {
-      key: "mentions",
+      key: "mentions" as const,
       label: "Mentions",
       count: p.mentions.length,
       content: <MentionsWidget mentions={p.mentions} variant="compact" />,
     },
     {
-      key: "tasks",
+      key: "tasks" as const,
       label: "Tasks",
       count: p.tasks.length,
       content: <TasksList tasks={p.tasks} />,
     },
     {
-      key: "atrisk",
+      key: "atrisk" as const,
       label: "At-risk",
       count: p.atRisk.length,
       content: <AtRiskWidget risks={p.atRisk} />,
@@ -160,9 +160,7 @@ export function FocusVariant(p: CommonProps) {
       </div>
 
       <div className="mt-2">
-        <MockTabs tabs={tabs.map((t) => ({ key: t.key, label: t.label, count: t.count }))}>
-          {(activeKey) => tabs.find((t) => t.key === activeKey)?.content ?? null}
-        </MockTabs>
+        <MockTabs tabs={tabs} />
       </div>
     </div>
   );
