@@ -108,11 +108,11 @@ export function DataTable<T extends { id: string }>({
             ));
             return rowHref ? (
               <tr key={row.id} className="border-t border-border hover:bg-foreground/[0.02] cursor-pointer">
-                {columns.map((col, i) => (
+                {columns.map((col) => (
                   <td key={col.key} className={cn("p-0 align-middle", col.className)}>
                     <Link
                       href={rowHref(row) as never}
-                      className={cn("block px-3.5 py-2.5", i === 0 && "font-medium")}
+                      className="block px-3.5 py-2.5"
                     >
                       {col.render(row)}
                     </Link>

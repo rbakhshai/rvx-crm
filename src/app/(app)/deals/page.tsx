@@ -34,6 +34,7 @@ const columns: Column<Row>[] = [
     key: "name",
     header: "Deal",
     sortKey: "name",
+    className: "font-medium",
     render: (r) => r.name ?? r.parkAddress ?? "(unnamed deal)",
   },
   { key: "state", header: "State", sortKey: "state", render: (r) => r.parkState ?? <span className="text-muted">—</span> },

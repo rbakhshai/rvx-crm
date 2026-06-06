@@ -30,11 +30,11 @@ const columns: Column<Row>[] = [
     key: "created",
     header: "Added",
     sortKey: "created",
-    className: "w-24 text-muted tabular-nums",
+    className: "w-28 text-muted tabular-nums whitespace-nowrap",
     render: (r) => <span title={r.createdAt.toLocaleString()}>{fmtDate(r.createdAt)}</span>,
   },
   { key: "fresh", header: "", className: "w-6", render: (r) => <StaleDot since={r.updatedAt} /> },
-  { key: "name", header: "Name", sortKey: "name", render: (r) => r.name },
+  { key: "name", header: "Name", sortKey: "name", className: "font-medium", render: (r) => r.name },
   {
     key: "relationship",
     header: "Relationship",
