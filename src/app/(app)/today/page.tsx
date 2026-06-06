@@ -31,6 +31,8 @@ import { DailyBrief } from "@/components/daily-brief";
 import { getOrCreateDailyBrief } from "@/app/actions/daily-brief";
 import { AtRiskWidget } from "@/components/at-risk-widget";
 import { detectAtRiskForUser } from "@/lib/at-risk";
+import { DoNextStack } from "@/components/do-next-stack";
+import { getDoNextItems } from "@/lib/do-next";
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 
@@ -89,6 +91,7 @@ export default async function TodayPage() {
     activity,
     brief,
     atRisk,
+    doNext,
   ] = await Promise.all([
     // 1) My open tasks (top 12, soonest due first, NULLs last)
     db
@@ -148,6 +151,7 @@ export default async function TodayPage() {
     fetchRecentActivity(20),
     getOrCreateDailyBrief(me),
     detectAtRiskForUser(me),
+    getDoNextItems(me, 5),
   ]);
 
   const statusLabel = new Map(statusRows.map((s) => [s.code, s.label]));
@@ -189,8 +193,9 @@ export default async function TodayPage() {
 
       {/* ===== Main 3-column grid ===== */}
       <div className="grid lg:grid-cols-12 gap-4">
-        {/* Left col: at-risk + my tasks — primary */}
+        {/* Left col: Do Next stack + at-risk + my tasks — primary */}
         <div className="lg:col-span-5 space-y-4">
+          <DoNextStack items={doNext} />
           <AtRiskWidget risks={atRisk} />
           <Widget
             title="My tasks"
