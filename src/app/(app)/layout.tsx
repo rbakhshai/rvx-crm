@@ -12,7 +12,12 @@ import { CommandPaletteTrigger } from "@/components/command-palette-trigger";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { getPermissionsFor } from "@/lib/has-permission";
 
-export default async function AppLayout({ children }: { children: React.ReactNode }) {
+export default async function AppLayout(props: {
+  children: React.ReactNode;
+  /** Parallel slot for intercepted-route drawers (e.g. clicking a deal row). */
+  drawer?: React.ReactNode;
+}) {
+  const { children, drawer } = props;
   const session = await auth.api.getSession({ headers: await headers() });
   if (!session) redirect("/login");
   const role = (session.user as { role?: string }).role;
@@ -77,6 +82,8 @@ export default async function AppLayout({ children }: { children: React.ReactNod
         </header>
         <main className="flex-1 min-w-0">{children}</main>
       </div>
+      {/* Intercepted-route drawer (slot is empty unless an entity row was clicked) */}
+      {drawer}
       <CommandPalette />
     </div>
   );
