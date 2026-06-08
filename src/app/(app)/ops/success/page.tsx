@@ -63,9 +63,30 @@ export default async function SuccessPage() {
       <SectionLabel tone="lime">This Quarter</SectionLabel>
       <AccentCard accent="lime" className="p-5 mb-10">
         <div className="grid sm:grid-cols-3 gap-3">
-          <Stat label="Closed deals" scope="success.stat.closed.value" defaultValue="3" blocks={blocks} sub="(target: 6)" />
-          <Stat label="Buyer-side commissions" scope="success.stat.commissions.value" defaultValue="$240K" blocks={blocks} sub="(target: $500K)" />
-          <Stat label="Avg. days to close" scope="success.stat.days.value" defaultValue="73" blocks={blocks} sub="(target: 60)" />
+          <Stat
+            label="Closed deals"
+            scope="success.stat.closed.value"
+            defaultValue="3"
+            targetScope="success.stat.closed.target"
+            defaultTarget="6"
+            blocks={blocks}
+          />
+          <Stat
+            label="Buyer-side commissions"
+            scope="success.stat.commissions.value"
+            defaultValue="$240K"
+            targetScope="success.stat.commissions.target"
+            defaultTarget="$500K"
+            blocks={blocks}
+          />
+          <Stat
+            label="Avg. days to close"
+            scope="success.stat.days.value"
+            defaultValue="73"
+            targetScope="success.stat.days.target"
+            defaultTarget="60"
+            blocks={blocks}
+          />
         </div>
       </AccentCard>
 
@@ -166,13 +187,16 @@ function Stat({
   label,
   scope,
   defaultValue,
-  sub,
+  targetScope,
+  defaultTarget,
   blocks,
 }: {
   label: string;
   scope: string;
   defaultValue: string;
-  sub: string;
+  /** ops_content scope for the editable target string under the big number. */
+  targetScope: string;
+  defaultTarget: string;
   blocks: Map<string, string>;
 }) {
   return (
@@ -181,7 +205,16 @@ function Stat({
       <div className="text-3xl font-bold tabular-nums">
         <EditableBlock scope={scope} initial={blocks.get(scope) ?? defaultValue} revalidate="/ops/success" />
       </div>
-      <div className="text-[11px] text-muted mt-1">{sub}</div>
+      <div className="text-[11px] text-muted mt-1 inline-flex items-baseline gap-1">
+        <span>(target:</span>
+        <EditableBlock
+          scope={targetScope}
+          initial={blocks.get(targetScope) ?? defaultTarget}
+          revalidate="/ops/success"
+          className="tabular-nums"
+        />
+        <span>)</span>
+      </div>
     </div>
   );
 }
