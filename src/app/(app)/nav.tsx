@@ -84,6 +84,7 @@ const ADMIN_GROUPS: NavItem[] = [
       { href: "/settings/users",    label: "Team & roles" },
       { href: "/settings/roles",    label: "Role permissions", requires: "manage_roles" },
       { href: "/settings/feedback", label: "Feedback queue" },
+      { href: "/admin/leads",       label: "Lead pool" },
       { href: "/settings/audit",    label: "Audit log" },
     ],
   },
