@@ -21,6 +21,28 @@ const PALETTE = [
   "bg-pink-500/90",
 ] as const;
 
+/**
+ * Per-person color overrides keyed by lowercase first name. Mirrors the
+ * Mission Control / Command tab so a teammate's avatar reads the same
+ * everywhere they appear in the CRM (drawer, deal owner badge, mention
+ * chip, etc.). Add one line here to onboard a new teammate's color.
+ *
+ * `text` is included since Reza's bg-foreground inverts in dark mode and
+ * needs explicit text-background. Most others can stay text-white.
+ */
+const NAME_OVERRIDES: Record<string, { bg: string; text: string }> = {
+  reza:  { bg: "bg-foreground",  text: "text-background" },
+  erica: { bg: "bg-pink-400",    text: "text-white" },
+  marco: { bg: "bg-emerald-600", text: "text-white" },
+  kerry: { bg: "bg-amber-800",   text: "text-white" },
+  kevin: { bg: "bg-blue-500",    text: "text-white" },
+};
+
+function nameOverride(name: string | null | undefined): { bg: string; text: string } | null {
+  const first = name?.split(/\s+/)[0]?.toLowerCase() ?? "";
+  return NAME_OVERRIDES[first] ?? null;
+}
+
 function djb2(str: string): number {
   let h = 5381;
   for (let i = 0; i < str.length; i++) h = (h * 33) ^ str.charCodeAt(i);
@@ -60,14 +82,21 @@ export function Avatar({
   title?: string;
   className?: string;
 }) {
+  // Per-person override (Reza/Erica/Marco/Kerry/Kevin) wins over the
+  // hashed palette so the leadership team is visually consistent
+  // everywhere they appear. New team members fall through to the
+  // deterministic palette below.
+  const override = nameOverride(name);
   const key = (id ?? name ?? "").toString();
-  const color = key ? PALETTE[djb2(key) % PALETTE.length] : "bg-foreground/20";
+  const bg = override?.bg ?? (key ? PALETTE[djb2(key) % PALETTE.length] : "bg-foreground/20");
+  const text = override?.text ?? "text-white";
   return (
     <span
       title={title ?? name ?? undefined}
       className={cn(
-        "inline-flex items-center justify-center rounded-full text-white font-semibold select-none shrink-0 ring-1 ring-black/5",
-        color,
+        "inline-flex items-center justify-center rounded-full font-semibold select-none shrink-0 ring-1 ring-black/5",
+        bg,
+        text,
         sizeStyle[size],
         className,
       )}
