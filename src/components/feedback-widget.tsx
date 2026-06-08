@@ -98,9 +98,8 @@ export function FeedbackWidget({
         >
           {thanks ? (
             <div className="px-5 py-8 text-center">
-              <div className="text-3xl mb-2">🎉</div>
-              <p className="text-sm font-semibold">Thanks!</p>
-              <p className="text-xs text-muted mt-1">Reza + Erica will see this in the admin queue.</p>
+              <div className="text-3xl mb-3">🎉</div>
+              <p className="text-sm font-semibold">Thank you, your submission has been received.</p>
             </div>
           ) : (
             <form onSubmit={submit} className="p-4 space-y-3">
