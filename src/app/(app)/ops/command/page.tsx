@@ -8,12 +8,13 @@
 import { headers } from "next/headers";
 import { and, asc, eq, gte, isNull, lte, ne, or, sql } from "drizzle-orm";
 import { db } from "@/db";
-import { tasks, user } from "@/db/schema";
+import { commandRocks, tasks, user } from "@/db/schema";
 import { auth } from "@/lib/auth";
 import { getOpsBlocks } from "@/lib/ops-content";
 import { OpsHeader, AccentCard, TimeToggle, parsePeriod, periodDays } from "../ops-primitives";
 import { EditableBlock } from "@/components/editable-block";
 import { fmtDate } from "@/lib/date-format";
+import { RocksBlock } from "./rocks-block";
 
 const REVALIDATE = "/ops/command";
 const PATHNAME = "/ops/command";
@@ -95,6 +96,21 @@ export default async function CommandPage({
       .orderBy(sql`${tasks.dueAt} ASC NULLS LAST`)
       .limit(5);
     tasksByUser.set(t.id, rows);
+  }
+
+  // Pull command rocks for the active period, grouped by assignee. One
+  // query covers everyone; the JS map below indexes by assignee for
+  // O(1) lookup during render.
+  const allRocks = await db
+    .select()
+    .from(commandRocks)
+    .where(eq(commandRocks.period, period))
+    .orderBy(asc(commandRocks.position), asc(commandRocks.createdAt));
+  const rocksByUser = new Map<string, typeof allRocks>();
+  for (const r of allRocks) {
+    const arr = rocksByUser.get(r.assigneeId) ?? [];
+    arr.push(r);
+    rocksByUser.set(r.assigneeId, arr);
   }
 
   return (
@@ -179,6 +195,20 @@ export default async function CommandPage({
                   </div>
                 </div>
                 <ProgressRing pct={pct} />
+              </div>
+              {/* Per-person rocks for the active period */}
+              <RocksBlock
+                assigneeId={t.id}
+                period={period}
+                initialRocks={(rocksByUser.get(t.id) ?? []).map((r) => ({
+                  id: r.id,
+                  title: r.title,
+                  doneAt: r.doneAt?.toISOString() ?? null,
+                }))}
+              />
+
+              <div className="text-[10px] uppercase tracking-widest text-muted font-semibold mt-3 mb-1.5">
+                Tasks
               </div>
               <ul className="space-y-1.5">
                 {rowTasks.length === 0 && (

@@ -18,3 +18,4 @@ export * from "./ops";
 export * from "./level10";
 export * from "./feedback";
 export * from "./leads";
+export * from "./command-rocks";
