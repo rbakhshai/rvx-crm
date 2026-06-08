@@ -34,6 +34,9 @@ export default async function CommandPage({
 }) {
   const session = await auth.api.getSession({ headers: await headers() });
   if (!session) return null;
+  // Only admins can manage rocks for now (Reza). Everyone else sees them
+  // read-only — matches the server-side gate in the rock action file.
+  const canEditRocks = (session.user as { role?: string }).role === "admin";
 
   const params = await searchParams;
   const period = parsePeriod(params.period);
@@ -205,6 +208,7 @@ export default async function CommandPage({
                   title: r.title,
                   doneAt: r.doneAt?.toISOString() ?? null,
                 }))}
+                canEdit={canEditRocks}
               />
 
               <div className="text-[10px] uppercase tracking-widest text-muted font-semibold mt-3 mb-1.5">

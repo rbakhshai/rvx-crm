@@ -7,9 +7,18 @@ import { db } from "@/db";
 import { commandRocks } from "@/db/schema";
 import { auth } from "@/lib/auth";
 
-async function requireUser() {
+/**
+ * Rock management is locked to the admin role for now (Reza only).
+ * Everyone else sees rocks read-only on the Command tab. To loosen this
+ * later, just expand the role check or move to a real permission key.
+ */
+async function requireRockAdmin() {
   const session = await auth.api.getSession({ headers: await headers() });
   if (!session) throw new Error("Not authenticated");
+  const role = (session.user as { role?: string }).role;
+  if (role !== "admin") {
+    throw new Error("Only admins can manage rocks right now.");
+  }
   return session.user;
 }
 
@@ -21,7 +30,7 @@ export async function addCommandRockAction(
   title: string,
   period: "week" | "month" | "quarter" = "quarter",
 ): Promise<{ ok: boolean; id?: string; error?: string }> {
-  await requireUser();
+  await requireRockAdmin();
   const trimmed = title.trim();
   if (!trimmed) return { ok: false, error: "Title required" };
   if (!VALID_PERIODS.has(period)) return { ok: false, error: "Invalid period" };
@@ -48,7 +57,7 @@ export async function addCommandRockAction(
 
 /** Edit the title of an existing rock. */
 export async function updateCommandRockAction(rockId: string, title: string): Promise<void> {
-  await requireUser();
+  await requireRockAdmin();
   const trimmed = title.trim();
   if (!trimmed) return;
   await db
@@ -60,12 +69,12 @@ export async function updateCommandRockAction(rockId: string, title: string): Pr
 
 /** Toggle a rock done/undone. */
 export async function toggleCommandRockAction(rockId: string, done: boolean): Promise<void> {
-  const user = await requireUser();
+  const u = await requireRockAdmin();
   await db
     .update(commandRocks)
     .set({
       doneAt: done ? new Date() : null,
-      doneById: done ? user.id : null,
+      doneById: done ? u.id : null,
       updatedAt: new Date(),
     })
     .where(eq(commandRocks.id, rockId));
@@ -74,7 +83,7 @@ export async function toggleCommandRockAction(rockId: string, done: boolean): Pr
 
 /** Remove a rock. */
 export async function deleteCommandRockAction(rockId: string): Promise<void> {
-  await requireUser();
+  await requireRockAdmin();
   await db.delete(commandRocks).where(eq(commandRocks.id, rockId));
   revalidatePath("/ops/command");
 }

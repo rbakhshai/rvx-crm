@@ -26,10 +26,13 @@ export function RocksBlock({
   assigneeId,
   period,
   initialRocks,
+  canEdit,
 }: {
   assigneeId: string;
   period: "week" | "month" | "quarter";
   initialRocks: Rock[];
+  /** Only admin can add / edit / toggle / delete rocks right now. */
+  canEdit: boolean;
 }) {
   const router = useRouter();
   const [draft, setDraft] = useState("");
@@ -63,12 +66,14 @@ export function RocksBlock({
       </div>
       <ul className="space-y-1">
         {initialRocks.length === 0 && !showAdd && (
-          <li className="text-[11px] text-muted italic">No rocks yet — click + to add</li>
+          <li className="text-[11px] text-muted italic">
+            {canEdit ? "No rocks yet — click + to add" : "No rocks yet"}
+          </li>
         )}
         {initialRocks.map((r) => (
-          <RockRow key={r.id} rock={r} />
+          <RockRow key={r.id} rock={r} canEdit={canEdit} />
         ))}
-        {showAdd ? (
+        {!canEdit ? null : showAdd ? (
           <li className="flex items-center gap-1.5">
             <input
               type="text"
@@ -115,12 +120,14 @@ export function RocksBlock({
   );
 }
 
-function RockRow({ rock }: { rock: Rock }) {
+function RockRow({ rock, canEdit }: { rock: Rock; canEdit: boolean }) {
   const router = useRouter();
   const [editing, setEditing] = useState(false);
   const [title, setTitle] = useState(rock.title);
   const [isPending, startTransition] = useTransition();
   const done = !!rock.doneAt;
+  // Empty-title rocks render as italic muted placeholders.
+  const isPlaceholder = rock.title.trim().length === 0;
 
   function toggle() {
     startTransition(async () => {
@@ -149,7 +156,7 @@ function RockRow({ rock }: { rock: Rock }) {
     });
   }
 
-  if (editing) {
+  if (editing && canEdit) {
     return (
       <li className="flex items-center gap-1.5">
         <input
@@ -174,33 +181,43 @@ function RockRow({ rock }: { rock: Rock }) {
     <li className={cn("group flex items-start gap-1.5 py-0.5", done && "opacity-60")}>
       <button
         type="button"
-        onClick={toggle}
-        disabled={isPending}
+        onClick={canEdit ? toggle : undefined}
+        disabled={!canEdit || isPending}
         aria-label={done ? "Mark not done" : "Mark done"}
         className={cn(
-          "mt-0.5 size-3.5 shrink-0 rounded border transition disabled:opacity-50",
+          "mt-0.5 size-3.5 shrink-0 rounded border transition",
           done
             ? "bg-lime-500 border-lime-500 text-white"
-            : "border-foreground/30 hover:border-foreground/60",
+            : "border-foreground/30",
+          canEdit && !done && "hover:border-foreground/60",
+          !canEdit && "cursor-default opacity-70",
         )}
       >
         {done ? <span className="block text-[8px] leading-none">✓</span> : null}
       </button>
       <span
-        className={cn("flex-1 text-[12px] leading-snug cursor-text", done && "line-through")}
-        onClick={() => setEditing(true)}
+        className={cn(
+          "flex-1 text-[12px] leading-snug",
+          done && "line-through",
+          isPlaceholder && "italic text-muted",
+          canEdit ? "cursor-text" : "cursor-default",
+        )}
+        onClick={canEdit ? () => setEditing(true) : undefined}
+        title={canEdit ? "Click to edit" : undefined}
       >
-        {rock.title}
+        {isPlaceholder ? (canEdit ? "Click to fill in" : "(empty)") : rock.title}
       </span>
-      <button
-        type="button"
-        onClick={del}
-        disabled={isPending}
-        className="text-[11px] text-muted hover:text-rose-600 opacity-0 group-hover:opacity-100 transition"
-        title="Delete"
-      >
-        ✕
-      </button>
+      {canEdit && (
+        <button
+          type="button"
+          onClick={del}
+          disabled={isPending}
+          className="text-[11px] text-muted hover:text-rose-600 opacity-0 group-hover:opacity-100 transition"
+          title="Delete"
+        >
+          ✕
+        </button>
+      )}
     </li>
   );
 }
