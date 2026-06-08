@@ -51,9 +51,9 @@ export default async function CommandPage({
   const PEOPLE_RANK: Record<string, number> = {
     reza:  1,
     erica: 2,
-    kevin: 3,
-    kerry: 4,
-    marco: 5,
+    marco: 3,
+    kevin: 4,
+    kerry: 5,
   };
   const teammates = [...teammatesRaw].sort((a, b) => {
     const aFirst = a.name.split(/\s+/)[0]?.toLowerCase() ?? "";
@@ -112,7 +112,7 @@ export default async function CommandPage({
       {/* Company Priorities */}
       <AccentCard accent="lime" className="p-5 mb-8">
         <div className="text-[11px] font-semibold uppercase tracking-widest text-lime-700 dark:text-lime-400 mb-3">
-          Company Priorities · This Quarter
+          Company Priorities · {periodLabel(period)}
         </div>
         <div className="grid grid-cols-1 sm:grid-cols-3 lg:grid-cols-5 gap-3">
           {DEFAULT_PRIORITIES.map((d, i) => {
@@ -140,7 +140,9 @@ export default async function CommandPage({
         <TimeToggle pathname={PATHNAME} period={period} />
       </div>
 
-      <div className="text-[11px] uppercase tracking-widest text-muted font-semibold mb-3">People</div>
+      <div className="text-[11px] uppercase tracking-widest text-muted font-semibold mb-3">
+        People · Tasks due this {periodLabel(period).replace("This ", "")}
+      </div>
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
         {teammates.map((t) => {
           const open = counts.get(t.id)?.open ?? 0;
@@ -202,6 +204,11 @@ export default async function CommandPage({
       </div>
     </>
   );
+}
+
+/** Map the URL ?period= value to the human label used in section subtitles. */
+function periodLabel(p: "week" | "month" | "quarter"): string {
+  return p === "week" ? "This Week" : p === "month" ? "This Month" : "This Quarter";
 }
 
 function initials(name: string): string {
