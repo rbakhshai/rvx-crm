@@ -30,7 +30,7 @@ export default function OpsLayout({ children }: { children: React.ReactNode }) {
           <div className="flex items-center justify-between px-8 py-4 border-b border-border">
             <Link href="/ops/command" className="inline-flex items-center gap-2">
               <span className="size-2 rounded-full bg-lime-400" />
-              <span className="text-sm font-semibold tracking-tight">Ops Machine</span>
+              <span className="text-sm font-semibold tracking-tight">RVX Operating System</span>
             </Link>
             <span className="rounded-full bg-foreground/[0.05] text-[10px] uppercase tracking-widest text-muted px-2.5 py-1 font-medium">
               Founder OS
