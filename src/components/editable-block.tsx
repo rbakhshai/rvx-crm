@@ -143,7 +143,7 @@ export function EditableBlock({
         }}
         rows={Math.max(2, value.split("\n").length)}
         className={cn(
-          "w-full resize-y rounded-sm bg-background border border-primary/50 outline-none focus:border-primary text-inherit font-inherit leading-inherit",
+          "w-full resize-y rounded-sm bg-background border border-primary/50 outline-none focus:border-primary text-foreground font-inherit leading-inherit",
           editorPadding,
           className,
         )}
@@ -171,7 +171,7 @@ export function EditableBlock({
         }
       }}
       className={cn(
-        "w-full rounded-sm bg-background border border-primary/50 outline-none focus:border-primary text-inherit font-inherit leading-inherit",
+        "w-full rounded-sm bg-background border border-primary/50 outline-none focus:border-primary text-foreground font-inherit leading-inherit",
         editorPadding,
         className,
       )}

@@ -148,9 +148,9 @@ export default async function VisionPage({
           </p>
         </div>
 
-        {/* Vision callout (dark) */}
+        {/* Vision callout (dark) — gold eyebrow */}
         <div className="rounded-2xl bg-foreground text-background p-6">
-          <div className="text-[10px] uppercase tracking-widest text-lime-400 font-semibold mb-3">
+          <div className="text-[10px] uppercase tracking-widest text-amber-400 font-semibold mb-3">
             The vision
           </div>
           <p className="text-xl font-bold leading-snug">
@@ -174,7 +174,7 @@ export default async function VisionPage({
               const scope = `vision.principle.${i + 1}`;
               return (
                 <li key={i} className="flex items-start gap-3">
-                  <span className="inline-flex shrink-0 size-6 rounded bg-foreground text-background grid place-items-center text-[10px] font-bold tabular-nums">
+                  <span className="grid place-items-center shrink-0 size-6 rounded bg-foreground text-background text-[10px] font-bold tabular-nums leading-none">
                     {String(i + 1).padStart(2, "0")}
                   </span>
                   <p className="text-sm leading-relaxed text-foreground/90 flex-1">
