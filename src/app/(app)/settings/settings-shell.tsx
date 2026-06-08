@@ -2,9 +2,10 @@ import Link from "next/link";
 import { PageShell } from "../page-shell";
 
 const TABS = [
-  { href: "/settings/roles", label: "Role permissions" },
-  { href: "/settings/users", label: "Team & roles" },
-  { href: "/settings/audit", label: "Audit log" },
+  { href: "/settings/roles",    label: "Role permissions" },
+  { href: "/settings/users",    label: "Team & roles" },
+  { href: "/settings/feedback", label: "Feedback queue" },
+  { href: "/settings/audit",    label: "Audit log" },
 ] as const;
 
 export function SettingsShell({
@@ -12,7 +13,7 @@ export function SettingsShell({
   children,
   subtitle,
 }: {
-  active: "/settings/roles" | "/settings/users" | "/settings/audit";
+  active: "/settings/roles" | "/settings/users" | "/settings/audit" | "/settings/feedback";
   subtitle?: string;
   children: React.ReactNode;
 }) {

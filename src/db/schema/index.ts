@@ -16,3 +16,4 @@ export * from "./do-next-skips";
 export * from "./issues";
 export * from "./ops";
 export * from "./level10";
+export * from "./feedback";

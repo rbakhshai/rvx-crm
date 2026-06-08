@@ -13,6 +13,7 @@ import { ThemeToggle } from "@/components/theme-toggle";
 import { MobileNavToggle } from "@/components/mobile-nav";
 import { getPermissionsFor } from "@/lib/has-permission";
 import { ROLES } from "@/lib/permissions";
+import { FeedbackWidget } from "@/components/feedback-widget";
 
 /**
  * Map a DB role value to its display label. Falls back to "—" rather than
@@ -97,6 +98,13 @@ export default async function AppLayout(props: {
       {/* Intercepted-route drawer (slot is empty unless an entity row was clicked) */}
       {drawer}
       <CommandPalette />
+      {/* Floating ? button for in-app feature requests / bug reports.
+          Defaults the name + email to the signed-in user; both stay
+          editable so whoever's actually typing can correct. */}
+      <FeedbackWidget
+        defaultName={session.user.name}
+        defaultEmail={session.user.email}
+      />
     </div>
   );
 }
