@@ -31,24 +31,34 @@ const LOI_OR_BEYOND = [
   "closed_rvx_acquired", "closed_rvx_network",
 ];
 
-const IN_PROGRESS_PSAS = ["tc_writing_psa", "tc_psa_submitted", "psa_accepted"];
-const IN_DD            = ["tc_dd_in_escrow", "dd_completed_in_escrow"];
-const CLOSED_RVX       = ["closed_rvx_acquired", "closed_rvx_network"];
+const CLOSED_RVX = ["closed_rvx_acquired", "closed_rvx_network"];
 
+/**
+ * 7-metric scorecard tuned for L10 cadence.
+ *
+ * Dropped: deals-in-progress / dispo / DD — those are pipeline snapshots
+ * that belong on the kanban, not on the weekly scorecard.
+ * Changed:  qualified + LOIs are now "this week" framing instead of
+ *           "total" — tracks weekly change, not cumulative growth.
+ * Added:    Closer first-touch SLA hit rate — leading indicator that
+ *           predicts close rate 3-4 weeks ahead.
+ *
+ * Pending (will add when data lights up):
+ *   - Owner-connect calls (week) — needs the BD dialer
+ *   - Commissions collected (month) — needs Kevin's financial-close field
+ */
 export const SCORECARD_DEFINITIONS: Array<{
   metric: string;
   target: number;
   format: "n" | "pct";
 }> = [
-  { metric: "Active bird dogs",                  target: 10, format: "n"   },
-  { metric: "Total new leads submitted (week)",  target: 50, format: "n"   },
-  { metric: "Qualified leads submitted (total)", target: 20, format: "n"   },
-  { metric: "Close rate",                        target: 25, format: "pct" },
-  { metric: "LOIs submitted (total)",            target: 15, format: "n"   },
-  { metric: "Signed PSAs (this month)",          target:  3, format: "n"   },
-  { metric: "Deals in progress (assigned PSAs)", target:  8, format: "n"   },
-  { metric: "Deals in dispo",                    target:  4, format: "n"   },
-  { metric: "Deals in due diligence",            target:  3, format: "n"   },
+  { metric: "Active bird dogs",                       target: 10, format: "n"   },
+  { metric: "New leads submitted (week)",             target: 50, format: "n"   },
+  { metric: "Qualified leads submitted (week)",       target:  5, format: "n"   },
+  { metric: "Closer first-touch SLA hit rate",        target: 80, format: "pct" },
+  { metric: "LOIs submitted (week)",                  target:  3, format: "n"   },
+  { metric: "Close rate",                             target: 25, format: "pct" },
+  { metric: "Signed PSAs (this month)",               target:  3, format: "n"   },
 ];
 
 /** Live actuals, computed from the CRM tables, in SCORECARD_DEFINITIONS order. */
@@ -62,49 +72,98 @@ export async function computeScorecardActuals(): Promise<number[]> {
     return row?.c ?? 0;
   };
 
+  // For SLA hit rate: pull every qualified-or-beyond deal created in
+  // the last 7 days. For each, compare closerLastTouch to createdAt.
+  // Hit = touched within 24h of creation. Imperfect proxy for "first
+  // touch" since we don't log every touch; good enough for V1.
+  const slaWindowDeals = await db
+    .select({
+      createdAt: deals.createdAt,
+      closerLastTouch: deals.closerLastTouch,
+    })
+    .from(deals)
+    .where(
+      and(
+        isNull(deals.deletedAt),
+        inArray(deals.statusCode, QUALIFIED_OR_BEYOND),
+        gte(deals.createdAt, weekAgo),
+      ),
+    );
+
+  const slaTotal = slaWindowDeals.length;
+  const slaHits = slaWindowDeals.filter(
+    (d) =>
+      d.closerLastTouch &&
+      d.closerLastTouch.getTime() - d.createdAt.getTime() <= DAY_MS,
+  ).length;
+  const slaPct = slaTotal > 0 ? Math.round((slaHits / slaTotal) * 100) : 0;
+
   const [
     activeBd,
     newLeadsWeek,
-    qualifiedTotal,
-    loisTotal,
+    qualifiedWeek,
+    loisWeek,
     psasMonth,
-    inProgress,
-    inDispo,
-    inDd,
+    qualifiedTotalForRate,
     closedRvxTotal,
   ] = await Promise.all([
-    db.select({ c: sql<number>`COUNT(*)::int` })
+    // 1. Active bird dogs
+    db
+      .select({ c: sql<number>`COUNT(*)::int` })
       .from(birdDogs)
       .where(and(isNull(birdDogs.deletedAt), eq(birdDogs.statusCode, "active")))
       .then((r) => r[0]?.c ?? 0),
+    // 2. New leads submitted this week
     count(and(isNull(deals.deletedAt), gte(deals.createdAt, weekAgo))),
+    // 3. Qualified leads SUBMITTED this week — deals created this week
+    //    that have already reached qualified-or-beyond status. Catches
+    //    "fast moves" not just total qualified count.
+    count(
+      and(
+        isNull(deals.deletedAt),
+        inArray(deals.statusCode, QUALIFIED_OR_BEYOND),
+        gte(deals.createdAt, weekAgo),
+      ),
+    ),
+    // 5. LOIs submitted this week — deals at LOI-or-beyond status that
+    //    were updated this week. Imperfect (any update counts), but
+    //    without a stage_changes log this is the best proxy.
+    count(
+      and(
+        isNull(deals.deletedAt),
+        inArray(deals.statusCode, LOI_OR_BEYOND),
+        gte(deals.updatedAt, weekAgo),
+      ),
+    ),
+    // 7. Signed PSAs this month
+    count(
+      and(
+        isNull(deals.deletedAt),
+        eq(deals.statusCode, "psa_accepted"),
+        gte(deals.updatedAt, monthStart),
+      ),
+    ),
+    // Helpers for close rate
     count(and(isNull(deals.deletedAt), inArray(deals.statusCode, QUALIFIED_OR_BEYOND))),
-    count(and(isNull(deals.deletedAt), inArray(deals.statusCode, LOI_OR_BEYOND))),
-    count(and(
-      isNull(deals.deletedAt),
-      eq(deals.statusCode, "psa_accepted"),
-      gte(deals.updatedAt, monthStart),
-    )),
-    count(and(isNull(deals.deletedAt), inArray(deals.statusCode, IN_PROGRESS_PSAS))),
-    count(and(isNull(deals.deletedAt), eq(deals.statusCode, "dm_dispo_initiated"))),
-    count(and(isNull(deals.deletedAt), inArray(deals.statusCode, IN_DD))),
     count(and(isNull(deals.deletedAt), inArray(deals.statusCode, CLOSED_RVX))),
   ]);
 
-  const closeRate = qualifiedTotal + closedRvxTotal > 0
-    ? Math.round((closedRvxTotal / (qualifiedTotal + closedRvxTotal)) * 100)
+  // 6. Close rate = closed / (qualified-or-closed). Same formula as
+  //    before — uses all-time qualified pool, not weekly window.
+  const closeRate = qualifiedTotalForRate + closedRvxTotal > 0
+    ? Math.round((closedRvxTotal / (qualifiedTotalForRate + closedRvxTotal)) * 100)
     : 0;
 
+  // Order MUST match SCORECARD_DEFINITIONS:
+  //   [activeBd, newLeadsWeek, qualifiedWeek, slaPct, loisWeek, closeRate, psasMonth]
   return [
     activeBd,
     newLeadsWeek,
-    qualifiedTotal,
+    qualifiedWeek,
+    slaPct,
+    loisWeek,
     closeRate,
-    loisTotal,
     psasMonth,
-    inProgress,
-    inDispo,
-    inDd,
   ];
 }
 
