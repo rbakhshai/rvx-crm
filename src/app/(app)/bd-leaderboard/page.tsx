@@ -43,7 +43,7 @@ export default async function BdLeaderboardPage({
   return (
     <PageShell
       title="Leaderboard"
-      subtitle={`Calls, connects, qualifieds, LOIs, PSAs — ${periodLabel(period).toLowerCase()}.`}
+      subtitle={`Bird-dog team only · Calls, connects, qualifieds, LOIs, PSAs — ${periodLabel(period).toLowerCase()}.`}
       width="default"
     >
       {/* Period toggle */}

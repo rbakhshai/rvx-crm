@@ -141,7 +141,11 @@ export async function getLeaderboard(period: LeaderboardPeriod): Promise<Leaderb
     LEFT JOIN deal_stats ds ON ds.user_id = u.id
     WHERE u.deleted_at IS NULL
       AND u.suspended_at IS NULL
-      AND u.role != 'bird_dog'
+      -- Leaderboard is bird-dog-team only. Leadership (admin/COS/COO/
+      -- CFO/Closer/UW/DD/TC/Dispo) is excluded by limiting to the
+      -- bd_level_* roles. Marco (bird_dog_manager → COO) stays off the
+      -- board even if he picks up the dialer occasionally.
+      AND u.role IN ('bd_level_1', 'bd_level_2', 'bd_level_3')
       AND (COALESCE(c.calls, 0) + COALESCE(ds.lois, 0) + COALESCE(ds.psas, 0)) > 0
   `);
 
