@@ -168,28 +168,67 @@ export async function softDeleteLeadsAction(ids: string[]): Promise<void> {
 type ClaimResult = {
   ok: boolean;
   leadId: string | null;
-  /** True only when the pool was empty (no error, just nothing to work). */
+  /** True only when the pool was empty for this mode (no error, just nothing to work). */
   poolEmpty?: boolean;
   error?: string;
 };
 
+export type ClaimMode = "fresh" | "followup";
+
 /**
  * Atomically claim the next available lead for the current BD.
  *
- * The race-safe pattern: a single UPDATE that targets the row picked by
- * a sub-SELECT with FOR UPDATE SKIP LOCKED. Two concurrent claimers each
- * lock + claim DIFFERENT rows; neither blocks the other. Without the
- * skip-locked clause, two BDs claiming at the same instant could grab the
- * same row → one ends up with a stale 'claimed' state.
+ * Race-safe pattern: a single UPDATE that targets the row picked by a
+ * sub-SELECT with FOR UPDATE SKIP LOCKED. Two concurrent claimers each
+ * lock + claim DIFFERENT rows; neither blocks the other.
  *
- * Ordering: lowest call-attempt count first (fairness — leads that have
- * never been touched go first), then oldest createdAt (FIFO within tie).
+ * Mode behavior:
+ *
+ *   "fresh"     — Pool leads the calling BD has NEVER dispositioned.
+ *                  Ordered by lowest call-attempt count, then oldest
+ *                  createdAt (FIFO within tie). New conversation.
+ *
+ *   "followup"  — Pool leads where the calling BD has at least one
+ *                  prior connected_* disposition (interested / thinking /
+ *                  not_selling). Ordered by oldest last_call_at — most
+ *                  overdue callbacks bubble to the top. Continuing a
+ *                  conversation.
+ *
+ * Connected outcomes recycle the lead back to the pool (it doesn't stay
+ * "claimed" forever) so the BD can grab it again via Follow-up mode on a
+ * later day. See dispositionLeadAction's KEEP_OUTCOMES handling.
  */
-export async function claimNextLeadAction(): Promise<ClaimResult> {
+export async function claimNextLeadAction(mode: ClaimMode = "fresh"): Promise<ClaimResult> {
   const user = await requireUser();
 
-  // Drizzle's typed builder can't express FOR UPDATE SKIP LOCKED cleanly,
-  // so this is raw SQL. The bind is parameterized via sql`` template.
+  // Two distinct sub-SELECTs — same UPDATE shape.
+  const selector =
+    mode === "fresh"
+      ? sql`
+          SELECT id FROM raw_leads rl
+          WHERE rl.status = 'pool' AND rl.deleted_at IS NULL
+            AND NOT EXISTS (
+              SELECT 1 FROM raw_lead_dispositions d
+              WHERE d.raw_lead_id = rl.id AND d.by_user_id = ${user.id}
+            )
+          ORDER BY rl.call_attempts ASC, rl.created_at ASC
+          LIMIT 1
+          FOR UPDATE SKIP LOCKED
+        `
+      : sql`
+          SELECT id FROM raw_leads rl
+          WHERE rl.status = 'pool' AND rl.deleted_at IS NULL
+            AND EXISTS (
+              SELECT 1 FROM raw_lead_dispositions d
+              WHERE d.raw_lead_id = rl.id
+                AND d.by_user_id = ${user.id}
+                AND d.outcome IN ('connected_interested', 'connected_thinking', 'connected_not_selling')
+            )
+          ORDER BY rl.last_call_at ASC NULLS LAST, rl.updated_at ASC
+          LIMIT 1
+          FOR UPDATE SKIP LOCKED
+        `;
+
   const result = await db.execute(sql`
     UPDATE raw_leads
     SET
@@ -197,17 +236,10 @@ export async function claimNextLeadAction(): Promise<ClaimResult> {
       claimed_by_id = ${user.id},
       claimed_at = NOW(),
       updated_at = NOW()
-    WHERE id = (
-      SELECT id FROM raw_leads
-      WHERE status = 'pool' AND deleted_at IS NULL
-      ORDER BY call_attempts ASC, created_at ASC
-      LIMIT 1
-      FOR UPDATE SKIP LOCKED
-    )
+    WHERE id = (${selector})
     RETURNING id
   `);
 
-  // pg driver returns { rows: [...] } when using execute()
   const rows = (result as unknown as { rows?: Array<{ id: string }> }).rows
     ?? (result as unknown as Array<{ id: string }>);
   const claimedId = rows?.[0]?.id ?? null;
@@ -218,6 +250,44 @@ export async function claimNextLeadAction(): Promise<ClaimResult> {
 
   revalidatePath("/bd-triage");
   return { ok: true, leadId: claimedId };
+}
+
+/**
+ * Counts of fresh + follow-up leads available to the calling BD. Used to
+ * power the toggle's badges so they can see what's worth working before
+ * they switch modes.
+ */
+export async function getQueueCountsForUser(): Promise<{ fresh: number; followup: number }> {
+  const user = await requireUser();
+
+  const fresh = await db.execute(sql`
+    SELECT COUNT(*)::int AS c FROM raw_leads rl
+    WHERE rl.status = 'pool' AND rl.deleted_at IS NULL
+      AND NOT EXISTS (
+        SELECT 1 FROM raw_lead_dispositions d
+        WHERE d.raw_lead_id = rl.id AND d.by_user_id = ${user.id}
+      )
+  `);
+  const followup = await db.execute(sql`
+    SELECT COUNT(*)::int AS c FROM raw_leads rl
+    WHERE rl.status = 'pool' AND rl.deleted_at IS NULL
+      AND EXISTS (
+        SELECT 1 FROM raw_lead_dispositions d
+        WHERE d.raw_lead_id = rl.id
+          AND d.by_user_id = ${user.id}
+          AND d.outcome IN ('connected_interested', 'connected_thinking', 'connected_not_selling')
+      )
+  `);
+
+  const freshRows = (fresh as unknown as { rows?: Array<{ c: number }> }).rows
+    ?? (fresh as unknown as Array<{ c: number }>);
+  const followupRows = (followup as unknown as { rows?: Array<{ c: number }> }).rows
+    ?? (followup as unknown as Array<{ c: number }>);
+
+  return {
+    fresh: freshRows?.[0]?.c ?? 0,
+    followup: followupRows?.[0]?.c ?? 0,
+  };
 }
 
 /**
@@ -252,20 +322,20 @@ type DispositionInput = {
 type DispositionResult = {
   ok: boolean;
   /** What happened to the lead — drives the UI's next move. */
-  next: "recycled" | "kept_claimed" | "converted" | "dead";
+  next: "recycled" | "converted" | "dead";
   /** When converted, the new deal id so the BD can be linked over. */
   newDealId?: string;
   error?: string;
 };
 
+// All non-terminal outcomes recycle the lead back to the pool. The BD's
+// history is preserved via raw_lead_dispositions, so follow-up mode can
+// re-surface leads where this BD had a connected_* conversation.
 const RECYCLE_OUTCOMES = new Set([
   "no_answer",
   "voicemail",
   "busy",
   "wrong_number",
-]);
-
-const KEEP_OUTCOMES = new Set([
   "connected_interested",
   "connected_not_selling",
   "connected_thinking",
@@ -328,12 +398,6 @@ export async function dispositionLeadAction(input: DispositionInput): Promise<Di
       .where(eq(rawLeads.id, leadId));
     revalidatePath("/bd-triage");
     return { ok: true, next: "recycled" };
-  }
-
-  if (KEEP_OUTCOMES.has(outcome)) {
-    await db.update(rawLeads).set(baseUpdate).where(eq(rawLeads.id, leadId));
-    revalidatePath("/bd-triage");
-    return { ok: true, next: "kept_claimed" };
   }
 
   if (outcome === "do_not_call") {

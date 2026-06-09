@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useTransition } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { cn } from "@/lib/cn";
@@ -8,6 +9,7 @@ import {
   claimNextLeadAction,
   dispositionLeadAction,
   releaseLeadAction,
+  type ClaimMode,
 } from "@/app/actions/leads";
 
 type Lead = {
@@ -56,12 +58,16 @@ const TERMINAL: Array<{ key: DispositionKey; label: string; icon: string; sub: s
 ];
 
 export function BdTriageClient({
+  mode,
   initialLead,
-  poolCount,
+  freshCount,
+  followupCount,
   callsToday,
 }: {
+  mode: ClaimMode;
   initialLead: Lead | null;
-  poolCount: number;
+  freshCount: number;
+  followupCount: number;
   callsToday: number;
 }) {
   const router = useRouter();
@@ -69,22 +75,27 @@ export function BdTriageClient({
   const [notes, setNotes] = useState("");
   const [isPending, startTransition] = useTransition();
 
+  // Convenience — single number for the current mode's queue.
+  const queueSize = mode === "fresh" ? freshCount : followupCount;
+
   function getNext() {
     startTransition(async () => {
       try {
-        const r = await claimNextLeadAction();
+        const r = await claimNextLeadAction(mode);
         if (!r.ok) {
           toast.error(r.error ?? "Couldn't get a lead");
           return;
         }
         if (r.poolEmpty || !r.leadId) {
-          toast("Pool's empty — nothing to call right now.", { icon: "🌅" });
+          toast(
+            mode === "fresh"
+              ? "No fresh leads — pool's empty for you."
+              : "No follow-ups due — nothing to call back right now.",
+            { icon: "🌅" },
+          );
           setLead(null);
           return;
         }
-        // Force a server refresh so the just-claimed lead loads into the
-        // page through the normal server query path (single source of
-        // truth — avoids drift between client state and DB).
         router.refresh();
       } catch (e) {
         toast.error("Couldn't get a lead", { description: e instanceof Error ? e.message : "Try again" });
@@ -103,33 +114,28 @@ export function BdTriageClient({
         }
         setNotes("");
 
-        // What happens next depends on the disposition:
-        //   recycled / dead → auto-grab the next lead
-        //   converted       → toast + auto-grab next (BD keeps grinding)
-        //   kept_claimed    → stay on this lead, refresh to update attempts
-        if (r.next === "recycled" || r.next === "dead") {
-          toast.success("Logged — getting next…");
-          await claimNextLeadAction().then((claim) => {
-            if (claim.poolEmpty) {
-              toast("Pool's empty — that was the last one!", { icon: "🌅" });
-              setLead(null);
-            }
-            router.refresh();
-          });
-        } else if (r.next === "converted") {
+        // What happens next:
+        //   recycled / dead → auto-grab the next lead in the same mode
+        //   converted       → same as recycled, plus celebrate
+        if (r.next === "converted") {
           toast.success("Sent to closer triage 🎉");
-          await claimNextLeadAction().then((claim) => {
-            if (claim.poolEmpty) {
-              toast("Pool's empty — well done!", { icon: "🌅" });
-              setLead(null);
-            }
-            router.refresh();
-          });
+        } else if (r.next === "dead") {
+          toast.success("Marked DNC — getting next…");
         } else {
-          // kept_claimed
-          toast.success("Logged");
-          router.refresh();
+          toast.success("Logged — getting next…");
         }
+
+        const claim = await claimNextLeadAction(mode);
+        if (claim.poolEmpty) {
+          toast(
+            mode === "fresh"
+              ? "No more fresh leads!"
+              : "No more follow-ups due — nice work!",
+            { icon: "🌅" },
+          );
+          setLead(null);
+        }
+        router.refresh();
       } catch (e) {
         toast.error("Couldn't save", { description: e instanceof Error ? e.message : "Try again" });
       }
@@ -153,9 +159,15 @@ export function BdTriageClient({
 
   return (
     <div className="space-y-5">
+      {/* Mode toggle */}
+      <div className="inline-flex rounded-full border border-border bg-background p-1">
+        <ModeChip mode="fresh"    active={mode === "fresh"}    count={freshCount}    />
+        <ModeChip mode="followup" active={mode === "followup"} count={followupCount} />
+      </div>
+
       {/* Stats bar */}
       <div className="grid grid-cols-3 gap-3">
-        <Stat label="In pool" value={poolCount} hint="ready to claim" />
+        <Stat label={mode === "fresh" ? "Fresh available" : "Follow-ups due"} value={queueSize} hint="ready to claim" />
         <Stat label="Your calls today" value={callsToday} hint="across all leads" />
         <Stat
           label="This lead's attempts"
@@ -166,20 +178,24 @@ export function BdTriageClient({
 
       {!lead ? (
         <div className="rounded-xl border border-dashed border-border bg-foreground/[0.02] p-12 text-center">
-          <div className="text-4xl mb-3">📞</div>
-          <h2 className="text-base font-semibold mb-2">No lead claimed</h2>
+          <div className="text-4xl mb-3">{mode === "fresh" ? "📞" : "🔁"}</div>
+          <h2 className="text-base font-semibold mb-2">
+            {mode === "fresh" ? "No fresh lead claimed" : "No follow-up claimed"}
+          </h2>
           <p className="text-sm text-muted mb-5">
-            {poolCount > 0
-              ? `${poolCount} leads in the pool waiting to be worked.`
-              : "Pool is empty. Wait for an admin to upload more leads."}
+            {queueSize > 0
+              ? `${queueSize} ${mode === "fresh" ? "fresh leads" : "follow-ups"} waiting.`
+              : mode === "fresh"
+              ? "No fresh leads left. Try Follow-up mode if you have callbacks due."
+              : "No follow-ups due — go work fresh leads or wait for new uploads."}
           </p>
           <button
             type="button"
             onClick={getNext}
-            disabled={isPending || poolCount === 0}
+            disabled={isPending || queueSize === 0}
             className="rounded-md bg-primary text-primary-foreground px-4 py-2 text-sm font-semibold hover:opacity-90 disabled:opacity-50 transition"
           >
-            {isPending ? "Getting…" : "Get next lead →"}
+            {isPending ? "Getting…" : mode === "fresh" ? "Get next fresh lead →" : "Get next follow-up →"}
           </button>
         </div>
       ) : (
@@ -265,6 +281,32 @@ export function BdTriageClient({
         </>
       )}
     </div>
+  );
+}
+
+function ModeChip({ mode, active, count }: { mode: ClaimMode; active: boolean; count: number }) {
+  return (
+    <Link
+      href={mode === "fresh" ? "/bd-triage" : "/bd-triage?mode=followup"}
+      className={cn(
+        "inline-flex items-center gap-2 rounded-full px-3.5 py-1.5 text-xs transition",
+        active
+          ? "bg-foreground text-background font-semibold"
+          : "text-foreground/70 hover:text-foreground hover:bg-foreground/[0.04]",
+      )}
+    >
+      <span>{mode === "fresh" ? "Fresh" : "Follow-ups"}</span>
+      <span
+        className={cn(
+          "tabular-nums rounded-full px-1.5 text-[10px] font-medium",
+          active
+            ? "bg-background/20 text-background"
+            : "bg-foreground/[0.08] text-foreground/70",
+        )}
+      >
+        {count}
+      </span>
+    </Link>
   );
 }
 
