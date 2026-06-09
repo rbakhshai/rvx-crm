@@ -2,9 +2,9 @@
 
 import { revalidatePath } from "next/cache";
 import { headers } from "next/headers";
-import { and, eq, inArray, isNull } from "drizzle-orm";
+import { and, eq, inArray, isNull, sql } from "drizzle-orm";
 import { db } from "@/db";
-import { rawLeads } from "@/db/schema";
+import { deals, rawLeadDispositions, rawLeads } from "@/db/schema";
 import { auth } from "@/lib/auth";
 import { addressKey, parseLeadsCsv } from "@/lib/raw-leads-csv";
 
@@ -159,4 +159,233 @@ export async function softDeleteLeadsAction(ids: string[]): Promise<void> {
     .set({ deletedAt: new Date(), deletedById: user.id })
     .where(and(inArray(rawLeads.id, ids), isNull(rawLeads.deletedAt)));
   revalidatePath("/admin/leads");
+}
+
+// ============================================================================
+// BD lead-work flow — claim + disposition
+// ============================================================================
+
+type ClaimResult = {
+  ok: boolean;
+  leadId: string | null;
+  /** True only when the pool was empty (no error, just nothing to work). */
+  poolEmpty?: boolean;
+  error?: string;
+};
+
+/**
+ * Atomically claim the next available lead for the current BD.
+ *
+ * The race-safe pattern: a single UPDATE that targets the row picked by
+ * a sub-SELECT with FOR UPDATE SKIP LOCKED. Two concurrent claimers each
+ * lock + claim DIFFERENT rows; neither blocks the other. Without the
+ * skip-locked clause, two BDs claiming at the same instant could grab the
+ * same row → one ends up with a stale 'claimed' state.
+ *
+ * Ordering: lowest call-attempt count first (fairness — leads that have
+ * never been touched go first), then oldest createdAt (FIFO within tie).
+ */
+export async function claimNextLeadAction(): Promise<ClaimResult> {
+  const user = await requireUser();
+
+  // Drizzle's typed builder can't express FOR UPDATE SKIP LOCKED cleanly,
+  // so this is raw SQL. The bind is parameterized via sql`` template.
+  const result = await db.execute(sql`
+    UPDATE raw_leads
+    SET
+      status = 'claimed',
+      claimed_by_id = ${user.id},
+      claimed_at = NOW(),
+      updated_at = NOW()
+    WHERE id = (
+      SELECT id FROM raw_leads
+      WHERE status = 'pool' AND deleted_at IS NULL
+      ORDER BY call_attempts ASC, created_at ASC
+      LIMIT 1
+      FOR UPDATE SKIP LOCKED
+    )
+    RETURNING id
+  `);
+
+  // pg driver returns { rows: [...] } when using execute()
+  const rows = (result as unknown as { rows?: Array<{ id: string }> }).rows
+    ?? (result as unknown as Array<{ id: string }>);
+  const claimedId = rows?.[0]?.id ?? null;
+
+  if (!claimedId) {
+    return { ok: true, leadId: null, poolEmpty: true };
+  }
+
+  revalidatePath("/bd-triage");
+  return { ok: true, leadId: claimedId };
+}
+
+/**
+ * Release a claimed lead back to the pool without logging a disposition.
+ * Used when the BD wants to skip the current lead and grab a different one
+ * (e.g. they recognize the park as theirs personally).
+ */
+export async function releaseLeadAction(leadId: string): Promise<void> {
+  const user = await requireUser();
+  await db
+    .update(rawLeads)
+    .set({ status: "pool", claimedById: null, claimedAt: null, updatedAt: new Date() })
+    .where(and(eq(rawLeads.id, leadId), eq(rawLeads.claimedById, user.id)));
+  revalidatePath("/bd-triage");
+}
+
+type DispositionInput = {
+  leadId: string;
+  outcome:
+    | "no_answer"
+    | "voicemail"
+    | "busy"
+    | "wrong_number"
+    | "connected_interested"
+    | "connected_not_selling"
+    | "connected_thinking"
+    | "qualified"
+    | "do_not_call";
+  notes?: string;
+};
+
+type DispositionResult = {
+  ok: boolean;
+  /** What happened to the lead — drives the UI's next move. */
+  next: "recycled" | "kept_claimed" | "converted" | "dead";
+  /** When converted, the new deal id so the BD can be linked over. */
+  newDealId?: string;
+  error?: string;
+};
+
+const RECYCLE_OUTCOMES = new Set([
+  "no_answer",
+  "voicemail",
+  "busy",
+  "wrong_number",
+]);
+
+const KEEP_OUTCOMES = new Set([
+  "connected_interested",
+  "connected_not_selling",
+  "connected_thinking",
+]);
+
+/**
+ * Record a call attempt + transition the lead's status based on outcome.
+ *
+ * Outcome → transition:
+ *   no_answer | voicemail | busy | wrong_number  → back to pool (recycle)
+ *   connected_*                                  → stay claimed (BD continues)
+ *   qualified                                    → create deal, mark converted
+ *   do_not_call                                  → mark dead
+ *
+ * Always:
+ *   - inserts a raw_lead_dispositions row (audit log of every attempt)
+ *   - bumps callAttempts++ on the lead
+ *   - stamps lastCallAt + lastCallById
+ */
+export async function dispositionLeadAction(input: DispositionInput): Promise<DispositionResult> {
+  const user = await requireUser();
+  const { leadId, outcome, notes } = input;
+
+  // Verify the lead exists + the current user is its claimant. We don't
+  // want one BD dispositioning another BD's claimed lead.
+  const [lead] = await db.select().from(rawLeads).where(eq(rawLeads.id, leadId)).limit(1);
+  if (!lead) return { ok: false, next: "recycled", error: "Lead not found" };
+  if (lead.claimedById !== user.id) {
+    return { ok: false, next: "recycled", error: "This lead isn't claimed by you" };
+  }
+
+  const now = new Date();
+
+  // Log the attempt no matter what — single source of truth for "what's
+  // happened on this lead historically".
+  await db.insert(rawLeadDispositions).values({
+    rawLeadId: leadId,
+    byUserId: user.id,
+    outcome,
+    notes: notes?.trim() || null,
+  });
+
+  // Common updates: bump attempts + stamp last call.
+  const baseUpdate = {
+    callAttempts: sql`${rawLeads.callAttempts} + 1`,
+    lastCallAt: now,
+    lastCallById: user.id,
+    updatedAt: now,
+  };
+
+  if (RECYCLE_OUTCOMES.has(outcome)) {
+    await db
+      .update(rawLeads)
+      .set({
+        ...baseUpdate,
+        status: "pool",
+        claimedById: null,
+        claimedAt: null,
+      })
+      .where(eq(rawLeads.id, leadId));
+    revalidatePath("/bd-triage");
+    return { ok: true, next: "recycled" };
+  }
+
+  if (KEEP_OUTCOMES.has(outcome)) {
+    await db.update(rawLeads).set(baseUpdate).where(eq(rawLeads.id, leadId));
+    revalidatePath("/bd-triage");
+    return { ok: true, next: "kept_claimed" };
+  }
+
+  if (outcome === "do_not_call") {
+    await db
+      .update(rawLeads)
+      .set({
+        ...baseUpdate,
+        status: "dead",
+        claimedById: null,
+        claimedAt: null,
+      })
+      .where(eq(rawLeads.id, leadId));
+    revalidatePath("/bd-triage");
+    return { ok: true, next: "dead" };
+  }
+
+  // outcome === "qualified" — promote to a real deal.
+  // Build the deal record from the lead. We deliberately keep the deal's
+  // own owner blank — the closer assignment happens in triage.
+  const fullAddress = [lead.street, lead.city, lead.state, lead.zipCode].filter(Boolean).join(", ");
+  const [newDeal] = await db
+    .insert(deals)
+    .values({
+      name: lead.parkName ?? lead.street ?? "Lead from BD",
+      parkAddress: fullAddress || null,
+      parkCity: lead.city,
+      parkState: lead.state,
+      padsCount: lead.pads,
+      // First-stage closer status. This puts it in the triage cockpit
+      // queue so a closer picks it up next.
+      statusCode: "new_lead_received",
+      // Capture the BD identity for credit / leaderboard later.
+      birdDogFirstName: lead.ownerName ?? null,
+      // Note: leaving birdDogId unset for now; we'll link bird_dogs in
+      // a later phase once BD selection on intake exists.
+    })
+    .returning({ id: deals.id });
+
+  await db
+    .update(rawLeads)
+    .set({
+      ...baseUpdate,
+      status: "converted",
+      convertedDealId: newDeal?.id ?? null,
+      convertedAt: now,
+      claimedById: null,
+      claimedAt: null,
+    })
+    .where(eq(rawLeads.id, leadId));
+
+  revalidatePath("/bd-triage");
+  revalidatePath("/triage");
+  revalidatePath("/deals");
+  return { ok: true, next: "converted", newDealId: newDeal?.id };
 }

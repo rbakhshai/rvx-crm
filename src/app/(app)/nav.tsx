@@ -68,6 +68,7 @@ const GROUPS: NavItem[] = [
     ],
   },
   { href: "/bird-dogs",    label: "Bird Dogs",        requires: "view_bird_dogs_directory" },
+  { href: "/bd-triage",    label: "Lead Work" },
   // Park Performance is renamed from Insights and gated to roles that
   // explicitly grant view_revenue (Reza/Marco/Kevin by default; Erica
   // intentionally not).
