@@ -16,24 +16,24 @@ const REVALIDATE = "/ops/team";
 
 const DEFAULT_DEPT: Record<string, string> = {
   admin: "Leadership",
-  acquisitions_manager: "Leadership",
-  bird_dog_manager: "Leadership",
+  acquisitions_manager: "Sales & Marketing",
+  bird_dog_manager: "Operations",
   cfo: "Finance",
   closer: "Sales",
   underwriter: "Underwriting",
-  due_diligence: "DD",
+  due_diligence: "Operations",
   transaction_coord: "Operations",
   dispo_manager: "Sales",
-  bd_level_1: "Sourcing",
-  bd_level_2: "Sourcing",
-  bd_level_3: "Sourcing",
+  bd_level_1: "Sales & Marketing",
+  bd_level_2: "Sales & Marketing",
+  bd_level_3: "Sales & Marketing",
 };
 
 const ROLE_LABEL: Record<string, string> = {
   admin: "Admin / Founder",
-  acquisitions_manager: "Chief of Staff",
-  bird_dog_manager: "Chief Operating Officer",
-  cfo: "CFO",
+  acquisitions_manager: "Sales & Marketing",
+  bird_dog_manager: "Operations",
+  cfo: "Finance",
   closer: "Closer",
   underwriter: "Underwriter",
   due_diligence: "Due Diligence",

@@ -251,10 +251,10 @@ function initials(name: string): string {
 
 function labelRole(role: string | null): string {
   const map: Record<string, string> = {
-    admin: "ADMN",
-    acquisitions_manager: "COS",
-    bird_dog_manager: "COO",
-    cfo: "CFO",
+    admin: "Admin",
+    acquisitions_manager: "Sales & Marketing",
+    bird_dog_manager: "Operations",
+    cfo: "Finance",
     closer: "Closer",
     underwriter: "UW",
     due_diligence: "DD",
@@ -278,11 +278,11 @@ const PROFILE_OVERRIDES: Record<
   string,
   { title?: string; avatarBg?: string; avatarText?: string }
 > = {
-  reza:  { title: "Cofounder / CEO", avatarBg: "bg-foreground", avatarText: "text-background" },
-  erica: { title: "COS / Admin",     avatarBg: "bg-pink-400",   avatarText: "text-white" },
-  marco: { title: "COO",             avatarBg: "bg-emerald-600", avatarText: "text-white" },
-  kerry: { title: "Due Diligence",   avatarBg: "bg-amber-800",  avatarText: "text-white" },
-  kevin: { title: "CFO",             avatarBg: "bg-blue-500",   avatarText: "text-white" },
+  reza:  { title: "Cofounder / CEO",   avatarBg: "bg-foreground",  avatarText: "text-background" },
+  erica: { title: "Sales & Marketing", avatarBg: "bg-pink-400",    avatarText: "text-white" },
+  marco: { title: "Operations",        avatarBg: "bg-emerald-600", avatarText: "text-white" },
+  kerry: { title: "Due Diligence",     avatarBg: "bg-amber-800",   avatarText: "text-white" },
+  kevin: { title: "Finance",           avatarBg: "bg-blue-500",    avatarText: "text-white" },
 };
 
 function profileFor(name: string) {

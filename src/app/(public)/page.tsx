@@ -239,8 +239,8 @@ function HowWeWork() {
 
 const TEAM = [
   { name: "Reza Bakhshai", role: "Founder & Acquisitions", bio: "[Placeholder bio — 1-2 sentences on Reza&apos;s background, why he started RVX, what he loves about the industry.]" },
-  { name: "Marco Behling", role: "COO", bio: "[Placeholder bio — Marco&apos;s experience and what he runs day-to-day.]" },
-  { name: "Erica [Last]", role: "Bird Dog Manager", bio: "[Placeholder bio — Erica&apos;s role in sourcing and the scout network.]" },
+  { name: "Marco Behling", role: "Operations", bio: "[Placeholder bio — Marco&apos;s experience and what he runs day-to-day.]" },
+  { name: "Erica [Last]", role: "Sales & Marketing", bio: "[Placeholder bio — Erica&apos;s role in sourcing and the scout network.]" },
 ];
 
 function Team() {

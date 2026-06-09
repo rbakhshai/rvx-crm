@@ -11,7 +11,7 @@ type NavChild = {
   /**
    * Roles for which this child should NOT appear. Used to give Marco
    * (closer) and Reza (admin) a Triage-only Pipeline experience while
-   * leaving the other lenses visible to UW / Dispo / TC / COS / COO etc.
+   * leaving the other lenses visible to UW / Dispo / TC / S&M / Ops etc.
    */
   hideForRoles?: string[];
 };
