@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useEffect, useState, useTransition } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
@@ -54,28 +54,41 @@ type DispositionKey =
   | "qualified"
   | "do_not_call";
 
-const RECYCLE: Array<{ key: DispositionKey; label: string; icon: string; sub?: string }> = [
-  { key: "no_answer",     label: "No answer",     icon: "📞", sub: "Recycles to pool" },
-  { key: "voicemail",     label: "Voicemail",     icon: "📩", sub: "Recycles to pool" },
-  { key: "busy",          label: "Busy",          icon: "📵", sub: "Recycles to pool" },
-  { key: "wrong_number",  label: "Wrong number",  icon: "❌", sub: "Recycles to pool" },
+// Each disposition button carries an optional `hotkey` that the global
+// keydown handler matches (number row for no-connect, top letter row
+// for connected). Terminal outcomes have NO hotkey — they're
+// deal-creating / dead-marking, click-only so a misplaced finger
+// can't qualify a lead by accident.
+const RECYCLE: Array<{ key: DispositionKey; label: string; icon: string; sub?: string; hotkey: string }> = [
+  { key: "no_answer",     label: "No answer",     icon: "📞", sub: "Recycles to pool", hotkey: "1" },
+  { key: "voicemail",     label: "Voicemail",     icon: "📩", sub: "Recycles to pool", hotkey: "2" },
+  { key: "busy",          label: "Busy",          icon: "📵", sub: "Recycles to pool", hotkey: "3" },
+  { key: "wrong_number",  label: "Wrong number",  icon: "❌", sub: "Recycles to pool", hotkey: "4" },
 ];
 
 // Buttons ordered hottest → coldest so the BD's eye lands on the
 // "I just had a real conversation" pile at the top of the column.
-const CONNECTED: Array<{ key: DispositionKey; label: string; icon: string; sub?: string }> = [
-  { key: "connected_interested",        label: "Interested",          icon: "🔥", sub: "Follow up in 7d" },
-  { key: "connected_manager_only",      label: "Manager only",        icon: "📤", sub: "Awaiting pass-through · 7d" },
-  { key: "connected_thinking",          label: "Thinking about it",   icon: "💭", sub: "Follow up in 14d" },
-  { key: "connected_not_selling",       label: "Not selling now",     icon: "🤷", sub: "Follow up in 30d" },
-  { key: "connected_future_maybe",      label: "Future maybe",        icon: "🌱", sub: "Follow up in 90d" },
-  { key: "connected_selling_to_family", label: "Selling to family",   icon: "👨‍👩‍👧", sub: "Follow up in 90d" },
+const CONNECTED: Array<{ key: DispositionKey; label: string; icon: string; sub?: string; hotkey: string }> = [
+  { key: "connected_interested",        label: "Interested",          icon: "🔥", sub: "Follow up in 7d",          hotkey: "Q" },
+  { key: "connected_manager_only",      label: "Manager only",        icon: "📤", sub: "Awaiting pass-through · 7d", hotkey: "W" },
+  { key: "connected_thinking",          label: "Thinking about it",   icon: "💭", sub: "Follow up in 14d",         hotkey: "E" },
+  { key: "connected_not_selling",       label: "Not selling now",     icon: "🤷", sub: "Follow up in 30d",         hotkey: "R" },
+  { key: "connected_future_maybe",      label: "Future maybe",        icon: "🌱", sub: "Follow up in 90d",         hotkey: "T" },
+  { key: "connected_selling_to_family", label: "Selling to family",   icon: "👨‍👩‍👧", sub: "Follow up in 90d",         hotkey: "Y" },
 ];
 
 const TERMINAL: Array<{ key: DispositionKey; label: string; icon: string; sub: string; tone: "good" | "bad" }> = [
   { key: "qualified",   label: "Qualified — hand to closer",  icon: "✅", sub: "Creates a deal", tone: "good" },
   { key: "do_not_call", label: "DNC — never call again",      icon: "🚫", sub: "Marks dead",     tone: "bad" },
 ];
+
+/** Build a hotkey → disposition lookup from RECYCLE + CONNECTED. */
+const HOTKEYS: Record<string, DispositionKey> = (() => {
+  const m: Record<string, DispositionKey> = {};
+  for (const b of RECYCLE) m[b.hotkey.toLowerCase()] = b.key;
+  for (const b of CONNECTED) m[b.hotkey.toLowerCase()] = b.key;
+  return m;
+})();
 
 export function BdTriageClient({
   mode,
@@ -186,6 +199,40 @@ export function BdTriageClient({
       router.refresh();
     });
   }
+
+  /**
+   * Global keyboard shortcuts for quick-knockout: hit 1-4 to fire a
+   * no-connect outcome, Q/W/E/R/T/Y for the connected outcomes. We
+   * deliberately leave qualified and DNC click-only — they're
+   * deal-creating / terminal, too risky for a stray keystroke.
+   *
+   * Ignores presses while the user is in the notes textarea or any
+   * other input, so typing "Q" in a note doesn't fire a disposition.
+   *
+   * Closes feedback #23000 (Charlotte).
+   */
+  useEffect(() => {
+    if (!lead) return;
+    function onKey(e: KeyboardEvent) {
+      // Skip when typing into a field, or when a modifier is held.
+      const t = e.target as HTMLElement | null;
+      if (
+        t?.tagName === "INPUT" ||
+        t?.tagName === "TEXTAREA" ||
+        t?.isContentEditable ||
+        e.metaKey || e.ctrlKey || e.altKey
+      ) return;
+      const outcome = HOTKEYS[e.key.toLowerCase()];
+      if (!outcome) return;
+      e.preventDefault();
+      disposition(outcome);
+    }
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  // disposition is stable per render; including it would re-bind on
+  // every keystroke. We re-bind only when the claimed lead changes.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [lead]);
 
   function skip() {
     if (!lead) return;
@@ -567,7 +614,7 @@ function DispositionGroup({
   cols,
 }: {
   label: string;
-  buttons: Array<{ key: DispositionKey; label: string; icon: string; sub?: string; tone?: "good" | "bad" }>;
+  buttons: Array<{ key: DispositionKey; label: string; icon: string; sub?: string; tone?: "good" | "bad"; hotkey?: string }>;
   onClick: (k: DispositionKey) => void;
   disabled: boolean;
   terminal?: boolean;
@@ -596,9 +643,16 @@ function DispositionGroup({
               !b.tone && "border-border bg-background hover:bg-foreground/[0.04]",
             )}
           >
-            <div className="text-sm font-medium">
-              <span className="mr-1.5">{b.icon}</span>
-              {b.label}
+            <div className="flex items-center justify-between gap-2">
+              <div className="text-sm font-medium min-w-0">
+                <span className="mr-1.5">{b.icon}</span>
+                {b.label}
+              </div>
+              {b.hotkey && (
+                <kbd className="shrink-0 rounded border border-border bg-foreground/[0.04] px-1.5 py-0.5 text-[10px] font-mono text-muted">
+                  {b.hotkey}
+                </kbd>
+              )}
             </div>
             {b.sub && <div className="text-[10px] text-muted mt-0.5">{b.sub}</div>}
           </button>
