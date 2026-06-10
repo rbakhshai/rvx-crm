@@ -33,7 +33,8 @@ import { AtRiskWidget } from "@/components/at-risk-widget";
 import { detectAtRiskForUser } from "@/lib/at-risk";
 import { DoNextStack } from "@/components/do-next-stack";
 import { getDoNextItems } from "@/lib/do-next";
-import { fmtDate, fmtDateWithWeekday } from "@/lib/date-format";
+import { fmtDate, fmtDateWithWeekday, fmtRelative } from "@/lib/date-format";
+import { getFollowUpsDueForUser, followUpBand } from "@/lib/my-leads";
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 
@@ -93,6 +94,7 @@ export default async function TodayPage() {
     brief,
     atRisk,
     doNext,
+    followUpsDue,
   ] = await Promise.all([
     // 1) My open tasks (top 12, soonest due first, NULLs last)
     db
@@ -153,6 +155,7 @@ export default async function TodayPage() {
     getOrCreateDailyBrief(me),
     detectAtRiskForUser(me).catch((e) => { console.error("[at-risk] failed:", e); return []; }),
     getDoNextItems(me, 5).catch((e) => { console.error("[do-next] failed:", e); return []; }),
+    getFollowUpsDueForUser(me, 12).catch((e) => { console.error("[follow-ups-due] failed:", e); return []; }),
   ]);
 
   const statusLabel = new Map(statusRows.map((s) => [s.code, s.label]));
@@ -198,6 +201,39 @@ export default async function TodayPage() {
         <div className="lg:col-span-5 space-y-4">
           <DoNextStack items={doNext} />
           <AtRiskWidget risks={atRisk} />
+
+          {/* Follow-ups due (BD-only — empty unless this user has
+              leads on a connected_* schedule whose date has hit). */}
+          {followUpsDue.length > 0 && (
+            <Widget
+              title="Follow-ups due"
+              hint="Leads where you scheduled a callback and the date is up"
+              count={followUpsDue.length}
+              href="/my-leads"
+            >
+              <div className="space-y-0.5">
+                {followUpsDue.map((f) => {
+                  const band = followUpBand(f.nextFollowUpAt);
+                  const label = band === "overdue" ? "Overdue" : "Today";
+                  const tone = band === "overdue" ? "danger" : "warning";
+                  return (
+                    <ListLink
+                      key={f.leadId}
+                      href="/my-leads"
+                      primary={f.parkName ?? f.ownerName ?? "(unnamed lead)"}
+                      secondary={[
+                        [f.city, f.state].filter(Boolean).join(", "),
+                        f.cadenceDays ? `${f.cadenceDays}d cadence` : null,
+                        fmtRelative(f.nextFollowUpAt),
+                      ].filter(Boolean).join(" · ")}
+                      trailing={<Badge tone={tone}>{label}</Badge>}
+                    />
+                  );
+                })}
+              </div>
+            </Widget>
+          )}
+
           <Widget
             title="My tasks"
             hint="Sorted by due date. Click through to act."

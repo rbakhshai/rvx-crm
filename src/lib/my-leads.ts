@@ -170,3 +170,59 @@ export function followUpBand(at: Date | null, now: Date = new Date()):
   if (ms < day) return "due_today";
   return "upcoming";
 }
+
+export type FollowUpDueRow = {
+  leadId: string;
+  parkName: string | null;
+  city: string | null;
+  state: string | null;
+  ownerName: string | null;
+  ownerPhone: string | null;
+  nextFollowUpAt: Date;
+  cadenceDays: number | null;
+};
+
+/**
+ * Today widget query: every lead where THIS user is the last caller AND
+ * the next follow-up is scheduled within the next 24h (or already
+ * overdue). Lightweight by design — just the fields the widget needs.
+ *
+ * The (last_call_by_id, next_follow_up_at) index makes this O(log N).
+ */
+export async function getFollowUpsDueForUser(
+  userId: string,
+  limit = 25,
+): Promise<FollowUpDueRow[]> {
+  const result = await db.execute(sql`
+    SELECT
+      rl.id                     AS lead_id,
+      rl.park_name               AS park_name,
+      rl.city                    AS city,
+      rl.state                   AS state,
+      rl.owner_name              AS owner_name,
+      rl.owner_phone             AS owner_phone,
+      rl.next_follow_up_at       AS next_follow_up_at,
+      rl.follow_up_cadence_days  AS cadence_days
+    FROM raw_leads rl
+    WHERE rl.deleted_at IS NULL
+      AND rl.last_call_by_id = ${userId}
+      AND rl.next_follow_up_at IS NOT NULL
+      AND rl.next_follow_up_at <= NOW() + INTERVAL '1 day'
+    ORDER BY rl.next_follow_up_at ASC
+    LIMIT ${limit}
+  `);
+
+  const rows = (result as unknown as { rows?: Array<Record<string, unknown>> }).rows
+    ?? (result as unknown as Array<Record<string, unknown>>);
+
+  return (rows ?? []).map((r) => ({
+    leadId: String(r.lead_id),
+    parkName: (r.park_name ?? null) as string | null,
+    city: (r.city ?? null) as string | null,
+    state: (r.state ?? null) as string | null,
+    ownerName: (r.owner_name ?? null) as string | null,
+    ownerPhone: (r.owner_phone ?? null) as string | null,
+    nextFollowUpAt: new Date(r.next_follow_up_at as string),
+    cadenceDays: r.cadence_days != null ? Number(r.cadence_days) : null,
+  }));
+}
