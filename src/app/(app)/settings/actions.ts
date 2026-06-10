@@ -8,6 +8,7 @@ import { rolePermissions, user as userTable, account as accountTable } from "@/d
 import { auth } from "@/lib/auth";
 import { requirePermission } from "@/lib/has-permission";
 import { AUDIT_ACTIONS, recordAudit } from "@/lib/audit";
+import { recycleUserClaimedLeads } from "@/lib/leads-orphan";
 import { sendNotification } from "@/lib/email";
 import { teamInviteEmail, passwordResetEmail } from "@/lib/email-templates";
 import {
@@ -296,13 +297,24 @@ export async function setUserSuspendedAction(userId: string, suspend: boolean): 
     })
     .where(eq(userTable.id, userId));
 
+  // Orphan-park policy: when a BD is suspended, recycle every lead
+  // they had actively claimed back to the pool so another teammate
+  // can pick them up. Notes survive — they live in
+  // raw_lead_dispositions, which is keyed off the lead, not the user.
+  const recycled = suspend ? await recycleUserClaimedLeads(userId) : 0;
+
   await recordAudit({
     actor: { id: actor.id, name: actor.name, email: actor.email },
     action: suspend ? AUDIT_ACTIONS.USER_SUSPENDED : AUDIT_ACTIONS.USER_UNSUSPENDED,
     target: { kind: "user", id: userId, label: target.name ?? target.email },
+    meta: recycled > 0 ? { recycledLeads: recycled } : undefined,
   });
 
   revalidatePath("/settings/users");
+  if (recycled > 0) {
+    revalidatePath("/admin/leads");
+    revalidatePath("/bd-triage");
+  }
 }
 
 export async function deleteUserAction(userId: string): Promise<void> {
@@ -327,13 +339,22 @@ export async function deleteUserAction(userId: string): Promise<void> {
     })
     .where(eq(userTable.id, userId));
 
+  // Orphan-park policy — same as on suspend, but covers the case
+  // where the admin goes straight to delete without suspending first.
+  const recycled = await recycleUserClaimedLeads(userId);
+
   await recordAudit({
     actor: { id: actor.id, name: actor.name, email: actor.email },
     action: AUDIT_ACTIONS.USER_DELETED,
     target: { kind: "user", id: userId, label: target.name ?? target.email },
+    meta: recycled > 0 ? { recycledLeads: recycled } : undefined,
   });
 
   revalidatePath("/settings/users");
+  if (recycled > 0) {
+    revalidatePath("/admin/leads");
+    revalidatePath("/bd-triage");
+  }
 }
 
 export async function restoreUserAction(userId: string): Promise<void> {

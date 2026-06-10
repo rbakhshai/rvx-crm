@@ -9,9 +9,9 @@
  */
 import { notFound } from "next/navigation";
 import { headers } from "next/headers";
-import { and, eq, gte, sql } from "drizzle-orm";
+import { and, desc, eq, gte, ne, sql } from "drizzle-orm";
 import { db } from "@/db";
-import { rawLeadDispositions, rawLeads } from "@/db/schema";
+import { rawLeadDispositions, rawLeads, user as userTable } from "@/db/schema";
 import { auth } from "@/lib/auth";
 import { PageShell } from "../page-shell";
 import { BdTriageClient } from "./client";
@@ -50,7 +50,7 @@ export default async function BdTriagePage({
   // lead is claimed) the # of times anyone has flagged this lead's
   // phone as wrong-number historically.
   const dayAgo = new Date(Date.now() - DAY_MS);
-  const [counts, todayRow, wrongNumberCount] = await Promise.all([
+  const [counts, todayRow, wrongNumberCount, priorTouches] = await Promise.all([
     getQueueCountsForUser(),
     db
       .select({ c: rawLeadDispositions.id })
@@ -69,6 +69,38 @@ export default async function BdTriagePage({
           )
           .then((r) => Number(r[0]?.c ?? 0))
       : Promise.resolve(0),
+    // Prior touches from OTHER BDs (not the current user) — surfaced
+    // so the active BD inherits the park's institutional memory when
+    // they claim a recycled / orphaned lead. Most-recent first; cap
+    // at 8 to keep the panel scrollable but bounded.
+    claimed
+      ? db
+          .select({
+            id: rawLeadDispositions.id,
+            outcome: rawLeadDispositions.outcome,
+            notes: rawLeadDispositions.notes,
+            createdAt: rawLeadDispositions.createdAt,
+            byUserId: rawLeadDispositions.byUserId,
+            byUserName: userTable.name,
+          })
+          .from(rawLeadDispositions)
+          .leftJoin(userTable, eq(userTable.id, rawLeadDispositions.byUserId))
+          .where(
+            and(
+              eq(rawLeadDispositions.rawLeadId, claimed.id),
+              ne(rawLeadDispositions.byUserId, me),
+            ),
+          )
+          .orderBy(desc(rawLeadDispositions.createdAt))
+          .limit(8)
+      : Promise.resolve([] as Array<{
+          id: string;
+          outcome: string;
+          notes: string | null;
+          createdAt: Date;
+          byUserId: string | null;
+          byUserName: string | null;
+        }>),
   ]);
 
   return (
@@ -100,6 +132,13 @@ export default async function BdTriagePage({
                 importedNotes: claimed.importedNotes,
                 callAttempts: claimed.callAttempts,
                 wrongNumberCount,
+                priorTouches: priorTouches.map((t) => ({
+                  id: t.id,
+                  outcome: t.outcome,
+                  notes: t.notes,
+                  createdAt: t.createdAt.toISOString(),
+                  byUserName: t.byUserName ?? "(former teammate)",
+                })),
               }
             : null
         }

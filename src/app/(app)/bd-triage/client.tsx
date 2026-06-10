@@ -29,6 +29,15 @@ type Lead = {
   callAttempts: number;
   /** How many times any BD has flagged this lead's phone as wrong. */
   wrongNumberCount: number;
+  /** Past dispositions made by OTHER BDs — surfaced so the active BD
+   *  inherits the park's history when claiming a recycled / orphaned lead. */
+  priorTouches: Array<{
+    id: string;
+    outcome: string;
+    notes: string | null;
+    createdAt: string;
+    byUserName: string;
+  }>;
 };
 
 type DispositionKey =
@@ -297,6 +306,10 @@ export function BdTriageClient({
               </div>
             )}
 
+            {lead.priorTouches.length > 0 && (
+              <PriorTouchesPanel touches={lead.priorTouches} />
+            )}
+
             {/* Notes textarea */}
             <label className="block">
               <span className="text-[10px] uppercase tracking-widest text-muted font-semibold">
@@ -453,6 +466,87 @@ function EditableContactField({
       </dd>
     </div>
   );
+}
+
+/**
+ * "Prior touches" panel: surfaces past dispositions from other BDs so
+ * the current BD inherits the park's institutional memory. Notes
+ * follow the park, not the BD who made the call — even after that BD
+ * leaves the team (orphan-park policy).
+ *
+ * Collapsed by default to keep the cockpit calm; expands to show the
+ * full disposition history with notes.
+ */
+function PriorTouchesPanel({
+  touches,
+}: {
+  touches: Array<{
+    id: string;
+    outcome: string;
+    notes: string | null;
+    createdAt: string;
+    byUserName: string;
+  }>;
+}) {
+  const [open, setOpen] = useState(false);
+  return (
+    <div className="rounded-lg border border-violet-200/60 bg-violet-50/30 dark:border-violet-500/30 dark:bg-violet-500/[0.04] p-3 mb-4">
+      <button
+        type="button"
+        onClick={() => setOpen((o) => !o)}
+        className="w-full flex items-center justify-between gap-3 text-left"
+      >
+        <div className="flex items-center gap-2">
+          <span className="text-[10px] uppercase tracking-widest text-violet-700 dark:text-violet-300 font-semibold">
+            📋 Prior touches by other BDs
+          </span>
+          <span className="text-[11px] text-muted tabular-nums">· {touches.length}</span>
+        </div>
+        <svg
+          className={cn("size-3.5 text-muted transition-transform", open && "rotate-180")}
+          viewBox="0 0 12 12" fill="none"
+        >
+          <path d="M3 4.5l3 3 3-3" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+        </svg>
+      </button>
+      {open && (
+        <ul className="mt-2 space-y-2 max-h-72 overflow-y-auto pr-1">
+          {touches.map((t) => (
+            <li key={t.id} className="rounded-md border border-border bg-background px-2.5 py-2 text-xs">
+              <div className="flex items-center justify-between gap-2 mb-0.5">
+                <span className="font-semibold text-foreground">
+                  {prettyOutcome(t.outcome)}
+                </span>
+                <span className="text-[10px] text-muted">
+                  {t.byUserName} · {fmtRelative(t.createdAt)}
+                </span>
+              </div>
+              {t.notes && <p className="text-foreground/80 whitespace-pre-wrap leading-snug">{t.notes}</p>}
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
+  );
+}
+
+function prettyOutcome(o: string): string {
+  return o
+    .replace(/^connected_/, "Connected · ")
+    .replace(/_/g, " ")
+    .replace(/^./, (c) => c.toUpperCase());
+}
+
+function fmtRelative(iso: string): string {
+  const ms = Date.now() - new Date(iso).getTime();
+  const mins = Math.floor(ms / 60_000);
+  if (mins < 1) return "just now";
+  if (mins < 60) return `${mins}m ago`;
+  const hrs = Math.floor(mins / 60);
+  if (hrs < 24) return `${hrs}h ago`;
+  const days = Math.floor(hrs / 24);
+  if (days < 30) return `${days}d ago`;
+  return new Date(iso).toLocaleDateString(undefined, { month: "short", day: "numeric", year: "2-digit" });
 }
 
 function Field({ label, value }: { label: string; value: React.ReactNode }) {
