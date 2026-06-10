@@ -37,6 +37,7 @@ import { fmtDate, fmtDateWithWeekday, fmtRelative } from "@/lib/date-format";
 import { getFollowUpsDueForUser, followUpBand } from "@/lib/my-leads";
 import { getOpsBlocks } from "@/lib/ops-content";
 import { TeamMeetingWidget } from "@/components/team-meeting-widget";
+import { getLeadershipQueueForUser } from "@/lib/leadership-queue";
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 
@@ -98,6 +99,7 @@ export default async function TodayPage() {
     doNext,
     followUpsDue,
     meetingBlocks,
+    leadershipItems,
   ] = await Promise.all([
     // 1) My open tasks (top 12, soonest due first, NULLs last)
     db
@@ -160,6 +162,7 @@ export default async function TodayPage() {
     getDoNextItems(me, 5).catch((e) => { console.error("[do-next] failed:", e); return []; }),
     getFollowUpsDueForUser(me, 12).catch((e) => { console.error("[follow-ups-due] failed:", e); return []; }),
     getOpsBlocks("today.meeting.").catch((e) => { console.error("[meeting-blocks] failed:", e); return new Map<string, string>(); }),
+    getLeadershipQueueForUser(me, (session.user as { role?: string }).role).catch((e) => { console.error("[leadership-queue] failed:", e); return []; }),
   ]);
 
   const statusLabel = new Map(statusRows.map((s) => [s.code, s.label]));
@@ -213,6 +216,46 @@ export default async function TodayPage() {
       <div className="grid lg:grid-cols-12 gap-4">
         {/* Left col: Do Next stack + at-risk + my tasks — primary */}
         <div className="lg:col-span-5 space-y-4">
+          {leadershipItems.length > 0 && (
+            <Widget
+              title="On your desk"
+              hint="Leadership queue — items waiting for you"
+              count={leadershipItems.length}
+            >
+              <ul className="divide-y divide-border -mx-1">
+                {leadershipItems.map((item) => {
+                  const tones: Record<string, string> = {
+                    blue:    "bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-500/10 dark:text-blue-300 dark:border-blue-500/30",
+                    violet:  "bg-violet-50 text-violet-700 border-violet-200 dark:bg-violet-500/10 dark:text-violet-300 dark:border-violet-500/30",
+                    amber:   "bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-500/10 dark:text-amber-300 dark:border-amber-500/30",
+                    emerald: "bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-500/10 dark:text-emerald-300 dark:border-emerald-500/30",
+                    rose:    "bg-rose-50 text-rose-700 border-rose-200 dark:bg-rose-500/10 dark:text-rose-300 dark:border-rose-500/30",
+                  };
+                  return (
+                    <li key={`${item.kind}-${item.id}`}>
+                      <Link
+                        href={item.href as never}
+                        className="flex items-start justify-between gap-3 py-2.5 px-1 -mx-1 rounded hover:bg-foreground/[0.03]"
+                      >
+                        <div className="min-w-0 flex-1">
+                          <div className="text-sm font-medium truncate">
+                            <span className="mr-1.5 text-[11px] text-muted uppercase tracking-widest">
+                              {item.kind === "hire" ? "Hire" : "Reimb"}
+                            </span>
+                            {item.title}
+                          </div>
+                        </div>
+                        <span className={`shrink-0 inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-semibold tracking-wider border ${tones[item.tone]}`}>
+                          {item.statusLabel}
+                        </span>
+                      </Link>
+                    </li>
+                  );
+                })}
+              </ul>
+            </Widget>
+          )}
+
           <DoNextStack items={doNext} />
           <AtRiskWidget risks={atRisk} />
 
