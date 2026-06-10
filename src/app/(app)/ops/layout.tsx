@@ -32,9 +32,6 @@ export default function OpsLayout({ children }: { children: React.ReactNode }) {
               <span className="size-2 rounded-full bg-lime-400" />
               <span className="text-sm font-semibold tracking-tight">RVX Operating System</span>
             </Link>
-            <span className="rounded-full bg-foreground/[0.05] text-[10px] uppercase tracking-widest text-muted px-2.5 py-1 font-medium">
-              Founder OS
-            </span>
           </div>
 
           {/* Tabs */}
