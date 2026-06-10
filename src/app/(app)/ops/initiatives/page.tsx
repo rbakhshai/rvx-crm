@@ -139,7 +139,9 @@ export default async function InitiativesPage({
   searchParams: Promise<{ period?: string }>;
 }) {
   const params = await searchParams;
-  const period = parsePeriod(params.period);
+  const rawPeriod = parsePeriod(params.period);
+  // Same as Command Center — month is hidden, so coerce stale URLs.
+  const period = rawPeriod === "month" ? "quarter" : rawPeriod;
 
   const blocks = await getOpsBlocks("initiatives.");
 
@@ -148,7 +150,7 @@ export default async function InitiativesPage({
       <OpsHeader eyebrow="Business Strategy Initiatives" title="Initiatives" />
 
       <div className="mb-6">
-        <TimeToggle pathname={PATHNAME} period={period} />
+        <TimeToggle pathname={PATHNAME} period={period} omit={["month"]} />
       </div>
 
       <div className="space-y-10">

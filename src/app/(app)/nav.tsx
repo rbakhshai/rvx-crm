@@ -48,7 +48,8 @@ const GROUPS: NavItem[] = [
   { href: "/today",       label: "Today",           requires: "view_today" },
   { href: "/tasks",       label: "Tasks",           requires: "view_tasks" },
   { href: "/issues",      label: "Issues",          requires: "view_issues" },
-  { href: "/hires",       label: "New Hires",       requires: "view_hires" },
+  { href: "/hires",          label: "New Hires",      requires: "view_hires" },
+  { href: "/reimbursements", label: "Reimbursements", requires: "view_reimbursements" },
   {
     href: "/triage",
     label: "Pipeline",

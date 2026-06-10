@@ -91,7 +91,9 @@ export type PermissionKey =
   | "view_contacts"
   | "view_bird_dogs_directory"
   | "view_hires"
-  | "manage_hires";
+  | "manage_hires"
+  | "view_reimbursements"
+  | "manage_reimbursements";
 
 export type PermissionGroup = {
   label: string;
@@ -165,12 +167,19 @@ export const PERMISSION_GROUPS: ReadonlyArray<PermissionGroup> = [
       { key: "view_contacts", label: "See Contacts", description: "Buyers + Sellers tabs" },
       { key: "view_bird_dogs_directory", label: "See Bird Dogs", description: "/bird-dogs roster top-level tab" },
       { key: "view_hires", label: "See New Hires", description: "/hires leadership-only hiring workflow" },
+      { key: "view_reimbursements", label: "See Reimbursements", description: "/reimbursements leadership-only purchase requests" },
     ],
   },
   {
     label: "New Hires",
     permissions: [
       { key: "manage_hires", label: "Create + advance hires", description: "Open a new request, edit fields, move it through the workflow" },
+    ],
+  },
+  {
+    label: "Reimbursements",
+    permissions: [
+      { key: "manage_reimbursements", label: "Create + approve reimbursements", description: "Submit a purchase request, approve / decline / mark purchased / mark fulfilled" },
     ],
   },
   {
@@ -234,6 +243,7 @@ export const DEFAULT_PERMISSIONS: Record<Role, Record<PermissionKey, boolean>> =
     "view_pipeline_value",
     "view_trash", "restore_from_trash", "purge_permanently",
     "view_hires", "manage_hires",
+    "view_reimbursements", "manage_reimbursements",
   ),
 
   // Closer — generic role for future hires. View Park Performance was
@@ -259,6 +269,7 @@ export const DEFAULT_PERMISSIONS: Record<Role, Record<PermissionKey, boolean>> =
     "use_triage_cockpit", "dispo_to_buyers",
     "view_pipeline_value", "view_revenue",
     "view_hires", "manage_hires",
+    "view_reimbursements", "manage_reimbursements",
   ),
 
   transaction_coord: grant(
@@ -289,6 +300,7 @@ export const DEFAULT_PERMISSIONS: Record<Role, Record<PermissionKey, boolean>> =
     "view_pipeline_value",
     "view_revenue",
     "view_hires", "manage_hires",
+    "view_reimbursements", "manage_reimbursements",
   ),
 
   due_diligence: grant(
@@ -334,5 +346,6 @@ export const DEFAULT_PERMISSIONS: Record<Role, Record<PermissionKey, boolean>> =
   park_manager: grant(
     ...STANDARD_NAV,
     "view_hires", "manage_hires",
+    "view_reimbursements", "manage_reimbursements",
   ),
 };
