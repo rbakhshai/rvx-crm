@@ -35,6 +35,8 @@ import { DoNextStack } from "@/components/do-next-stack";
 import { getDoNextItems } from "@/lib/do-next";
 import { fmtDate, fmtDateWithWeekday, fmtRelative } from "@/lib/date-format";
 import { getFollowUpsDueForUser, followUpBand } from "@/lib/my-leads";
+import { getOpsBlocks } from "@/lib/ops-content";
+import { TeamMeetingWidget } from "@/components/team-meeting-widget";
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 
@@ -95,6 +97,7 @@ export default async function TodayPage() {
     atRisk,
     doNext,
     followUpsDue,
+    meetingBlocks,
   ] = await Promise.all([
     // 1) My open tasks (top 12, soonest due first, NULLs last)
     db
@@ -156,6 +159,7 @@ export default async function TodayPage() {
     detectAtRiskForUser(me).catch((e) => { console.error("[at-risk] failed:", e); return []; }),
     getDoNextItems(me, 5).catch((e) => { console.error("[do-next] failed:", e); return []; }),
     getFollowUpsDueForUser(me, 12).catch((e) => { console.error("[follow-ups-due] failed:", e); return []; }),
+    getOpsBlocks("today.meeting.").catch((e) => { console.error("[meeting-blocks] failed:", e); return new Map<string, string>(); }),
   ]);
 
   const statusLabel = new Map(statusRows.map((s) => [s.code, s.label]));
@@ -164,6 +168,16 @@ export default async function TodayPage() {
   const dueTodayCount = myOpenTasks.filter((t) => t.dueAt && t.dueAt >= today && t.dueAt < tomorrow).length;
 
   const newDealsThisWeek = Number(weeklyDealRows[0]?.count ?? 0);
+
+  // Meeting widget — admins (and Erica's Sales & Marketing role) can
+  // edit the strings inline; everyone else just sees them.
+  const meetingTitle = meetingBlocks.get("today.meeting.title") ?? "";
+  const meetingUrl   = meetingBlocks.get("today.meeting.url")   ?? "";
+  const meetingNotes = meetingBlocks.get("today.meeting.notes") ?? "";
+  const canEditMeeting =
+    session.user.role === "admin" || session.user.role === "acquisitions_manager";
+  const showMeeting =
+    canEditMeeting || meetingTitle.trim().length > 0 || meetingUrl.trim().length > 0;
   const pipelineValue = Number(pipelineValueRows[0]?.total ?? 0);
 
   return (
@@ -299,6 +313,14 @@ export default async function TodayPage() {
 
         {/* Middle col: deals + alerts */}
         <div className="lg:col-span-4 space-y-4">
+          {showMeeting && (
+            <TeamMeetingWidget
+              canEdit={canEditMeeting}
+              title={meetingTitle}
+              url={meetingUrl}
+              notes={meetingNotes}
+            />
+          )}
           <Widget
             title="Deals waiting on you"
             hint="Your active pipeline, stalest first"
