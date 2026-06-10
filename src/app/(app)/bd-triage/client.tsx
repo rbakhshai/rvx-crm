@@ -7,6 +7,7 @@ import { toast } from "sonner";
 import { cn } from "@/lib/cn";
 import {
   claimNextLeadAction,
+  correctLeadContactAction,
   dispositionLeadAction,
   releaseLeadAction,
   type ClaimMode,
@@ -26,6 +27,8 @@ type Lead = {
   source: string | null;
   importedNotes: string | null;
   callAttempts: number;
+  /** How many times any BD has flagged this lead's phone as wrong. */
+  wrongNumberCount: number;
 };
 
 type DispositionKey =
@@ -142,6 +145,31 @@ export function BdTriageClient({
     });
   }
 
+  /**
+   * Persist a contact-field edit (phone or email). Optimistically
+   * patches the local lead so the field shows the new value
+   * immediately; on save, we router.refresh() to pick up the canonical
+   * row (and the recomputed wrongNumberCount).
+   */
+  function saveContact(updates: { ownerPhone?: string | null; ownerEmail?: string | null }) {
+    if (!lead) return;
+    // Optimistic — show the new value right away.
+    setLead({
+      ...lead,
+      ...(updates.ownerPhone !== undefined && { ownerPhone: updates.ownerPhone }),
+      ...(updates.ownerEmail !== undefined && { ownerEmail: updates.ownerEmail }),
+    });
+    startTransition(async () => {
+      const r = await correctLeadContactAction(lead.id, updates);
+      if (!r.ok) {
+        toast.error(r.error ?? "Couldn't save");
+        return;
+      }
+      toast.success("Updated");
+      router.refresh();
+    });
+  }
+
   function skip() {
     if (!lead) return;
     if (!confirm("Skip this lead without calling? It goes back to the pool for someone else.")) return;
@@ -222,27 +250,31 @@ export function BdTriageClient({
               </button>
             </header>
 
+            {lead.wrongNumberCount > 0 && (
+              <div className="rounded-lg border border-amber-300 bg-amber-50 text-amber-900 dark:border-amber-500/40 dark:bg-amber-500/10 dark:text-amber-200 px-3 py-2 mb-3 flex items-center justify-between gap-3 text-xs">
+                <span>
+                  ⚠️ <strong>Heads up:</strong> this number was flagged as wrong by{" "}
+                  {lead.wrongNumberCount} prior {lead.wrongNumberCount === 1 ? "BD" : "BDs"}.
+                  If you find the right number, edit the field on the right.
+                </span>
+              </div>
+            )}
+
             <dl className="grid grid-cols-2 gap-x-6 gap-y-2.5 mb-4 text-sm">
               <Field label="Owner" value={lead.ownerName} />
-              <Field
+              <EditableContactField
                 label="Phone"
-                value={
-                  lead.ownerPhone ? (
-                    <a href={`tel:${lead.ownerPhone.replace(/[^\d+]/g, "")}`} className="text-primary hover:underline font-medium">
-                      {lead.ownerPhone} ↗
-                    </a>
-                  ) : null
-                }
+                value={lead.ownerPhone}
+                placeholder="(555) 123-4567"
+                hrefScheme="tel"
+                onSave={(next) => saveContact({ ownerPhone: next })}
               />
-              <Field
+              <EditableContactField
                 label="Email"
-                value={
-                  lead.ownerEmail ? (
-                    <a href={`mailto:${lead.ownerEmail}`} className="hover:underline">
-                      {lead.ownerEmail}
-                    </a>
-                  ) : null
-                }
+                value={lead.ownerEmail}
+                placeholder="owner@example.com"
+                hrefScheme="mailto"
+                onSave={(next) => saveContact({ ownerEmail: next })}
               />
               <Field label="Pads" value={lead.pads} />
               <Field label="Source" value={lead.source} />
@@ -316,6 +348,101 @@ function Stat({ label, value, hint }: { label: string; value: number | string; h
       <div className="text-2xl font-bold tabular-nums">{value}</div>
       <div className="text-[10px] uppercase tracking-widest text-muted font-semibold mt-0.5">{label}</div>
       <div className="text-[10px] text-muted mt-0.5">{hint}</div>
+    </div>
+  );
+}
+
+/**
+ * Inline-editable phone or email field. Renders as a click-to-call /
+ * mailto link by default; click ✏️ to swap in an input + Save/Cancel
+ * controls. Empty-string save clears the field.
+ */
+function EditableContactField({
+  label,
+  value,
+  placeholder,
+  hrefScheme,
+  onSave,
+}: {
+  label: string;
+  value: string | null;
+  placeholder: string;
+  hrefScheme: "tel" | "mailto";
+  onSave: (next: string | null) => void;
+}) {
+  const [editing, setEditing] = useState(false);
+  const [draft, setDraft] = useState(value ?? "");
+
+  function commit() {
+    const trimmed = draft.trim();
+    onSave(trimmed.length === 0 ? null : trimmed);
+    setEditing(false);
+  }
+
+  return (
+    <div>
+      <dt className="text-[10px] uppercase tracking-widest text-muted font-medium">{label}</dt>
+      <dd className="mt-0.5">
+        {editing ? (
+          <div className="flex items-center gap-1.5">
+            <input
+              autoFocus
+              type={hrefScheme === "tel" ? "tel" : "email"}
+              value={draft}
+              onChange={(e) => setDraft(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") { e.preventDefault(); commit(); }
+                if (e.key === "Escape") { e.preventDefault(); setDraft(value ?? ""); setEditing(false); }
+              }}
+              placeholder={placeholder}
+              className="flex-1 min-w-0 rounded border border-border bg-background px-2 py-1 text-sm focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
+            />
+            <button
+              type="button"
+              onClick={commit}
+              className="rounded bg-primary text-primary-foreground px-2 py-1 text-xs font-medium hover:opacity-90"
+            >
+              Save
+            </button>
+            <button
+              type="button"
+              onClick={() => { setDraft(value ?? ""); setEditing(false); }}
+              className="text-xs text-muted hover:text-foreground"
+            >
+              Cancel
+            </button>
+          </div>
+        ) : (
+          <div className="flex items-center gap-2 group">
+            {value ? (
+              <a
+                href={
+                  hrefScheme === "tel"
+                    ? `tel:${value.replace(/[^\d+]/g, "")}`
+                    : `mailto:${value}`
+                }
+                className={cn(
+                  hrefScheme === "tel" && "text-primary font-medium",
+                  "hover:underline",
+                )}
+              >
+                {value}
+                {hrefScheme === "tel" && " ↗"}
+              </a>
+            ) : (
+              <span className="text-muted italic">—</span>
+            )}
+            <button
+              type="button"
+              onClick={() => setEditing(true)}
+              className="text-[11px] text-muted hover:text-foreground opacity-0 group-hover:opacity-100 transition"
+              title={`Correct ${label.toLowerCase()}`}
+            >
+              ✏️
+            </button>
+          </div>
+        )}
+      </dd>
     </div>
   );
 }

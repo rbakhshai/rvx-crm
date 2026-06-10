@@ -502,6 +502,62 @@ export async function dispositionLeadAction(input: DispositionInput): Promise<Di
 }
 
 /**
+ * Inline-edit the contact info on a claimed lead. Used when the
+ * skip-traced phone or email turns out to be wrong — instead of just
+ * firing wrong_number and recycling, the BD updates the field so
+ * future call attempts use the corrected value.
+ *
+ * Permission: only the current claimant or an admin can edit. Future
+ * BDs who pick the lead up later see the updated value automatically.
+ *
+ * Pass null to clear a field; pass undefined to leave it untouched.
+ * Both an empty string and a whitespace-only string also clear.
+ */
+export async function correctLeadContactAction(
+  leadId: string,
+  updates: { ownerPhone?: string | null; ownerEmail?: string | null },
+): Promise<{ ok: boolean; error?: string }> {
+  const user = await requireUser();
+
+  const [lead] = await db
+    .select({ claimedById: rawLeads.claimedById })
+    .from(rawLeads)
+    .where(eq(rawLeads.id, leadId))
+    .limit(1);
+  if (!lead) return { ok: false, error: "Lead not found" };
+
+  const isAdmin = user.role === "admin";
+  if (!isAdmin && lead.claimedById !== user.id) {
+    return { ok: false, error: "Claim this lead first to edit it." };
+  }
+
+  // Coerce empty / whitespace → null so the DB doesn't store "".
+  const patch: { ownerPhone?: string | null; ownerEmail?: string | null; updatedAt: Date } = {
+    updatedAt: new Date(),
+  };
+  if (updates.ownerPhone !== undefined) {
+    const v = (updates.ownerPhone ?? "").trim();
+    patch.ownerPhone = v.length > 0 ? v : null;
+  }
+  if (updates.ownerEmail !== undefined) {
+    const v = (updates.ownerEmail ?? "").trim();
+    patch.ownerEmail = v.length > 0 ? v : null;
+  }
+
+  if (Object.keys(patch).length === 1) {
+    // Only updatedAt — nothing to save.
+    return { ok: true };
+  }
+
+  await db.update(rawLeads).set(patch).where(eq(rawLeads.id, leadId));
+
+  revalidatePath("/bd-triage");
+  revalidatePath("/my-leads");
+  revalidatePath("/admin/leads");
+  return { ok: true };
+}
+
+/**
  * Manually set / change / clear the next follow-up date on a lead.
  *
  * Usable from /my-leads (the BD's personal status board) without going

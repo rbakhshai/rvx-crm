@@ -9,7 +9,7 @@
  */
 import { notFound } from "next/navigation";
 import { headers } from "next/headers";
-import { and, eq, gte } from "drizzle-orm";
+import { and, eq, gte, sql } from "drizzle-orm";
 import { db } from "@/db";
 import { rawLeadDispositions, rawLeads } from "@/db/schema";
 import { auth } from "@/lib/auth";
@@ -46,15 +46,29 @@ export default async function BdTriagePage({
     .where(and(eq(rawLeads.claimedById, me), eq(rawLeads.status, "claimed")))
     .limit(1);
 
-  // Stats: pool counts (split by mode) + BD's calls today.
+  // Stats: pool counts (split by mode) + BD's calls today + (if a
+  // lead is claimed) the # of times anyone has flagged this lead's
+  // phone as wrong-number historically.
   const dayAgo = new Date(Date.now() - DAY_MS);
-  const [counts, todayRow] = await Promise.all([
+  const [counts, todayRow, wrongNumberCount] = await Promise.all([
     getQueueCountsForUser(),
     db
       .select({ c: rawLeadDispositions.id })
       .from(rawLeadDispositions)
       .where(and(eq(rawLeadDispositions.byUserId, me), gte(rawLeadDispositions.createdAt, dayAgo)))
       .then((r) => ({ c: r.length })),
+    claimed
+      ? db
+          .select({ c: sql<number>`COUNT(*)::int` })
+          .from(rawLeadDispositions)
+          .where(
+            and(
+              eq(rawLeadDispositions.rawLeadId, claimed.id),
+              eq(rawLeadDispositions.outcome, "wrong_number"),
+            ),
+          )
+          .then((r) => Number(r[0]?.c ?? 0))
+      : Promise.resolve(0),
   ]);
 
   return (
@@ -85,6 +99,7 @@ export default async function BdTriagePage({
                 source: claimed.source,
                 importedNotes: claimed.importedNotes,
                 callAttempts: claimed.callAttempts,
+                wrongNumberCount,
               }
             : null
         }
