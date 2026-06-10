@@ -28,7 +28,8 @@ export type Role =
   | "viewer"
   | "bd_level_1"
   | "bd_level_2"
-  | "bd_level_3";
+  | "bd_level_3"
+  | "park_manager";
 
 /**
  * Visible roles, in the canonical org hierarchy you pinned:
@@ -55,6 +56,7 @@ export const ROLES: ReadonlyArray<{ value: Role; label: string; description: str
   { value: "acquisitions_manager", label: "Sales & Marketing",  description: "Runs sales, marketing, and the bird-dog team." },
   { value: "bird_dog_manager",     label: "Operations",         description: "Runs operations — closing, DD, escrow, post-close." },
   { value: "cfo",                  label: "Finance",            description: "Owns books, revenue, and financial reporting." },
+  { value: "park_manager",         label: "Park Manager",       description: "Runs day-to-day at a specific park. Leadership tier for New Hires." },
   { value: "bd_level_1",           label: "BD level 1",         description: "Senior bird-dog seat." },
   { value: "bd_level_2",           label: "BD level 2",         description: "Mid-tier bird-dog seat." },
   { value: "bd_level_3",           label: "BD level 3",         description: "Junior bird-dog seat." },
@@ -87,7 +89,9 @@ export type PermissionKey =
   | "view_issues"
   | "view_pipeline"
   | "view_contacts"
-  | "view_bird_dogs_directory";
+  | "view_bird_dogs_directory"
+  | "view_hires"
+  | "manage_hires";
 
 export type PermissionGroup = {
   label: string;
@@ -160,6 +164,13 @@ export const PERMISSION_GROUPS: ReadonlyArray<PermissionGroup> = [
       { key: "view_pipeline", label: "See Pipeline", description: "/triage, /deals, /deals/board" },
       { key: "view_contacts", label: "See Contacts", description: "Buyers + Sellers tabs" },
       { key: "view_bird_dogs_directory", label: "See Bird Dogs", description: "/bird-dogs roster top-level tab" },
+      { key: "view_hires", label: "See New Hires", description: "/hires leadership-only hiring workflow" },
+    ],
+  },
+  {
+    label: "New Hires",
+    permissions: [
+      { key: "manage_hires", label: "Create + advance hires", description: "Open a new request, edit fields, move it through the workflow" },
     ],
   },
   {
@@ -222,6 +233,7 @@ export const DEFAULT_PERMISSIONS: Record<Role, Record<PermissionKey, boolean>> =
     "use_triage_cockpit", "dispo_to_buyers",
     "view_pipeline_value",
     "view_trash", "restore_from_trash", "purge_permanently",
+    "view_hires", "manage_hires",
   ),
 
   // Closer — generic role for future hires. View Park Performance was
@@ -246,6 +258,7 @@ export const DEFAULT_PERMISSIONS: Record<Role, Record<PermissionKey, boolean>> =
     "create_bird_dogs", "edit_bird_dogs",
     "use_triage_cockpit", "dispo_to_buyers",
     "view_pipeline_value", "view_revenue",
+    "view_hires", "manage_hires",
   ),
 
   transaction_coord: grant(
@@ -269,11 +282,13 @@ export const DEFAULT_PERMISSIONS: Record<Role, Record<PermissionKey, boolean>> =
     "view_pipeline_value",
   ),
 
-  // Finance (Kevin) sees Park Performance.
+  // Finance (Kevin) sees Park Performance + the Hires queue (he runs
+  // the finance/tax/legal pass on every new hire request).
   cfo: grant(
     ...STANDARD_NAV,
     "view_pipeline_value",
     "view_revenue",
+    "view_hires", "manage_hires",
   ),
 
   due_diligence: grant(
@@ -310,5 +325,14 @@ export const DEFAULT_PERMISSIONS: Record<Role, Record<PermissionKey, boolean>> =
     "edit_contacts",
     "edit_bird_dogs",
     "view_pipeline_value",
+  ),
+
+  // Park manager (Lyn). Runs operations at a specific park; counts as
+  // leadership for the New Hires queue (so she can initiate hire
+  // requests for her park's staff). Light grants beyond Hires +
+  // standard nav — they can be widened from /settings/roles later.
+  park_manager: grant(
+    ...STANDARD_NAV,
+    "view_hires", "manage_hires",
   ),
 };

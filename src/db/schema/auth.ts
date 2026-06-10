@@ -36,6 +36,9 @@ export const userRole = pgEnum("user_role", [
   "bd_level_1",
   "bd_level_2",
   "bd_level_3",
+  // Park-level operator (lives at / runs a specific park's day-to-day).
+  // Added 2026-06 for Lyn. Counts as leadership for the New Hires queue.
+  "park_manager",
 ]);
 
 export const user = pgTable("user", {
