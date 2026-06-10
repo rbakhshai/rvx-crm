@@ -52,6 +52,10 @@ export const user = pgTable("user", {
   suspendedById: text("suspended_by_id"),
   deletedAt: timestamp("deleted_at"),
   deletedById: text("deleted_by_id"),
+  // First-login orientation: NULL = hasn't completed yet, timestamp = done.
+  // The /onboarding flow stamps this; layout middleware redirects BD-tier
+  // users with NULL to /onboarding until they finish or skip. (#5000)
+  onboardedAt: timestamp("onboarded_at"),
 });
 
 export const session = pgTable("session", {

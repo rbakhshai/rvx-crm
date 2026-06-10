@@ -36,7 +36,11 @@ export default async function AppLayout(props: {
   // Look up suspendedAt/deletedAt directly — Better Auth's session payload
   // doesn't carry them by default, and we want this check on every page.
   const [me] = await db
-    .select({ suspendedAt: userTable.suspendedAt, deletedAt: userTable.deletedAt })
+    .select({
+      suspendedAt: userTable.suspendedAt,
+      deletedAt: userTable.deletedAt,
+      onboardedAt: userTable.onboardedAt,
+    })
     .from(userTable)
     .where(eq(userTable.id, session.user.id))
     .limit(1);
@@ -46,6 +50,16 @@ export default async function AppLayout(props: {
   // Bird dogs don't see the internal CRM — route them to their portal
   if (role === "bird_dog") {
     redirect("/portal");
+  }
+  // First-login orientation for BD-tier seats. (/onboarding lives
+  // outside the (app) group so it has its own minimal layout — no
+  // sidebar — and isn't subject to this same redirect, preventing a
+  // loop. Once onboardedAt is set, the redirect stops firing.
+  // Leadership tiers are exempted. (#5000)
+  const isBdTier =
+    role === "bd_level_1" || role === "bd_level_2" || role === "bd_level_3";
+  if (isBdTier && !me?.onboardedAt) {
+    redirect("/onboarding");
   }
   const permissions = await getPermissionsFor(role);
 
