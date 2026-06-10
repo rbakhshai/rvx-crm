@@ -72,6 +72,16 @@ export const rawLeads = pgTable(
     convertedDealId: text("converted_deal_id").references(() => deals.id, { onDelete: "set null" }),
     convertedAt: timestamp("converted_at"),
 
+    // Follow-up scheduling. Set automatically when a BD fires a connected_*
+    // disposition (defaults: interested=7d, thinking=14d, not_selling=30d),
+    // and editable manually from /my-leads via setLeadFollowUpAction. Used
+    // by /today's "Follow-ups due" widget and ordering in followup mode.
+    // followUpCadenceDays is just for analytics — the date is the source
+    // of truth.
+    nextFollowUpAt: timestamp("next_follow_up_at"),
+    followUpCadenceDays: integer("follow_up_cadence_days"),
+    followUpSetById: text("follow_up_set_by_id").references(() => user.id, { onDelete: "set null" }),
+
     // Provenance — used to bulk-undo a bad CSV upload
     uploadBatchId: text("upload_batch_id"),
     uploadedById: text("uploaded_by_id").references(() => user.id, { onDelete: "set null" }),
@@ -93,6 +103,8 @@ export const rawLeads = pgTable(
     addressIdx: index("raw_leads_address_idx").on(t.street, t.city, t.state),
     // Group by upload batch (lets admins delete a whole upload at once).
     batchIdx: index("raw_leads_batch_idx").on(t.uploadBatchId),
+    // /today's "Follow-ups due" widget — quick (user, date) lookup.
+    followUpIdx: index("raw_leads_follow_up_idx").on(t.lastCallById, t.nextFollowUpAt),
   }),
 );
 

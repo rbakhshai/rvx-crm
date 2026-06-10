@@ -7,6 +7,7 @@ import { db } from "@/db";
 import { deals, rawLeadDispositions, rawLeads } from "@/db/schema";
 import { auth } from "@/lib/auth";
 import { addressKey, parseLeadsCsv } from "@/lib/raw-leads-csv";
+import { DEFAULT_FOLLOW_UP_DAYS, FOLLOW_UP_DAYS_OPTIONS } from "@/lib/follow-up";
 
 async function requireUser() {
   const session = await auth.api.getSession({ headers: await headers() });
@@ -224,7 +225,14 @@ export async function claimNextLeadAction(mode: ClaimMode = "fresh"): Promise<Cl
                 AND d.by_user_id = ${user.id}
                 AND d.outcome IN ('connected_interested', 'connected_thinking', 'connected_not_selling')
             )
-          ORDER BY rl.last_call_at ASC NULLS LAST, rl.updated_at ASC
+          -- Order: scheduled-overdue first (next_follow_up_at <= NOW),
+          -- then the oldest scheduled date, then unscheduled. Falls back
+          -- to last_call_at for ties so behavior stays stable when no
+          -- one has set follow-up dates yet.
+          ORDER BY
+            (rl.next_follow_up_at IS NOT NULL AND rl.next_follow_up_at <= NOW()) DESC,
+            rl.next_follow_up_at ASC NULLS LAST,
+            rl.last_call_at ASC NULLS LAST
           LIMIT 1
           FOR UPDATE SKIP LOCKED
         `;
@@ -317,6 +325,13 @@ type DispositionInput = {
     | "qualified"
     | "do_not_call";
   notes?: string;
+  /**
+   * Optional explicit follow-up cadence in days. Honored only when the
+   * outcome is a connected_* (the other outcomes don't schedule).
+   * If omitted on a connected_* outcome, we fall back to the
+   * DEFAULT_FOLLOW_UP_DAYS map.
+   */
+  followUpDays?: number;
 };
 
 type DispositionResult = {
@@ -357,7 +372,7 @@ const RECYCLE_OUTCOMES = new Set([
  */
 export async function dispositionLeadAction(input: DispositionInput): Promise<DispositionResult> {
   const user = await requireUser();
-  const { leadId, outcome, notes } = input;
+  const { leadId, outcome, notes, followUpDays } = input;
 
   // Verify the lead exists + the current user is its claimant. We don't
   // want one BD dispositioning another BD's claimed lead.
@@ -387,6 +402,21 @@ export async function dispositionLeadAction(input: DispositionInput): Promise<Di
   };
 
   if (RECYCLE_OUTCOMES.has(outcome)) {
+    // Compute next follow-up only for connected_* outcomes — no-answer /
+    // voicemail / busy / wrong_number recycle without scheduling.
+    const isConnected = outcome.startsWith("connected_");
+    let nextFollowUpAt: Date | null = null;
+    let cadence: number | null = null;
+    if (isConnected) {
+      cadence =
+        followUpDays && (FOLLOW_UP_DAYS_OPTIONS as readonly number[]).includes(followUpDays)
+          ? followUpDays
+          : DEFAULT_FOLLOW_UP_DAYS[outcome] ?? null;
+      if (cadence != null) {
+        nextFollowUpAt = new Date(now.getTime() + cadence * 24 * 60 * 60 * 1000);
+      }
+    }
+
     await db
       .update(rawLeads)
       .set({
@@ -394,9 +424,20 @@ export async function dispositionLeadAction(input: DispositionInput): Promise<Di
         status: "pool",
         claimedById: null,
         claimedAt: null,
+        // Only stamp when we actually have a date — preserves any existing
+        // value from a prior connected touch on the non-connected branches.
+        ...(isConnected
+          ? {
+              nextFollowUpAt,
+              followUpCadenceDays: cadence,
+              followUpSetById: user.id,
+            }
+          : {}),
       })
       .where(eq(rawLeads.id, leadId));
     revalidatePath("/bd-triage");
+    revalidatePath("/my-leads");
+    revalidatePath("/today");
     return { ok: true, next: "recycled" };
   }
 
@@ -408,9 +449,13 @@ export async function dispositionLeadAction(input: DispositionInput): Promise<Di
         status: "dead",
         claimedById: null,
         claimedAt: null,
+        // DNC clears any pending follow-up — no point pinging again.
+        nextFollowUpAt: null,
       })
       .where(eq(rawLeads.id, leadId));
     revalidatePath("/bd-triage");
+    revalidatePath("/my-leads");
+    revalidatePath("/today");
     return { ok: true, next: "dead" };
   }
 
@@ -451,5 +496,64 @@ export async function dispositionLeadAction(input: DispositionInput): Promise<Di
   revalidatePath("/bd-triage");
   revalidatePath("/triage");
   revalidatePath("/deals");
+  revalidatePath("/my-leads");
+  revalidatePath("/today");
   return { ok: true, next: "converted", newDealId: newDeal?.id };
+}
+
+/**
+ * Manually set / change / clear the next follow-up date on a lead.
+ *
+ * Usable from /my-leads (the BD's personal status board) without going
+ * through a fresh disposition. Pass `days = null` to clear the schedule
+ * entirely (e.g. lead is dead but you don't want to fire a DNC yet).
+ *
+ * Permission: any user who has previously dispositioned the lead, OR the
+ * current claimant. Prevents one BD from re-scheduling another BD's
+ * leads. Admins (manage_users) can override.
+ */
+export async function setLeadFollowUpAction(
+  leadId: string,
+  days: number | null,
+): Promise<{ ok: boolean; error?: string }> {
+  const user = await requireUser();
+
+  // Permission check: did this user disposition the lead or are they the
+  // current claimant? Admins can edit anyone's.
+  const isAdmin = user.role === "admin";
+  if (!isAdmin) {
+    const [touched] = await db.execute(sql`
+      SELECT 1 AS ok
+      FROM raw_lead_dispositions
+      WHERE raw_lead_id = ${leadId} AND by_user_id = ${user.id}
+      LIMIT 1
+    `) as unknown as Array<{ ok: number }>;
+    const [lead] = await db
+      .select({ claimedById: rawLeads.claimedById })
+      .from(rawLeads)
+      .where(eq(rawLeads.id, leadId));
+    if (!touched && lead?.claimedById !== user.id) {
+      return { ok: false, error: "You haven't worked this lead." };
+    }
+  }
+
+  const now = new Date();
+  const validDays =
+    days != null && (FOLLOW_UP_DAYS_OPTIONS as readonly number[]).includes(days) ? days : null;
+  const nextAt = validDays != null ? new Date(now.getTime() + validDays * 24 * 60 * 60 * 1000) : null;
+
+  await db
+    .update(rawLeads)
+    .set({
+      nextFollowUpAt: nextAt,
+      followUpCadenceDays: validDays,
+      followUpSetById: user.id,
+      updatedAt: now,
+    })
+    .where(eq(rawLeads.id, leadId));
+
+  revalidatePath("/my-leads");
+  revalidatePath("/today");
+  revalidatePath("/bd-triage");
+  return { ok: true };
 }

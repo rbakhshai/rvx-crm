@@ -39,6 +39,33 @@ export function fmtDateTime(d: Date | string | null | undefined): string {
 }
 
 /**
+ * Relative time: "just now" / "5m ago" / "3h ago" / "2d ago", falling
+ * back to fmtDate() past 7 days. Used in activity feeds, the My Leads
+ * "last touched" column, and anywhere "how fresh is this" matters more
+ * than the exact stamp.
+ *
+ * Symmetric for the future: "in 5m" / "in 3h" / "in 2d", same fallback.
+ */
+export function fmtRelative(d: Date | string | null | undefined): string {
+  if (d == null) return "—";
+  const date = d instanceof Date ? d : new Date(d);
+  if (Number.isNaN(date.getTime())) return "—";
+
+  const ms = date.getTime() - Date.now();
+  const future = ms > 0;
+  const absMs = Math.abs(ms);
+  const mins = Math.floor(absMs / 60_000);
+  if (mins < 1) return "just now";
+  const fmt = (n: number, unit: string) => (future ? `in ${n}${unit}` : `${n}${unit} ago`);
+  if (mins < 60) return fmt(mins, "m");
+  const hrs = Math.floor(mins / 60);
+  if (hrs < 24) return fmt(hrs, "h");
+  const days = Math.floor(hrs / 24);
+  if (days < 7) return fmt(days, "d");
+  return fmtDate(date);
+}
+
+/**
  * "Mon, Jun 1 '26" — for page headers like the /today subtitle where the
  * weekday is useful context.
  */
