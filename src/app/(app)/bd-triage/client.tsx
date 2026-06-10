@@ -39,6 +39,9 @@ type DispositionKey =
   | "connected_interested"
   | "connected_not_selling"
   | "connected_thinking"
+  | "connected_selling_to_family"
+  | "connected_future_maybe"
+  | "connected_manager_only"
   | "qualified"
   | "do_not_call";
 
@@ -49,10 +52,15 @@ const RECYCLE: Array<{ key: DispositionKey; label: string; icon: string; sub?: s
   { key: "wrong_number",  label: "Wrong number",  icon: "❌", sub: "Recycles to pool" },
 ];
 
-const CONNECTED: Array<{ key: DispositionKey; label: string; icon: string }> = [
-  { key: "connected_interested",  label: "Connected — Interested",  icon: "🔥" },
-  { key: "connected_not_selling", label: "Connected — Not selling", icon: "🤷" },
-  { key: "connected_thinking",    label: "Connected — Thinking",    icon: "💭" },
+// Buttons ordered hottest → coldest so the BD's eye lands on the
+// "I just had a real conversation" pile at the top of the column.
+const CONNECTED: Array<{ key: DispositionKey; label: string; icon: string; sub?: string }> = [
+  { key: "connected_interested",        label: "Interested",          icon: "🔥", sub: "Follow up in 7d" },
+  { key: "connected_manager_only",      label: "Manager only",        icon: "📤", sub: "Awaiting pass-through · 7d" },
+  { key: "connected_thinking",          label: "Thinking about it",   icon: "💭", sub: "Follow up in 14d" },
+  { key: "connected_not_selling",       label: "Not selling now",     icon: "🤷", sub: "Follow up in 30d" },
+  { key: "connected_future_maybe",      label: "Future maybe",        icon: "🌱", sub: "Follow up in 90d" },
+  { key: "connected_selling_to_family", label: "Selling to family",   icon: "👨‍👩‍👧", sub: "Follow up in 90d" },
 ];
 
 const TERMINAL: Array<{ key: DispositionKey; label: string; icon: string; sub: string; tone: "good" | "bad" }> = [
@@ -306,8 +314,8 @@ export function BdTriageClient({
 
           {/* Disposition buttons */}
           <section className="space-y-4">
-            <DispositionGroup label="No connect (recycles to pool)" buttons={RECYCLE} onClick={disposition} disabled={isPending} />
-            <DispositionGroup label="Connected" buttons={CONNECTED} onClick={disposition} disabled={isPending} />
+            <DispositionGroup label="No connect (recycles to pool)" buttons={RECYCLE} onClick={disposition} disabled={isPending} cols={4} />
+            <DispositionGroup label="Connected — pick the closest match" buttons={CONNECTED} onClick={disposition} disabled={isPending} cols={3} />
             <DispositionGroup label="Final outcome" buttons={TERMINAL.map((t) => ({ ...t }))} onClick={disposition} disabled={isPending} terminal />
           </section>
         </>
@@ -462,17 +470,25 @@ function DispositionGroup({
   onClick,
   disabled,
   terminal,
+  cols,
 }: {
   label: string;
   buttons: Array<{ key: DispositionKey; label: string; icon: string; sub?: string; tone?: "good" | "bad" }>;
   onClick: (k: DispositionKey) => void;
   disabled: boolean;
   terminal?: boolean;
+  /** Wide-screen column count (mobile is always 2). 3 for the 6
+   *  connected outcomes; 4 for the 4 recycle outcomes. */
+  cols?: 3 | 4;
 }) {
+  const colClass =
+    terminal ? "grid-cols-2" :
+    cols === 3 ? "grid-cols-2 sm:grid-cols-3" :
+    "grid-cols-2 sm:grid-cols-4";
   return (
     <div>
       <div className="text-[10px] uppercase tracking-widest text-muted font-semibold mb-2">{label}</div>
-      <div className={cn("grid gap-2", terminal ? "grid-cols-2" : "grid-cols-2 sm:grid-cols-4")}>
+      <div className={cn("grid gap-2", colClass)}>
         {buttons.map((b) => (
           <button
             key={b.key}

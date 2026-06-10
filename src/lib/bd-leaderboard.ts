@@ -19,6 +19,7 @@
  */
 import { sql } from "drizzle-orm";
 import { db } from "@/db";
+import { CONNECTED_OUTCOMES } from "@/lib/follow-up";
 
 export type LeaderboardPeriod = "week" | "month" | "all";
 
@@ -47,7 +48,6 @@ const POINTS = {
   psa: 100,
 } as const;
 
-const CONNECTED_OUTCOMES = ["connected_interested", "connected_not_selling", "connected_thinking"];
 const LOI_STAGES = [
   "loi_submitted", "loi_in_negotiation", "loi_signed_by_seller", "loi_accepted_both_sides",
   "tc_writing_psa", "tc_psa_submitted", "psa_accepted",

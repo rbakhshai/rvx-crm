@@ -124,9 +124,18 @@ export const rawLeadOutcome = pgEnum("raw_lead_outcome", [
   "voicemail",
   "busy",
   "wrong_number",
+  // Top-level connected outcomes — set by clicking the big "Connected"
+  // buttons on /bd-triage. Each carries its own default follow-up
+  // cadence (see lib/follow-up.ts).
   "connected_interested",
   "connected_not_selling",
   "connected_thinking",
+  // Granular sub-statuses added per Zach's feedback (#17000). They
+  // also count as connected — they recycle the lead, surface in
+  // Follow-up mode, and score the same on the leaderboard.
+  "connected_selling_to_family",       // owner selling to family — fully gone
+  "connected_future_maybe",            // not now, possibly later
+  "connected_manager_only",            // spoke to manager, waiting on owner
   "qualified",          // → triggers deal creation
   "do_not_call",        // → status='dead'
 ]);

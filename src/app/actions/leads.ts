@@ -7,7 +7,17 @@ import { db } from "@/db";
 import { deals, rawLeadDispositions, rawLeads } from "@/db/schema";
 import { auth } from "@/lib/auth";
 import { addressKey, parseLeadsCsv } from "@/lib/raw-leads-csv";
-import { DEFAULT_FOLLOW_UP_DAYS, FOLLOW_UP_DAYS_OPTIONS } from "@/lib/follow-up";
+import { CONNECTED_OUTCOMES, DEFAULT_FOLLOW_UP_DAYS, FOLLOW_UP_DAYS_OPTIONS } from "@/lib/follow-up";
+
+/**
+ * Build a SQL literal like `ARRAY['connected_interested', …]` from
+ * the central CONNECTED_OUTCOMES list. Used inside raw `sql` templates
+ * via sql.raw so we don't have to re-thread the list every time we
+ * add a new sub-status.
+ */
+function connectedOutcomesArrayLiteral(): string {
+  return `ARRAY[${CONNECTED_OUTCOMES.map((o) => `'${o}'`).join(", ")}]`;
+}
 
 async function requireUser() {
   const session = await auth.api.getSession({ headers: await headers() });
@@ -223,7 +233,7 @@ export async function claimNextLeadAction(mode: ClaimMode = "fresh"): Promise<Cl
               SELECT 1 FROM raw_lead_dispositions d
               WHERE d.raw_lead_id = rl.id
                 AND d.by_user_id = ${user.id}
-                AND d.outcome IN ('connected_interested', 'connected_thinking', 'connected_not_selling')
+                AND d.outcome::text = ANY(${sql.raw(connectedOutcomesArrayLiteral())})
             )
           -- Order: scheduled-overdue first (next_follow_up_at <= NOW),
           -- then the oldest scheduled date, then unscheduled. Falls back
@@ -283,7 +293,7 @@ export async function getQueueCountsForUser(): Promise<{ fresh: number; followup
         SELECT 1 FROM raw_lead_dispositions d
         WHERE d.raw_lead_id = rl.id
           AND d.by_user_id = ${user.id}
-          AND d.outcome IN ('connected_interested', 'connected_thinking', 'connected_not_selling')
+          AND d.outcome::text = ANY(${sql.raw(connectedOutcomesArrayLiteral())})
       )
   `);
 
@@ -322,6 +332,9 @@ type DispositionInput = {
     | "connected_interested"
     | "connected_not_selling"
     | "connected_thinking"
+    | "connected_selling_to_family"
+    | "connected_future_maybe"
+    | "connected_manager_only"
     | "qualified"
     | "do_not_call";
   notes?: string;
@@ -346,14 +359,14 @@ type DispositionResult = {
 // All non-terminal outcomes recycle the lead back to the pool. The BD's
 // history is preserved via raw_lead_dispositions, so follow-up mode can
 // re-surface leads where this BD had a connected_* conversation.
-const RECYCLE_OUTCOMES = new Set([
+const RECYCLE_OUTCOMES = new Set<string>([
   "no_answer",
   "voicemail",
   "busy",
   "wrong_number",
-  "connected_interested",
-  "connected_not_selling",
-  "connected_thinking",
+  // Every connected_* outcome — sourced from the central list in
+  // lib/follow-up.ts so adding a new sub-status here Just Works.
+  ...CONNECTED_OUTCOMES,
 ]);
 
 /**
