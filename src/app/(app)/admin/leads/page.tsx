@@ -6,7 +6,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { headers } from "next/headers";
-import { and, asc, desc, eq, isNull, sql } from "drizzle-orm";
+import { and, asc, desc, eq, inArray, isNull, sql } from "drizzle-orm";
 import { db } from "@/db";
 import { rawLeads, user } from "@/db/schema";
 import { auth } from "@/lib/auth";
@@ -38,7 +38,7 @@ const STATUS_TONE: Record<Exclude<StatusFilter, "all">, string> = {
 export default async function LeadsPoolPage({
   searchParams,
 }: {
-  searchParams: Promise<{ s?: string }>;
+  searchParams: Promise<{ s?: string; st?: string }>;
 }) {
   const session = await auth.api.getSession({ headers: await headers() });
   if (!session) notFound();
@@ -52,13 +52,17 @@ export default async function LeadsPoolPage({
 
   const params = await searchParams;
   const statusFilter: StatusFilter = isStatusFilter(params.s) ? params.s : "all";
+  // Geographic filter: comma-separated 2-letter state codes from
+  // ?st=TX,AZ,NM. Empty / missing = no state filter (all states).
+  const selectedStates = parseStateFilter(params.st);
 
   const where = and(
     isNull(rawLeads.deletedAt),
     statusFilter === "all" ? undefined : eq(rawLeads.status, statusFilter),
+    selectedStates.length > 0 ? inArray(rawLeads.state, selectedStates) : undefined,
   );
 
-  const [rows, counts, claimants] = await Promise.all([
+  const [rows, counts, claimants, stateCounts] = await Promise.all([
     db.select().from(rawLeads).where(where).orderBy(desc(rawLeads.createdAt)).limit(100),
     db
       .select({
@@ -69,6 +73,23 @@ export default async function LeadsPoolPage({
       .where(isNull(rawLeads.deletedAt))
       .groupBy(rawLeads.status),
     db.select({ id: user.id, name: user.name }).from(user).orderBy(asc(user.name)),
+    // Per-state counts respect the status filter so Kevin can drill
+    // "show me POOL leads by state" or "CONVERTED leads by state".
+    // State filter itself NOT applied so the chip row always shows
+    // every state with at-least-one-lead.
+    db
+      .select({
+        state: rawLeads.state,
+        c: sql<number>`COUNT(*)::int`,
+      })
+      .from(rawLeads)
+      .where(
+        and(
+          isNull(rawLeads.deletedAt),
+          statusFilter === "all" ? undefined : eq(rawLeads.status, statusFilter),
+        ),
+      )
+      .groupBy(rawLeads.state),
   ]);
   const claimantMap = new Map(claimants.map((u) => [u.id, u.name]));
   const countByStatus = new Map(counts.map((c) => [c.status, c.c]));
@@ -88,12 +109,12 @@ export default async function LeadsPoolPage({
       }
     >
       {/* Status filter chips */}
-      <div className="flex items-center gap-1.5 mb-5 flex-wrap">
-        <Chip href="/admin/leads" active={statusFilter === "all"}>
+      <div className="flex items-center gap-1.5 mb-3 flex-wrap">
+        <Chip href={buildHref(null, selectedStates)} active={statusFilter === "all"}>
           All <span className="ml-1 text-foreground/50 tabular-nums">· {totalRows}</span>
         </Chip>
         {(["pool", "claimed", "converted", "dead"] as const).map((s) => (
-          <Chip key={s} href={`/admin/leads?s=${s}`} active={statusFilter === s}>
+          <Chip key={s} href={buildHref(s, selectedStates)} active={statusFilter === s}>
             <span className={cn("inline-flex items-center rounded-full px-1.5 mr-1 text-[10px] font-semibold border", STATUS_TONE[s])}>
               {STATUS_LABEL[s]}
             </span>
@@ -101,6 +122,28 @@ export default async function LeadsPoolPage({
           </Chip>
         ))}
       </div>
+
+      {/* Geographic filter — Kevin asked for this. Each state chip is
+          toggleable; selected states accumulate in ?st=TX,AZ,NM. */}
+      <GeoFilter
+        statusFilter={statusFilter}
+        selectedStates={selectedStates}
+        stateCounts={stateCounts.map((s) => ({ state: s.state, count: s.c }))}
+      />
+
+      {selectedStates.length > 0 && (
+        <div className="mb-4 -mt-1 text-[11px] text-muted flex items-center gap-2">
+          <span>
+            Showing only {selectedStates.length === 1 ? `state ${selectedStates[0]}` : `${selectedStates.length} states`}.
+          </span>
+          <Link
+            href={buildHref(statusFilter === "all" ? null : statusFilter, []) as never}
+            className="text-foreground hover:underline"
+          >
+            Clear
+          </Link>
+        </div>
+      )}
 
       {/* Table */}
       {rows.length === 0 ? (
@@ -190,5 +233,94 @@ function Chip({ href, active, children }: { href: string; active: boolean; child
     >
       {children}
     </Link>
+  );
+}
+
+/**
+ * Parse a comma-separated list of 2-letter state codes from the URL
+ * (?st=TX,AZ,NM). Anything not matching /^[A-Z]{2}$/ is dropped so the
+ * query stays safe. Returns deduped uppercase codes.
+ */
+function parseStateFilter(raw: string | undefined): string[] {
+  if (!raw) return [];
+  const codes = raw
+    .split(",")
+    .map((s) => s.trim().toUpperCase())
+    .filter((s) => /^[A-Z]{2}$/.test(s));
+  return Array.from(new Set(codes));
+}
+
+/**
+ * Build a URL that preserves the status filter and the multi-select
+ * state filter. Pass `nextStatus = null` to clear the status, or pass
+ * a new state list to swap geographic selection.
+ */
+function buildHref(
+  status: Exclude<StatusFilter, "all"> | null,
+  states: string[],
+): string {
+  const qp = new URLSearchParams();
+  if (status) qp.set("s", status);
+  if (states.length > 0) qp.set("st", states.join(","));
+  const q = qp.toString();
+  return q ? `/admin/leads?${q}` : "/admin/leads";
+}
+
+/**
+ * Per-state distribution row. Each chip toggles its state in/out of
+ * the selection. Hidden when there's only one state in the system
+ * (no useful filter to apply yet).
+ */
+function GeoFilter({
+  statusFilter,
+  selectedStates,
+  stateCounts,
+}: {
+  statusFilter: StatusFilter;
+  selectedStates: string[];
+  stateCounts: Array<{ state: string | null; count: number }>;
+}) {
+  // Sort by count desc — biggest piles first — and drop nulls. Skip
+  // entirely if there's nothing to filter against.
+  const sorted = stateCounts
+    .filter((s): s is { state: string; count: number } => !!s.state)
+    .sort((a, b) => b.count - a.count);
+
+  if (sorted.length < 2) return null;
+
+  const statusParam = statusFilter === "all" ? null : statusFilter;
+  const selectedSet = new Set(selectedStates);
+
+  return (
+    <div className="mb-3">
+      <div className="text-[10px] uppercase tracking-widest text-muted font-semibold mb-1.5">
+        🗺️ States · click to filter
+      </div>
+      <div className="flex items-center gap-1 flex-wrap">
+        {sorted.map(({ state, count }) => {
+          const active = selectedSet.has(state);
+          // Toggle this state in the selection.
+          const nextSet = new Set(selectedSet);
+          if (active) nextSet.delete(state);
+          else nextSet.add(state);
+          const href = buildHref(statusParam, Array.from(nextSet).sort());
+          return (
+            <Link
+              key={state}
+              href={href as never}
+              className={cn(
+                "inline-flex items-center gap-1 rounded-md px-2 py-1 text-[11px] border transition tabular-nums",
+                active
+                  ? "bg-foreground text-background border-foreground font-semibold"
+                  : "bg-background border-border text-foreground/75 hover:bg-foreground/[0.04]",
+              )}
+            >
+              <span>{state}</span>
+              <span className={cn("text-[10px]", active ? "text-background/70" : "text-muted")}>{count}</span>
+            </Link>
+          );
+        })}
+      </div>
+    </div>
   );
 }
