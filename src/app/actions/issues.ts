@@ -33,6 +33,10 @@ export async function createIssueAction(formData: FormData): Promise<CreateIssue
   const priorityRaw = String(formData.get("priority") ?? "green") as Priority;
   const priority: Priority = VALID_PRIORITIES.has(priorityRaw) ? priorityRaw : "green";
   const assigneeId = String(formData.get("assigneeId") ?? "") || null;
+  // dueAt comes from <input type="date"> as "YYYY-MM-DD". An empty
+  // string means "no date" — store NULL.
+  const dueAtRaw = String(formData.get("dueAt") ?? "").trim();
+  const dueAt = dueAtRaw ? new Date(`${dueAtRaw}T00:00:00`) : null;
 
   if (!title) return { ok: false, error: "Title is required" };
 
@@ -49,6 +53,7 @@ export async function createIssueAction(formData: FormData): Promise<CreateIssue
       body,
       priority,
       assigneeId,
+      dueAt,
       createdById: user.id,
       position: (maxPos ?? 0) + 1000,
     })
@@ -129,6 +134,25 @@ export async function setIssuePriorityAction(issueId: string, priority: Priority
   await requireUser();
   if (!VALID_PRIORITIES.has(priority)) return;
   await db.update(issues).set({ priority, updatedAt: new Date() }).where(eq(issues.id, issueId));
+  revalidatePath("/issues");
+}
+
+/**
+ * Inline-edit the due / meeting date via the card chip.
+ *
+ * Accepts an ISO date string ("YYYY-MM-DD") or empty / null to clear.
+ * The displayed bucket views surface this date so the team can scan
+ * "what's coming up" without opening each card.
+ */
+export async function setIssueDueAtAction(issueId: string, isoDate: string | null): Promise<void> {
+  await requireUser();
+  const dueAt = isoDate && isoDate.trim()
+    ? new Date(`${isoDate}T00:00:00`)
+    : null;
+  await db
+    .update(issues)
+    .set({ dueAt, updatedAt: new Date() })
+    .where(eq(issues.id, issueId));
   revalidatePath("/issues");
 }
 

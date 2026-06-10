@@ -33,6 +33,14 @@ export const issues = pgTable(
     position: integer("position").notNull().default(0),              // sort key within priority lane
     createdById: text("created_by_id").references(() => user.id, { onDelete: "set null" }),
     assigneeId: text("assignee_id").references(() => user.id, { onDelete: "set null" }),
+    /**
+     * Optional date — used either as a "decide by" deadline or as the
+     * L10 meeting date when the team plans to discuss it. We don't
+     * distinguish the two — the surrounding context (the priority lane
+     * it's in, the body copy) makes it clear which one was intended.
+     * Sorted earliest-first within a priority lane when set.
+     */
+    dueAt: timestamp("due_at"),
     solvedAt: timestamp("solved_at"),
     solvedById: text("solved_by_id").references(() => user.id, { onDelete: "set null" }),
     solutionSummary: text("solution_summary"),                       // captured on solve

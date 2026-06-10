@@ -43,6 +43,11 @@ export default async function IssuesPage({
       .where(and(isNull(issues.deletedAt), ne(issues.status, "solved")))
       .orderBy(
         sql`CASE ${issues.priority} WHEN 'red' THEN 0 WHEN 'orange' THEN 1 ELSE 2 END`,
+        // Within a priority lane: items with a date come first, soonest
+        // first; undated items sit after, ordered by drag position.
+        // Manual drag still wins via position (next clause) once dates
+        // are equal.
+        sql`${issues.dueAt} ASC NULLS LAST`,
         asc(issues.position),
       ),
     showSolved
@@ -103,6 +108,7 @@ function serializeIssue(i: typeof issues.$inferSelect) {
     position: i.position,
     createdById: i.createdById,
     assigneeId: i.assigneeId,
+    dueAt: i.dueAt?.toISOString() ?? null,
     solvedAt: i.solvedAt?.toISOString() ?? null,
     solvedById: i.solvedById,
     solutionSummary: i.solutionSummary,

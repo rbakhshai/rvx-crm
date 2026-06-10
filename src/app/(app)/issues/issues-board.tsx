@@ -24,7 +24,8 @@ import {
 import { CSS } from "@dnd-kit/utilities";
 import { Avatar } from "@/components/avatar";
 import { cn } from "@/lib/cn";
-import { createIssueAction, reorderIssueAction } from "@/app/actions/issues";
+import { createIssueAction, reorderIssueAction, setIssueDueAtAction } from "@/app/actions/issues";
+import { MentionTextarea } from "@/components/mention-textarea";
 import type { SerializedIssue } from "./page";
 
 type Teammate = { id: string; name: string; firstName: string };
@@ -95,8 +96,16 @@ function Capture({
   const [body, setBody] = useState("");
   const [priority, setPriority] = useState<PriorityKey>("green");
   const [assigneeId, setAssigneeId] = useState<string>(defaultAssigneeId);
+  const [dueAt, setDueAt] = useState<string>("");        // YYYY-MM-DD or ""
   const [isPending, startTransition] = useTransition();
   const [showBody, setShowBody] = useState(false);
+
+  // Convert teammates into the shape MentionTextarea expects.
+  const mentionable = teammates.map((t) => ({
+    id: t.id,
+    name: t.name,
+    firstName: t.firstName,
+  }));
 
   function submit() {
     if (!title.trim()) return;
@@ -105,6 +114,7 @@ function Capture({
     fd.set("body", body);
     fd.set("priority", priority);
     fd.set("assigneeId", assigneeId);
+    fd.set("dueAt", dueAt);
     startTransition(async () => {
       const result = await createIssueAction(fd);
       if (!result.ok) {
@@ -115,6 +125,7 @@ function Capture({
       setTitle("");
       setBody("");
       setPriority("green");
+      setDueAt("");
       setShowBody(false);
       router.refresh();
     });
@@ -143,12 +154,22 @@ function Capture({
           onChange={(e) => setAssigneeId(e.target.value)}
           className="rounded-md border border-border bg-background px-2 py-1.5 text-sm cursor-pointer"
           disabled={isPending}
+          title="Assignee"
         >
           <option value="">(unassigned)</option>
           {teammates.map((t) => (
             <option key={t.id} value={t.id}>{t.firstName}</option>
           ))}
         </select>
+        <input
+          type="date"
+          value={dueAt}
+          onChange={(e) => setDueAt(e.target.value)}
+          disabled={isPending}
+          title="Due / meeting date"
+          aria-label="Due / meeting date"
+          className="rounded-md border border-border bg-background px-2 py-1.5 text-sm cursor-pointer tabular-nums"
+        />
         <button
           type="button"
           onClick={submit}
@@ -164,18 +185,22 @@ function Capture({
           {showBody ? "− hide details" : "+ add details / @mention"}
         </button>
         <span>·</span>
-        <span>Tip: use <code className="bg-foreground/[0.06] rounded px-1">@FirstName</code> to tag a teammate.</span>
+        <span>Type <code className="bg-foreground/[0.06] rounded px-1">@</code> to tag a teammate (Enter / Tab to pick).</span>
       </div>
 
       {showBody && (
-        <textarea
-          value={body}
-          onChange={(e) => setBody(e.target.value)}
-          rows={3}
-          placeholder="What's the context? @Erica what do you think?"
-          className="mt-2 w-full rounded-md border border-border bg-background px-3 py-2 text-sm focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
-          disabled={isPending}
-        />
+        <div className="mt-2 rounded-md border border-border bg-background px-3 py-2 focus-within:border-primary focus-within:ring-1 focus-within:ring-primary">
+          <MentionTextarea
+            value={body}
+            onChange={setBody}
+            mentionableUsers={mentionable}
+            rows={3}
+            disabled={isPending}
+            placeholder="What's the context? Type @ to tag — e.g. @Erica what do you think?"
+            inputClassName="w-full resize-y bg-transparent text-sm placeholder:text-muted/70 focus:outline-none"
+            onSubmitShortcut={submit}
+          />
+        </div>
       )}
     </section>
   );
@@ -516,9 +541,10 @@ function IssueCard({
             <p className="mt-0.5 text-[12px] text-muted line-clamp-2 leading-snug">{issue.body}</p>
           )}
           <div className="mt-2 flex items-center justify-between gap-2">
-            <span className="text-[10px] uppercase tracking-widest text-muted">
-              {timeAgo(issue.createdAt)}
-            </span>
+            <div className="flex items-center gap-2 text-[10px] text-muted">
+              <span className="uppercase tracking-widest">{timeAgo(issue.createdAt)}</span>
+              <DueDateChip issueId={issue.id} dueAt={issue.dueAt} />
+            </div>
             {assignee ? (
               <Avatar name={assignee.name} id={assignee.id} />
             ) : (
@@ -529,6 +555,108 @@ function IssueCard({
       </div>
     </Link>
   );
+}
+
+/**
+ * Clickable chip that opens a tiny <input type="date"> popover for
+ * inline-editing the issue's due / meeting date. Tones:
+ *   red    — overdue
+ *   amber  — due today
+ *   blue   — upcoming
+ *   muted  — no date set
+ */
+function DueDateChip({ issueId, dueAt }: { issueId: string; dueAt: string | null }) {
+  const [open, setOpen] = useState(false);
+  const [pending, startTransition] = useTransition();
+  // Local optimistic copy so the chip flips immediately on save.
+  const [localAt, setLocalAt] = useState<string | null>(dueAt);
+
+  function save(isoDate: string | null) {
+    startTransition(async () => {
+      await setIssueDueAtAction(issueId, isoDate);
+      setLocalAt(isoDate ? `${isoDate}T00:00:00.000Z` : null);
+      setOpen(false);
+    });
+  }
+
+  const at = localAt ? new Date(localAt) : null;
+  const tone = chipTone(at);
+  const label = chipLabel(at);
+
+  return (
+    <span
+      className="relative inline-block"
+      // The card itself is a Link — swallow clicks here.
+      onClick={(e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        setOpen((o) => !o);
+      }}
+    >
+      <span
+        className={cn(
+          "inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[10px] font-medium uppercase tracking-wider transition",
+          tone,
+          pending && "opacity-60",
+        )}
+      >
+        {pending ? "…" : label}
+      </span>
+      {open && !pending && (
+        <>
+          <span
+            className="fixed inset-0 z-30"
+            onClick={(e) => { e.preventDefault(); e.stopPropagation(); setOpen(false); }}
+          />
+          <div
+            className="absolute z-40 left-0 top-full mt-1 rounded-md border border-border bg-background shadow-lg p-2 flex items-center gap-2"
+            onClick={(e) => { e.preventDefault(); e.stopPropagation(); }}
+          >
+            <input
+              type="date"
+              defaultValue={at ? at.toISOString().slice(0, 10) : ""}
+              onChange={(e) => save(e.target.value || null)}
+              className="rounded border border-border bg-background px-2 py-1 text-xs tabular-nums"
+            />
+            {at && (
+              <button
+                type="button"
+                onClick={(e) => { e.preventDefault(); save(null); }}
+                className="text-[10px] text-rose-600 dark:text-rose-400 hover:underline"
+              >
+                Clear
+              </button>
+            )}
+          </div>
+        </>
+      )}
+    </span>
+  );
+}
+
+function chipTone(at: Date | null): string {
+  if (!at) return "border-dashed border-border bg-transparent text-muted hover:text-foreground";
+  const day = 24 * 60 * 60 * 1000;
+  const startOfToday = new Date(); startOfToday.setHours(0, 0, 0, 0);
+  const startOfTmrw = new Date(startOfToday.getTime() + day);
+  if (at < startOfToday)  return "border-rose-300 bg-rose-50 text-rose-800 dark:border-rose-500/40 dark:bg-rose-500/10 dark:text-rose-200";
+  if (at < startOfTmrw)   return "border-amber-300 bg-amber-50 text-amber-800 dark:border-amber-500/40 dark:bg-amber-500/10 dark:text-amber-200";
+  return "border-blue-300 bg-blue-50 text-blue-800 dark:border-blue-500/40 dark:bg-blue-500/10 dark:text-blue-200";
+}
+
+function chipLabel(at: Date | null): string {
+  if (!at) return "+ date";
+  const day = 24 * 60 * 60 * 1000;
+  const startOfToday = new Date(); startOfToday.setHours(0, 0, 0, 0);
+  const target = new Date(at); target.setHours(0, 0, 0, 0);
+  const diffDays = Math.round((target.getTime() - startOfToday.getTime()) / day);
+  if (diffDays === 0)  return "today";
+  if (diffDays === 1)  return "tomorrow";
+  if (diffDays === -1) return "yesterday";
+  if (diffDays < 0)    return `${Math.abs(diffDays)}d overdue`;
+  if (diffDays < 14)   return `in ${diffDays}d`;
+  // Past two weeks out → show calendar date.
+  return at.toLocaleString(undefined, { month: "short", day: "numeric" });
 }
 
 // ============================================================================
