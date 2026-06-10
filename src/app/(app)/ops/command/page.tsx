@@ -39,7 +39,11 @@ export default async function CommandPage({
   const canEditRocks = (session.user as { role?: string }).role === "admin";
 
   const params = await searchParams;
-  const period = parsePeriod(params.period);
+  // Command Center only exposes Week + Quarter — if a stale bookmark
+  // has ?period=month, treat it as quarter so the toggle still
+  // highlights a real chip.
+  const rawPeriod = parsePeriod(params.period);
+  const period = rawPeriod === "month" ? "quarter" : rawPeriod;
 
   const blocks = await getOpsBlocks("command.");
 
@@ -156,7 +160,7 @@ export default async function CommandPage({
 
       {/* Time toggle */}
       <div className="mb-4">
-        <TimeToggle pathname={PATHNAME} period={period} />
+        <TimeToggle pathname={PATHNAME} period={period} omit={["month"]} />
       </div>
 
       <div className="text-[11px] uppercase tracking-widest text-muted font-semibold mb-3">

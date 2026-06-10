@@ -96,13 +96,17 @@ const OPTIONS: Array<{ key: Period; label: string }> = [
 export function TimeToggle({
   pathname,
   period = "quarter",
+  omit,
 }: {
   pathname: string;
   period?: Period;
+  /** Hide these chips. Used on Command Center to drop "This Month". */
+  omit?: Period[];
 }) {
+  const omitSet = new Set(omit ?? []);
   return (
     <div className="inline-flex gap-1.5">
-      {OPTIONS.map((o) => {
+      {OPTIONS.filter((o) => !omitSet.has(o.key)).map((o) => {
         const isActive = o.key === period;
         const href = o.key === "quarter" ? pathname : `${pathname}?period=${o.key}`;
         return (
