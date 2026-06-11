@@ -29,6 +29,43 @@ const REVALIDATE = "/ops/level10";
 // Scorecard metric defs + live-actual query live in @/lib/level10-scorecard
 // so the snapshot server action can reuse them.
 
+/**
+ * EOS definitions for the ⓘ hover cards — straight from the Rock vs.
+ * To-Do vs. Issue framework, so nobody has to ask "what counts as a
+ * rock?" mid-meeting.
+ */
+const EOS_DEFINITIONS: Record<"rock" | "todo" | "issue", { title: string; points: string[] }> = {
+  rock: {
+    title: "What's a Rock?",
+    points: [
+      "A priority that takes MORE than 14 days and must get done this quarter",
+      "30–90 days of sustained effort",
+      "One owner, due at the quarterly reset",
+      "Reviewed on/off track every Level 10",
+      "Broken down into weekly To-Dos",
+      "3–7 per person max — less is more",
+    ],
+  },
+  todo: {
+    title: "What's a To-Do?",
+    points: [
+      "One person, one action",
+      "Anything committed to that must get done in the next 7 days (worst case 14)",
+      "Completed by next week's Level 10 — confirmed in that meeting",
+      "The weekly execution engine",
+    ],
+  },
+  issue: {
+    title: "What's an Issue?",
+    points: [
+      "Any unresolved problem, idea, or opportunity",
+      "Short-term (must be solved this quarter) → goes on this Issues list",
+      "Long-term (not this quarter) → park it on the V/TO parking lot and free up your mind",
+      "IDS the top one: Identify, Discuss, Solve — into a To-Do",
+    ],
+  },
+};
+
 /** The classic EOS 90-minute agenda — order, budgets, and anchors. */
 const AGENDA: AgendaSection[] = [
   { key: "segue",      title: "Segue",       minutes: 5,  anchorId: "l10-segue",      emoji: "👥" },
@@ -260,7 +297,7 @@ export default async function Level10Page({
         </div>
       </Section>
 
-      <Section id="l10-rocks" title="Rock Review" minutes={5}>
+      <Section id="l10-rocks" title="Rock Review" minutes={5} info={EOS_DEFINITIONS.rock}>
         <div className="space-y-3">
           {ROCKS_DEFAULTS.map((r, i) => {
             const titleScope = `level10.rocks.${i}.title`;
@@ -299,7 +336,7 @@ export default async function Level10Page({
         />
       </Section>
 
-      <Section id="l10-todos" title="To-Do List" minutes={5}>
+      <Section id="l10-todos" title="To-Do List" minutes={5} info={EOS_DEFINITIONS.todo}>
         <p className="text-sm text-muted mb-2">
           Review last week's to-dos — done or not done. 90% done rate is the EOS bar. New
           to-dos get added here as they come up during the meeting.
@@ -327,7 +364,7 @@ export default async function Level10Page({
         </div>
       </Section>
 
-      <Section id="l10-ids" title="IDS" minutes={60}>
+      <Section id="l10-ids" title="IDS" minutes={60} info={EOS_DEFINITIONS.issue}>
         <p className="text-sm text-muted mb-2">
           The heart of the meeting — Identify, Discuss, Solve. The live list is the{" "}
           <Link href="/issues" className="text-foreground hover:underline font-medium">Issues board</Link>:
@@ -435,12 +472,15 @@ function Section({
   id,
   title,
   minutes,
+  info,
   children,
 }: {
   /** Anchor for the AgendaTimer's scroll-to-section. */
   id?: string;
   title: string;
   minutes: number;
+  /** EOS definition shown in the ⓘ hover card next to the title. */
+  info?: { title: string; points: string[] };
   children: React.ReactNode;
 }) {
   return (
@@ -450,9 +490,40 @@ function Section({
         <span className="text-[10px] rounded-full bg-foreground/[0.06] px-2 py-0.5 text-muted font-medium tabular-nums">
           {minutes} min
         </span>
+        {info && <InfoTip title={info.title} points={info.points} />}
       </div>
       {children}
     </section>
+  );
+}
+
+/**
+ * Pure-CSS hover/focus card behind a small ⓘ icon — no client JS.
+ * Tab-focusable so keyboard users get it too.
+ */
+function InfoTip({ title, points }: { title: string; points: string[] }) {
+  return (
+    <span className="relative inline-block group" tabIndex={0}>
+      <span
+        aria-label={title}
+        className="flex items-center justify-center size-4.5 rounded-full border border-border text-[10px] font-serif italic font-bold text-muted cursor-help select-none group-hover:border-foreground/40 group-hover:text-foreground transition"
+      >
+        i
+      </span>
+      <span className="invisible opacity-0 group-hover:visible group-hover:opacity-100 group-focus-within:visible group-focus-within:opacity-100 transition-opacity absolute left-1/2 -translate-x-1/2 top-full mt-2 z-30 w-80 rounded-xl border border-border bg-background shadow-xl p-4 text-left">
+        <span className="block text-[11px] uppercase tracking-widest text-muted font-semibold mb-2">
+          {title}
+        </span>
+        <span className="block space-y-1.5">
+          {points.map((p, i) => (
+            <span key={i} className="flex items-start gap-2 text-xs leading-snug text-foreground/85">
+              <span className="text-muted mt-0.5 shrink-0">•</span>
+              <span>{p}</span>
+            </span>
+          ))}
+        </span>
+      </span>
+    </span>
   );
 }
 
