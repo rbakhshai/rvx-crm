@@ -97,7 +97,7 @@ export async function getLeaderboard(period: LeaderboardPeriod): Promise<Leaderb
       SELECT
         d.by_user_id AS user_id,
         COUNT(*)::int AS calls,
-        COUNT(*) FILTER (WHERE d.outcome = ANY(${connectedLit}))::int AS connects,
+        COUNT(*) FILTER (WHERE d.outcome::text = ANY(${connectedLit}))::int AS connects,
         COUNT(*) FILTER (WHERE d.outcome = 'qualified')::int           AS qualified,
         COUNT(*) FILTER (WHERE d.outcome = 'do_not_call')::int         AS dnc
       FROM raw_lead_dispositions d

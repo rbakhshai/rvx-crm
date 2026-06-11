@@ -16,6 +16,10 @@ export const auth = betterAuth({
   emailAndPassword: {
     enabled: true,
     autoSignIn: true,
+    // The team is invite-only (admin creates accounts in /settings/
+    // users). Public signup would let strangers create viewer-role
+    // accounts on the login page.
+    disableSignUp: true,
   },
   session: {
     expiresIn: 60 * 60 * 24 * 30, // 30 days

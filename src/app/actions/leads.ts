@@ -218,6 +218,17 @@ export type ClaimMode = "fresh" | "followup";
 export async function claimNextLeadAction(mode: ClaimMode = "fresh"): Promise<ClaimResult> {
   const user = await requireUser();
 
+  // Self-healing reaper: any lead claimed >24h ago goes back to the
+  // pool before we pick. A BD who claims a lead and walks away would
+  // otherwise strand it forever — the orphan-recycle on suspend/delete
+  // doesn't cover "went home for the weekend." Runs on every claim, so
+  // the pool heals itself without a cron. History is untouched.
+  await db.execute(sql`
+    UPDATE raw_leads
+    SET status = 'pool', claimed_by_id = NULL, claimed_at = NULL, updated_at = NOW()
+    WHERE status = 'claimed' AND claimed_at < NOW() - INTERVAL '24 hours'
+  `);
+
   // Two distinct sub-SELECTs — same UPDATE shape.
   const selector =
     mode === "fresh"
@@ -509,6 +520,9 @@ export async function dispositionLeadAction(input: DispositionInput): Promise<Di
       convertedAt: now,
       claimedById: null,
       claimedAt: null,
+      // The deal pipeline owns follow-up from here — clear the BD's
+      // callback schedule so /today stops nagging about a won lead.
+      nextFollowUpAt: null,
     })
     .where(eq(rawLeads.id, leadId));
 

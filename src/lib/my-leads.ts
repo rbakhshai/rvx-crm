@@ -208,6 +208,9 @@ export async function getFollowUpsDueForUser(
       AND rl.last_call_by_id = ${userId}
       AND rl.next_follow_up_at IS NOT NULL
       AND rl.next_follow_up_at <= NOW() + INTERVAL '1 day'
+      -- Dead / converted leads have left the BD's world — belt-and-
+      -- suspenders alongside the clearing in dispositionLeadAction.
+      AND rl.status NOT IN ('dead', 'converted')
     ORDER BY rl.next_follow_up_at ASC
     LIMIT ${limit}
   `);

@@ -49,6 +49,9 @@ export async function getOrCreateDailyBrief(userId: string): Promise<{
     if (existing) return { ...existing, cached: true };
 
     const result = await generateDailyBrief(userId);
+    // Two concurrent /today renders can both miss the cache and race
+    // to insert — the (user_id, for_date) unique index makes the loser
+    // throw. DO NOTHING + re-select keeps whichever landed first.
     const [row] = await db
       .insert(dailyBriefs)
       .values({
@@ -59,9 +62,18 @@ export async function getOrCreateDailyBrief(userId: string): Promise<{
         tokensIn: result.tokensIn,
         tokensOut: result.tokensOut,
       })
+      .onConflictDoNothing()
       .returning({ contentMd: dailyBriefs.contentMd, createdAt: dailyBriefs.createdAt });
 
-    return { ...row, cached: false };
+    if (row) return { ...row, cached: false };
+
+    // Lost the race — read the winner's brief.
+    const [winner] = await db
+      .select({ contentMd: dailyBriefs.contentMd, createdAt: dailyBriefs.createdAt })
+      .from(dailyBriefs)
+      .where(and(eq(dailyBriefs.userId, userId), eq(dailyBriefs.forDate, forDate)))
+      .limit(1);
+    return winner ? { ...winner, cached: true } : null;
   } catch (err) {
     // Don't kill the whole /today page if the brief fails (no API key,
     // Claude timeout, bad context query, etc.). Sentry will capture.

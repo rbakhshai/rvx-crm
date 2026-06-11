@@ -2,19 +2,23 @@
 
 import { useState, useTransition } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { signIn, signUp } from "@/lib/auth-client";
+import { signIn } from "@/lib/auth-client";
 
+/**
+ * Sign-in only — the team is invite-only. Admins create accounts from
+ * /settings/users and hand out a temp password; public signup is also
+ * disabled server-side in lib/auth.ts (disableSignUp), so this form
+ * losing its signup mode is belt-and-suspenders, not the lock itself.
+ */
 export function LoginForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const next = searchParams.get("next") ?? "/today";
   const reason = searchParams.get("reason");
 
-  const [mode, setMode] = useState<"signin" | "signup">("signin");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
-  const [name, setName] = useState("");
   const [error, setError] = useState<string | null>(
     reason === "suspended" ? "Your account is suspended. Ask an admin to restore access." : null,
   );
@@ -24,10 +28,7 @@ export function LoginForm() {
     e.preventDefault();
     setError(null);
     startTransition(async () => {
-      const result =
-        mode === "signin"
-          ? await signIn.email({ email, password })
-          : await signUp.email({ email, password, name });
+      const result = await signIn.email({ email, password });
       if (result.error) {
         setError(result.error.message ?? "Something went wrong");
         return;
@@ -39,20 +40,7 @@ export function LoginForm() {
 
   return (
     <form onSubmit={submit} className="w-full max-w-sm space-y-4 border border-border rounded-lg p-6">
-      <h1 className="text-xl font-semibold">{mode === "signin" ? "Sign in" : "Create account"}</h1>
-
-      {mode === "signup" && (
-        <label className="block">
-          <span className="text-sm text-muted">Name</span>
-          <input
-            type="text"
-            required
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-            className="mt-1 w-full rounded-md border border-border bg-background px-3 py-2 text-sm"
-          />
-        </label>
-      )}
+      <h1 className="text-xl font-semibold">Sign in</h1>
 
       <label className="block">
         <span className="text-sm text-muted">Email</span>
@@ -81,7 +69,7 @@ export function LoginForm() {
           type={showPassword ? "text" : "password"}
           required
           minLength={8}
-          autoComplete={mode === "signin" ? "current-password" : "new-password"}
+          autoComplete="current-password"
           value={password}
           onChange={(e) => setPassword(e.target.value)}
           className="mt-1 w-full rounded-md border border-border bg-background px-3 py-2 text-sm font-mono"
@@ -95,16 +83,12 @@ export function LoginForm() {
         disabled={isPending}
         className="w-full rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground disabled:opacity-50"
       >
-        {isPending ? "…" : mode === "signin" ? "Sign in" : "Create account"}
+        {isPending ? "…" : "Sign in"}
       </button>
 
-      <button
-        type="button"
-        onClick={() => setMode(mode === "signin" ? "signup" : "signin")}
-        className="w-full text-sm text-muted hover:underline"
-      >
-        {mode === "signin" ? "Need an account? Sign up" : "Already have an account? Sign in"}
-      </button>
+      <p className="text-center text-[11px] text-muted">
+        Accounts are created by your admin — ask Reza or Erica for access.
+      </p>
     </form>
   );
 }
