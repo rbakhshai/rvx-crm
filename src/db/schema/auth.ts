@@ -1,4 +1,4 @@
-import { pgEnum, pgTable, text, timestamp, boolean } from "drizzle-orm/pg-core";
+import { pgEnum, pgTable, text, timestamp, boolean, jsonb } from "drizzle-orm/pg-core";
 
 /**
  * User roles — drives per-role dashboards and permissions.
@@ -57,8 +57,13 @@ export const user = pgTable("user", {
   deletedById: text("deleted_by_id"),
   // First-login orientation: NULL = hasn't completed yet, timestamp = done.
   // The /onboarding flow stamps this; layout middleware redirects BD-tier
-  // users with NULL to /onboarding until they finish or skip. (#5000)
+  // users with NULL to /onboarding until they finish. (#5000)
   onboardedAt: timestamp("onboarded_at"),
+  // Expectation acknowledgments checked on the final onboarding step —
+  // { keys: string[], at: ISO timestamp }. Mirrors ACK_ITEMS in
+  // lib/onboarding-acks.ts. Proof the BD read + accepted the
+  // expectations from the recruiting funnel.
+  onboardingAcks: jsonb("onboarding_acks"),
 });
 
 export const session = pgTable("session", {
