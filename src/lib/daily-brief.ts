@@ -9,6 +9,8 @@ import Anthropic from "@anthropic-ai/sdk";
 import { db } from "@/db";
 import { deals, contacts, tasks, notes, dealStatuses, user as userTable } from "@/db/schema";
 import { getAnthropic } from "./ai";
+import { getBdDayStats } from "./bd-stats";
+import { getFollowUpsDueForUser } from "./my-leads";
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 
@@ -185,6 +187,56 @@ async function gatherContext(userId: string): Promise<string> {
   return sections.join("\n");
 }
 
+/**
+ * BD-specific context: their dialing stats, streak, rank, and due
+ * callbacks. Deliberately contains NOTHING about company pipeline or
+ * other people's deals — the brief mirrors the need-to-know principle
+ * of the whole BD experience.
+ */
+async function gatherBdContext(userId: string): Promise<string> {
+  const [me, stats, followUps] = await Promise.all([
+    db.select({ name: userTable.name }).from(userTable).where(eq(userTable.id, userId)).limit(1),
+    getBdDayStats(userId),
+    getFollowUpsDueForUser(userId, 6),
+  ]);
+
+  const sections: string[] = [];
+  sections.push(`Bird dog: ${me[0]?.name ?? "(unnamed)"}. Date: ${new Date().toDateString()}.`);
+  sections.push(`\nDialing stats:`);
+  sections.push(`  - Daily call goal: ${stats.goal}. Calls so far today: ${stats.callsToday}.`);
+  sections.push(`  - Calls in the last 7 days: ${stats.callsThisWeek}.`);
+  sections.push(`  - Current goal streak: ${stats.streak} weekday(s).`);
+  sections.push(`  - This week's leaderboard: ${stats.weekRank ? `rank #${stats.weekRank} of ${stats.boardSize} with ${stats.weekPoints} points` : "not on the board yet (no activity this week)"}.`);
+
+  if (followUps.length > 0) {
+    sections.push(`\nCallbacks due now (warmest calls of the day — names + how overdue):`);
+    for (const f of followUps) {
+      const overdueMs = Date.now() - f.nextFollowUpAt.getTime();
+      const days = Math.floor(overdueMs / DAY_MS);
+      sections.push(`  - ${f.parkName ?? f.ownerName ?? "(unnamed park)"} (${[f.city, f.state].filter(Boolean).join(", ")}) — ${days > 0 ? `${days}d overdue` : "due today"}`);
+    }
+  } else {
+    sections.push(`\nNo callbacks due — today is a fresh-calls day.`);
+  }
+
+  return sections.join("\n");
+}
+
+const BD_SYSTEM_PROMPT = `You are a high-energy but no-BS sales coach for a bird dog (cold-calling deal scout) at an RV-park brokerage. Each morning you write their personal kickoff (2-3 bullets).
+
+Style:
+- Coach voice: direct, motivating, zero corporate fluff. Think a good sales floor manager, not a motivational poster.
+- Lead with the single most important move of their day (overdue callbacks first if any — those are warm conversations).
+- Use their real numbers: goal, streak, rank. If the streak is alive, protect it. If they're close to passing someone on the board, say so.
+- 2-3 bullets, 1-2 sentences each. Open with one framing line like "Today's plan:" — no greeting.
+- Plain markdown. Bold park names with \`**\`.
+
+NEVER:
+- Greet ("good morning")
+- Invent numbers or parks not in the context
+- Shame them — losing a streak gets "start a new one today", not guilt
+- Use more than 3 bullets`;
+
 const SYSTEM_PROMPT = `You are a sharp, no-fluff sales operations briefer at an RV-park brokerage. Each morning you write a short personalized brief (2-4 bullets) for one team member based on what's on their plate.
 
 Style:
@@ -216,12 +268,21 @@ export async function generateDailyBrief(userId: string): Promise<{
     };
   }
 
-  const context = await gatherContext(userId);
+  // BD-tier users get the coach brief (their numbers, callbacks, rank);
+  // everyone else keeps the chief-of-staff brief about deals + tasks.
+  const [me] = await db
+    .select({ role: userTable.role })
+    .from(userTable)
+    .where(eq(userTable.id, userId))
+    .limit(1);
+  const isBd = me?.role === "bd_level_1" || me?.role === "bd_level_2" || me?.role === "bd_level_3";
+
+  const context = isBd ? await gatherBdContext(userId) : await gatherContext(userId);
 
   const msg = await client.messages.create({
     model: "claude-haiku-4-5",
     max_tokens: 350,
-    system: SYSTEM_PROMPT,
+    system: isBd ? BD_SYSTEM_PROMPT : SYSTEM_PROMPT,
     messages: [
       { role: "user", content: `Here's what's on this person's plate. Write today's brief.\n\n${context}` },
     ],

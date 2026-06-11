@@ -38,6 +38,7 @@ import { getFollowUpsDueForUser, followUpBand } from "@/lib/my-leads";
 import { getOpsBlocks } from "@/lib/ops-content";
 import { TeamMeetingWidget } from "@/components/team-meeting-widget";
 import { getLeadershipQueueForUser } from "@/lib/leadership-queue";
+import { BdToday } from "./bd-today";
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 
@@ -82,6 +83,20 @@ export default async function TodayPage() {
   const session = await auth.api.getSession({ headers: await headers() });
   if (!session) return null;
   const me = session.user.id;
+
+  // Bird dogs get their own hub — goal ring, streak, callbacks, mini
+  // leaderboard. Branch BEFORE the closer-oriented queries below so a
+  // BD page-load doesn't pay for pipeline/tasks/notifications fetches
+  // it never renders.
+  const role = (session.user as { role?: string }).role;
+  if (role === "bd_level_1" || role === "bd_level_2" || role === "bd_level_3") {
+    return (
+      <PageShell title={greeting(session.user.name)} subtitle={fmtDateWithWeekday(new Date())} width="default">
+        <BdToday userId={me} userName={session.user.name} />
+      </PageShell>
+    );
+  }
+
   const today = new Date(); today.setHours(0, 0, 0, 0);
   const tomorrow = new Date(today.getTime() + DAY_MS);
 

@@ -316,28 +316,16 @@ export const DEFAULT_PERMISSIONS: Record<Role, Record<PermissionKey, boolean>> =
   // Bird dogs go to the external portal, not the CRM — no perms here.
   bird_dog: grant(),
 
-  // Bird-dog tier seats. Starter grants mirror Operations (bird_dog_manager)
-  // so new accounts are functional out of the box; tune via /settings/roles.
-  bd_level_1: grant(
-    ...STANDARD_NAV,
-    "create_deals", "edit_deals",
-    "create_contacts", "edit_contacts",
-    "create_bird_dogs", "edit_bird_dogs",
-    "view_pipeline_value",
-  ),
-  bd_level_2: grant(
-    ...STANDARD_NAV,
-    "edit_deals",
-    "edit_contacts",
-    "create_bird_dogs", "edit_bird_dogs",
-    "view_pipeline_value",
-  ),
-  bd_level_3: grant(
-    ...STANDARD_NAV,
-    "edit_contacts",
-    "edit_bird_dogs",
-    "view_pipeline_value",
-  ),
+  // Bird-dog tier seats — need-to-know basis (Reza, 2026-06). BDs see
+  // ONLY their own world: Today (their hub), Lead Work, My Leads,
+  // Leaderboard. No Mission Control, no company pipeline, no contacts
+  // directory, no dollar totals. The qualify flow still creates deals
+  // because dispositionLeadAction writes server-side, not through the
+  // permission-gated deal actions. All three tiers are identical for
+  // now — the level split is for comp/status, not access.
+  bd_level_1: grant("view_today"),
+  bd_level_2: grant("view_today"),
+  bd_level_3: grant("view_today"),
 
   // Park manager (Lyn). Runs operations at a specific park; counts as
   // leadership for the New Hires queue (so she can initiate hire

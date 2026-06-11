@@ -79,10 +79,9 @@ the UI shows. These all enforced nothing but authentication:
    - Log in as yourself: advance Derek's hire one step, then send it back.
    - Have Kevin log in: confirm Derek shows in "On your desk" on /today.
    - Have one BD do a real call + disposition end-to-end.
-8. **Decide: should BDs see Mission Control?** They currently can (view-only;
-   editing is now blocked). If company priorities/L10 notes are
-   leadership-only, flip `view_mission_control` off for BD level 1/2/3 in
-   /settings/roles. Same question for Pipeline + Contacts + Bird Dogs tabs.
+8. ~~Decide: should BDs see Mission Control?~~ **DONE (2026-06-11)** — BDs
+   locked to need-to-know: Today (their hub), Lead Work, My Leads,
+   Leaderboard. Everything else hidden AND server-gated.
 
 ## C. Found, deliberately not fixed
 

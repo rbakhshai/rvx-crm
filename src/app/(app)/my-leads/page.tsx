@@ -205,8 +205,11 @@ function Row({
       </td>
       <td className="px-3 py-3">
         {row.dealId ? (
-          <Link href={`/deals/${row.dealId}`} className="group">
-            <div className="text-sm font-semibold text-foreground group-hover:underline">
+          // Informational only — BDs are need-to-know and don't have
+          // access to the full deal pages. Stage + closer-touch status
+          // IS their need-to-know.
+          <div>
+            <div className="text-sm font-semibold text-foreground">
               {dealStageLabel ?? row.dealStatusCode ?? "—"}
             </div>
             <div className="text-[11px] text-muted mt-0.5">
@@ -214,7 +217,7 @@ function Row({
                 ? <>Closer touched {fmtRelative(row.closerLastTouchAt!)}</>
                 : <span className="text-rose-700 dark:text-rose-400">Closer hasn&apos;t touched yet</span>}
             </div>
-          </Link>
+          </div>
         ) : (
           <span className="text-[11px] text-muted">—</span>
         )}
