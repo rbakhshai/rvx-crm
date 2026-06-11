@@ -76,6 +76,7 @@ function toValues(v: ReturnType<typeof birdDogFormSchema.parse>) {
 
 export async function createBirdDogAction(_prev: FormState, formData: FormData): Promise<FormState> {
   const user = await requireUser();
+  await requirePermission(user, "create_bird_dogs");
   const parsed = birdDogFormSchema.safeParse(parseBirdDogForm(formData));
   if (!parsed.success) {
     return { ok: false, message: "Fix the highlighted fields", errors: parsed.error.flatten().fieldErrors };
@@ -91,7 +92,8 @@ export async function updateBirdDogAction(
   _prev: FormState,
   formData: FormData,
 ): Promise<FormState> {
-  await requireUser();
+  const user = await requireUser();
+  await requirePermission(user, "edit_bird_dogs");
   const parsed = birdDogFormSchema.safeParse(parseBirdDogForm(formData));
   if (!parsed.success) {
     return { ok: false, message: "Fix the highlighted fields", errors: parsed.error.flatten().fieldErrors };

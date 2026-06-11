@@ -6,9 +6,28 @@ import { db } from "@/db";
 import { opsContent } from "@/db/schema";
 import { auth } from "@/lib/auth";
 
+/**
+ * Roles allowed to edit ops_content (Mission Control text, Team depts,
+ * onboarding copy, the Today meeting card). BD-tier seats can VIEW
+ * Mission Control via standard nav, but letting 10 dialers rewrite the
+ * company priorities inline is a week-one embarrassment waiting to
+ * happen. Kerry (due_diligence) is intentionally out — content edits
+ * are a leadership job; widen here if that changes.
+ */
+const OPS_EDITOR_ROLES = new Set([
+  "admin",
+  "acquisitions_manager", // Erica — Sales & Marketing
+  "bird_dog_manager",     // Marco — Operations
+  "cfo",                  // Kevin — Finance
+  "park_manager",         // Lyn
+]);
+
 async function requireUser() {
   const session = await auth.api.getSession({ headers: await headers() });
   if (!session) throw new Error("Not authenticated");
+  if (!OPS_EDITOR_ROLES.has((session.user as { role?: string }).role ?? "")) {
+    throw new Error("Only leadership can edit this content");
+  }
   return session.user;
 }
 

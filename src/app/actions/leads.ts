@@ -8,6 +8,7 @@ import { deals, rawLeadDispositions, rawLeads } from "@/db/schema";
 import { auth } from "@/lib/auth";
 import { addressKey, parseLeadsCsv } from "@/lib/raw-leads-csv";
 import { CONNECTED_OUTCOMES, DEFAULT_FOLLOW_UP_DAYS, FOLLOW_UP_DAYS_OPTIONS } from "@/lib/follow-up";
+import { requirePermission } from "@/lib/has-permission";
 
 /**
  * Build a SQL literal like `ARRAY['connected_interested', …]` from
@@ -49,6 +50,9 @@ export type UploadResult = {
  */
 export async function uploadLeadsCsvAction(formData: FormData): Promise<UploadResult> {
   const user = await requireUser();
+  // /admin/leads is gated on manage_users — enforce the same here so a
+  // BD can't pump arbitrary rows into the pool via a raw POST.
+  await requirePermission(user, "manage_users");
   const file = formData.get("file") as File | null;
   if (!file) return { ok: false, error: "Pick a CSV file first", inserted: 0, skipped: 0, dupes: 0, unmappedHeaders: [] };
 
@@ -145,6 +149,7 @@ export async function uploadLeadsCsvAction(formData: FormData): Promise<UploadRe
  */
 export async function deleteUploadBatchAction(batchId: string): Promise<{ ok: boolean; removed: number }> {
   const user = await requireUser();
+  await requirePermission(user, "manage_users");
   const result = await db
     .update(rawLeads)
     .set({ deletedAt: new Date(), deletedById: user.id })
@@ -164,6 +169,7 @@ export async function deleteUploadBatchAction(batchId: string): Promise<{ ok: bo
 /** Hard-delete by id list — used by the admin pool view's bulk delete. */
 export async function softDeleteLeadsAction(ids: string[]): Promise<void> {
   const user = await requireUser();
+  await requirePermission(user, "manage_users");
   if (ids.length === 0) return;
   await db
     .update(rawLeads)

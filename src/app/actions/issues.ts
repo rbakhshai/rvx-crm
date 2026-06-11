@@ -210,9 +210,15 @@ export async function reopenIssueAction(issueId: string): Promise<void> {
   revalidatePath("/issues");
 }
 
-/** Soft delete — keep audit trail. */
+/** Soft delete — keep audit trail. Delete stays restricted to admin +
+ *  Sales & Marketing per the standing "only Reza + Erica delete" rule;
+ *  everyone else can solve/reopen instead. */
 export async function deleteIssueAction(issueId: string): Promise<void> {
   const user = await requireUser();
+  const role = (user as { role?: string }).role;
+  if (role !== "admin" && role !== "acquisitions_manager") {
+    throw new Error("Only admins can delete issues — mark it Solved instead");
+  }
   await db
     .update(issues)
     .set({ deletedAt: new Date(), deletedById: user.id })

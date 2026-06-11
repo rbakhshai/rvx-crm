@@ -26,7 +26,8 @@ export async function createContactAction(
   _prev: FormState,
   formData: FormData,
 ): Promise<FormState> {
-  await requireUser();
+  const user = await requireUser();
+  await requirePermission(user, "create_contacts");
 
   const parsed = contactFormSchema.safeParse(parseContactFormData(formData));
   if (!parsed.success) {
@@ -115,7 +116,8 @@ export async function updateContactAction(
   _prev: FormState,
   formData: FormData,
 ): Promise<FormState> {
-  await requireUser();
+  const user = await requireUser();
+  await requirePermission(user, "edit_contacts");
   const parsed = contactFormSchema.safeParse(parseContactFormData(formData));
   if (!parsed.success) {
     return { ok: false, message: "Fix the highlighted fields", errors: parsed.error.flatten().fieldErrors };

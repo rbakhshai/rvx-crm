@@ -7,6 +7,7 @@ import { and, asc, eq, inArray, isNull, lt, or, sql } from "drizzle-orm";
 import { db } from "@/db";
 import { birdDogs, dealStatuses, deals, notes } from "@/db/schema";
 import { auth } from "@/lib/auth";
+import { requirePermission } from "@/lib/has-permission";
 import { sendNotification } from "@/lib/email";
 import {
   ACTIVE_CLOSER_STATUSES,
@@ -113,6 +114,9 @@ export async function listStatusOptions() {
  */
 export async function triageDealAction(formData: FormData): Promise<void> {
   const user = await requireUser();
+  // Mutates deal status + optionally emails the bird dog — enforce the
+  // same permission the /triage cockpit page is gated on.
+  await requirePermission(user, "use_triage_cockpit");
   const dealId = String(formData.get("dealId") ?? "");
   if (!dealId) throw new Error("Missing dealId");
 

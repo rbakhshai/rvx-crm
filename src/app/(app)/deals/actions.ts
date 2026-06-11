@@ -137,6 +137,7 @@ function toValues(v: ReturnType<typeof dealFormSchema.parse>) {
 
 export async function createDealAction(_prev: FormState, formData: FormData): Promise<FormState> {
   const user = await requireUser();
+  await requirePermission(user, "create_deals");
   const parsed = dealFormSchema.safeParse(parseDealForm(formData));
   if (!parsed.success) {
     return { ok: false, message: "Fix the highlighted fields", errors: parsed.error.flatten().fieldErrors };
@@ -163,7 +164,8 @@ export async function createDealAction(_prev: FormState, formData: FormData): Pr
 }
 
 export async function updateDealAction(id: string, _prev: FormState, formData: FormData): Promise<FormState> {
-  await requireUser();
+  const user = await requireUser();
+  await requirePermission(user, "edit_deals");
   const parsed = dealFormSchema.safeParse(parseDealForm(formData));
   if (!parsed.success) {
     return { ok: false, message: "Fix the highlighted fields", errors: parsed.error.flatten().fieldErrors };
@@ -247,7 +249,8 @@ export async function updateDealStatusByRoleAction(
   dealId: string,
   newRole: string,
 ): Promise<{ ok: boolean; statusCode?: string; error?: string }> {
-  await requireUser();
+  const user = await requireUser();
+  await requirePermission(user, "edit_deals");
 
   const { dealStatuses } = await import("@/db/schema");
   const { and, asc } = await import("drizzle-orm");

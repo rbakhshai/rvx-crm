@@ -23,7 +23,8 @@ async function requireUser() {
 }
 
 export async function createCompanyAction(_prev: FormState, formData: FormData): Promise<FormState> {
-  await requireUser();
+  const user = await requireUser();
+  await requirePermission(user, "create_companies");
   const parsed = companyFormSchema.safeParse(parseCompanyForm(formData));
   if (!parsed.success) {
     return { ok: false, message: "Fix the highlighted fields", errors: parsed.error.flatten().fieldErrors };
@@ -62,7 +63,8 @@ export async function updateCompanyAction(
   _prev: FormState,
   formData: FormData,
 ): Promise<FormState> {
-  await requireUser();
+  const user = await requireUser();
+  await requirePermission(user, "edit_companies");
   const parsed = companyFormSchema.safeParse(parseCompanyForm(formData));
   if (!parsed.success) {
     return { ok: false, message: "Fix the highlighted fields", errors: parsed.error.flatten().fieldErrors };

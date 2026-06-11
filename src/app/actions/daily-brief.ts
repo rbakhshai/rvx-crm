@@ -28,6 +28,15 @@ export async function getOrCreateDailyBrief(userId: string): Promise<{
   createdAt: Date;
   cached: boolean;
 } | null> {
+  // Server actions are network-callable: never trust the caller's
+  // userId. Briefs summarize a user's own pipeline — pin to the
+  // session user regardless of what was passed.
+  try {
+    userId = await requireUserId();
+  } catch {
+    return null;
+  }
+
   const forDate = todayUtcDate();
 
   try {

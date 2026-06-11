@@ -13,9 +13,27 @@ import {
 } from "@/lib/level10-scorecard";
 import { getOpsBlocks } from "@/lib/ops-content";
 
+/**
+ * L10 meetings are a leadership ritual — BD-tier seats can see Mission
+ * Control but shouldn't be writing meeting notes / ratings / action
+ * items. Kerry (due_diligence) IS included here: she sits in the L10
+ * and owns action items, unlike the ops_content editor set.
+ */
+const L10_WRITER_ROLES = new Set([
+  "admin",
+  "acquisitions_manager",
+  "bird_dog_manager",
+  "cfo",
+  "park_manager",
+  "due_diligence",
+]);
+
 async function requireUser() {
   const session = await auth.api.getSession({ headers: await headers() });
   if (!session) throw new Error("Not authenticated");
+  if (!L10_WRITER_ROLES.has((session.user as { role?: string }).role ?? "")) {
+    throw new Error("Only the leadership team can edit L10 meetings");
+  }
   return session.user;
 }
 

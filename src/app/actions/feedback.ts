@@ -6,6 +6,7 @@ import { eq, sql } from "drizzle-orm";
 import { db } from "@/db";
 import { feedbackSubmissions } from "@/db/schema";
 import { auth } from "@/lib/auth";
+import { requirePermission } from "@/lib/has-permission";
 
 const VALID_KINDS = new Set(["feature", "bug"] as const);
 const VALID_STATUSES = new Set(["new", "in_progress", "done", "wontfix"] as const);
@@ -61,6 +62,10 @@ export async function submitFeedbackAction(formData: FormData): Promise<SubmitFe
 async function requireAdminUser() {
   const session = await auth.api.getSession({ headers: await headers() });
   if (!session) throw new Error("Not authenticated");
+  // The /settings/feedback queue is gated on manage_users — the actions
+  // behind it must enforce the same thing, otherwise any signed-in user
+  // could re-status or hard-delete team feedback via a raw POST.
+  await requirePermission(session.user, "manage_users");
   return session.user;
 }
 

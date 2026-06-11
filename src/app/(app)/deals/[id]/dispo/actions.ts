@@ -7,6 +7,7 @@ import { headers } from "next/headers";
 import { db } from "@/db";
 import { contacts, deals, messageTemplates, notes } from "@/db/schema";
 import { auth } from "@/lib/auth";
+import { hasPermission } from "@/lib/has-permission";
 import { sendNotification } from "@/lib/email";
 import { render, type DispoContext } from "@/lib/template-render";
 
@@ -30,6 +31,11 @@ export type DispoActionResult = {
 export async function sendDispoAction(formData: FormData): Promise<DispoActionResult> {
   const session = await auth.api.getSession({ headers: await headers() });
   if (!session) return { ok: false, message: "Not authenticated" };
+  // This sends real email to real buyers — enforce the same permission
+  // the dispo composer UI is gated on.
+  if (!(await hasPermission(session.user, "dispo_to_buyers"))) {
+    return { ok: false, message: "You don't have permission to send dispo emails" };
+  }
 
   const dealId = String(formData.get("dealId") ?? "");
   const buyerIds = formData.getAll("buyerIds").map(String).filter(Boolean);

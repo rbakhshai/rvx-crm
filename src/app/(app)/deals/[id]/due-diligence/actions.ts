@@ -16,11 +16,17 @@ import {
   ddContacts,
 } from "@/db/schema";
 import { auth } from "@/lib/auth";
+import { requirePermission } from "@/lib/has-permission";
 import { DD_CHECKLIST_TEMPLATE_WITH_ORDER } from "@/lib/dd-checklist-template";
 
+// Every action in this file mutates due-diligence data on a deal, so the
+// shared guard requires edit_deals — same permission the deal pages gate
+// editing on. View-only roles can still READ the DD page; they just
+// can't flip checklist items or add rows.
 async function requireUserId(): Promise<string> {
   const session = await auth.api.getSession({ headers: await headers() });
   if (!session) throw new Error("Not authenticated");
+  await requirePermission(session.user, "edit_deals");
   return session.user.id;
 }
 
