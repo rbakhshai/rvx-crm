@@ -8,6 +8,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { headers } from "next/headers";
 import { auth } from "@/lib/auth";
+import { hasPermission } from "@/lib/has-permission";
 import { PageShell } from "../page-shell";
 import {
   getLeaderboard,
@@ -32,6 +33,7 @@ export default async function BdLeaderboardPage({
 }) {
   const session = await auth.api.getSession({ headers: await headers() });
   if (!session) notFound();
+  if (!(await hasPermission(session.user, "view_leaderboard"))) notFound();
 
   const params = await searchParams;
   const period: LeaderboardPeriod = isPeriod(params.p) ? params.p : "week";

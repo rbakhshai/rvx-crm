@@ -38,6 +38,7 @@ import { getFollowUpsDueForUser, followUpBand } from "@/lib/my-leads";
 import { getOpsBlocks } from "@/lib/ops-content";
 import { TeamMeetingWidget } from "@/components/team-meeting-widget";
 import { getLeadershipQueueForUser } from "@/lib/leadership-queue";
+import { getEffectiveRole } from "@/lib/view-as";
 import { BdToday } from "./bd-today";
 
 const DAY_MS = 24 * 60 * 60 * 1000;
@@ -87,8 +88,9 @@ export default async function TodayPage() {
   // Bird dogs get their own hub — goal ring, streak, callbacks, mini
   // leaderboard. Branch BEFORE the closer-oriented queries below so a
   // BD page-load doesn't pay for pipeline/tasks/notifications fetches
-  // it never renders.
-  const role = (session.user as { role?: string }).role;
+  // it never renders. Effective role so the CEO's "View as BD" shows
+  // the real BD hub (with the CEO's own — likely zero — stats).
+  const role = await getEffectiveRole((session.user as { role?: string }).role);
   if (role === "bd_level_1" || role === "bd_level_2" || role === "bd_level_3") {
     return (
       <PageShell title={greeting(session.user.name)} subtitle={fmtDateWithWeekday(new Date())} width="default">
@@ -177,7 +179,7 @@ export default async function TodayPage() {
     getDoNextItems(me, 5).catch((e) => { console.error("[do-next] failed:", e); return []; }),
     getFollowUpsDueForUser(me, 12).catch((e) => { console.error("[follow-ups-due] failed:", e); return []; }),
     getOpsBlocks("today.meeting.").catch((e) => { console.error("[meeting-blocks] failed:", e); return new Map<string, string>(); }),
-    getLeadershipQueueForUser(me, (session.user as { role?: string }).role).catch((e) => { console.error("[leadership-queue] failed:", e); return []; }),
+    getLeadershipQueueForUser(me, role).catch((e) => { console.error("[leadership-queue] failed:", e); return []; }),
   ]);
 
   const statusLabel = new Map(statusRows.map((s) => [s.code, s.label]));
@@ -192,8 +194,7 @@ export default async function TodayPage() {
   const meetingTitle = meetingBlocks.get("today.meeting.title") ?? "";
   const meetingUrl   = meetingBlocks.get("today.meeting.url")   ?? "";
   const meetingNotes = meetingBlocks.get("today.meeting.notes") ?? "";
-  const canEditMeeting =
-    session.user.role === "admin" || session.user.role === "acquisitions_manager";
+  const canEditMeeting = role === "admin" || role === "acquisitions_manager";
   const showMeeting =
     canEditMeeting || meetingTitle.trim().length > 0 || meetingUrl.trim().length > 0;
   const pipelineValue = Number(pipelineValueRows[0]?.total ?? 0);

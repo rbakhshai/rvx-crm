@@ -69,10 +69,10 @@ const GROUPS: NavItem[] = [
       { href: "/companies", label: "Sellers" },
     ],
   },
-  { href: "/bird-dogs",    label: "Bird Dogs",        requires: "view_bird_dogs_directory" },
-  { href: "/bd-triage",    label: "Lead Work" },
-  { href: "/my-leads",     label: "My Leads" },
-  { href: "/bd-leaderboard", label: "Leaderboard" },
+  { href: "/bird-dogs",      label: "Bird Dogs",   requires: "view_bird_dogs_directory" },
+  { href: "/bd-triage",      label: "Lead Work",   requires: "view_lead_work" },
+  { href: "/my-leads",       label: "My Leads",    requires: "view_my_leads" },
+  { href: "/bd-leaderboard", label: "Leaderboard", requires: "view_leaderboard" },
   // Park Performance is renamed from Insights and gated to roles that
   // explicitly grant view_revenue (Reza/Marco/Kevin by default; Erica
   // intentionally not).

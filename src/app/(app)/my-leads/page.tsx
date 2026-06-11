@@ -18,6 +18,7 @@ import { notFound } from "next/navigation";
 import { headers } from "next/headers";
 import Link from "next/link";
 import { auth } from "@/lib/auth";
+import { hasPermission } from "@/lib/has-permission";
 import { PageShell } from "../page-shell";
 import { getMyLeads, followUpBand, outcomeLabel, leadStatusLabel } from "@/lib/my-leads";
 import { labelForStage } from "@/lib/pipeline-stages";
@@ -28,6 +29,7 @@ import { cn } from "@/lib/cn";
 export default async function MyLeadsPage() {
   const session = await auth.api.getSession({ headers: await headers() });
   if (!session) notFound();
+  if (!(await hasPermission(session.user, "view_my_leads"))) notFound();
 
   const rows = await getMyLeads(session.user.id);
   const now = new Date();

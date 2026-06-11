@@ -14,6 +14,7 @@ import { and, eq } from "drizzle-orm";
 import { db } from "@/db";
 import { rolePermissions } from "@/db/schema";
 import { DEFAULT_PERMISSIONS, type PermissionKey, type Role } from "./permissions";
+import { getEffectiveRole } from "./view-as";
 
 type UserLike = { role?: string | null };
 
@@ -27,7 +28,10 @@ export async function hasPermission(
   user: UserLike | null | undefined,
   key: PermissionKey,
 ): Promise<boolean> {
-  const role = asRole(user?.role ?? null);
+  // "View as" resolves here so EVERY gate in the app — pages, nav,
+  // server actions — reflects the previewed role with no per-page
+  // wiring. Non-admins pass through unchanged.
+  const role = asRole(await getEffectiveRole(user?.role ?? null));
   if (!role) return false;
 
   // Try the DB first (live overrides set by an admin).
@@ -57,7 +61,7 @@ export async function requirePermission(
  * render the nav (so we don't make 10 DB calls per page).
  */
 export async function getPermissionsFor(role: string | null | undefined): Promise<Record<PermissionKey, boolean>> {
-  const r = asRole(role);
+  const r = asRole(await getEffectiveRole(role));
   if (!r) return Object.fromEntries((Object.keys(DEFAULT_PERMISSIONS.admin) as PermissionKey[]).map((k) => [k, false])) as Record<PermissionKey, boolean>;
 
   const rows = await db

@@ -52,7 +52,7 @@ export type Role =
  * role anyone picks from a dropdown.
  */
 export const ROLES: ReadonlyArray<{ value: Role; label: string; description: string }> = [
-  { value: "admin",                label: "Admin",              description: "Full access. Reserved for owners." },
+  { value: "admin",                label: "CEO",                description: "Full access — super admin. Can view-as any role." },
   { value: "acquisitions_manager", label: "Sales & Marketing",  description: "Runs sales, marketing, and the bird-dog team." },
   { value: "bird_dog_manager",     label: "Operations",         description: "Runs operations — closing, DD, escrow, post-close." },
   { value: "cfo",                  label: "Finance",            description: "Owns books, revenue, and financial reporting." },
@@ -93,7 +93,10 @@ export type PermissionKey =
   | "view_hires"
   | "manage_hires"
   | "view_reimbursements"
-  | "manage_reimbursements";
+  | "manage_reimbursements"
+  | "view_lead_work"
+  | "view_my_leads"
+  | "view_leaderboard";
 
 export type PermissionGroup = {
   label: string;
@@ -168,6 +171,9 @@ export const PERMISSION_GROUPS: ReadonlyArray<PermissionGroup> = [
       { key: "view_bird_dogs_directory", label: "See Bird Dogs", description: "/bird-dogs roster top-level tab" },
       { key: "view_hires", label: "See New Hires", description: "/hires leadership-only hiring workflow" },
       { key: "view_reimbursements", label: "See Reimbursements", description: "/reimbursements leadership-only purchase requests" },
+      { key: "view_lead_work", label: "See Lead Work", description: "/bd-triage dialer (claim + disposition)" },
+      { key: "view_my_leads", label: "See My Leads", description: "/my-leads personal lead status board" },
+      { key: "view_leaderboard", label: "See Leaderboard", description: "/bd-leaderboard gamification board" },
     ],
   },
   {
@@ -225,25 +231,41 @@ const STANDARD_NAV: PermissionKey[] = [
   "view_pipeline",
   "view_contacts",
   "view_bird_dogs_directory",
+  "view_lead_work",
+  "view_my_leads",
+  "view_leaderboard",
+];
+
+/**
+ * Everything a leadership seat sees by default — all the work tabs
+ * (Reza, 2026-06: "they will be able to see all the tabs on the side
+ * for now"). Excludes the Admin section (manage_users / manage_roles)
+ * and delete/purge powers, which stay with Reza + Erica per the
+ * standing rule. Tune per-role anytime from /settings/roles.
+ */
+const LEADERSHIP_NAV: PermissionKey[] = [
+  ...STANDARD_NAV,
+  "view_hires", "manage_hires",
+  "view_reimbursements", "manage_reimbursements",
+  "view_revenue",
+  "view_pipeline_value",
+  "view_trash",
 ];
 
 export const DEFAULT_PERMISSIONS: Record<Role, Record<PermissionKey, boolean>> = {
   admin: ALL,
 
-  // Sales & Marketing role (Erica). Effectively a working admin: keeps
-  // delete + trash permissions so she can clean up records (you noted
-  // only you + Erica should ever delete).
+  // Sales & Marketing (Erica). Effectively a working admin: the only
+  // non-CEO seat with delete + purge (standing rule: only Reza + Erica
+  // delete).
   acquisitions_manager: grant(
-    ...STANDARD_NAV,
+    ...LEADERSHIP_NAV,
     "create_deals", "edit_deals", "delete_deals",
     "create_contacts", "edit_contacts", "delete_contacts",
     "create_companies", "edit_companies", "delete_companies",
     "create_bird_dogs", "edit_bird_dogs", "delete_bird_dogs",
     "use_triage_cockpit", "dispo_to_buyers",
-    "view_pipeline_value",
-    "view_trash", "restore_from_trash", "purge_permanently",
-    "view_hires", "manage_hires",
-    "view_reimbursements", "manage_reimbursements",
+    "restore_from_trash", "purge_permanently",
   ),
 
   // Closer — generic role for future hires. View Park Performance was
@@ -258,18 +280,14 @@ export const DEFAULT_PERMISSIONS: Record<Role, Record<PermissionKey, boolean>> =
     "view_pipeline_value",
   ),
 
-  // Operations role (Marco). Keeps the closer workflow — triage cockpit
-  // + dispo. Also gets Park Performance since Marco needs the revenue
-  // signal while he's closing live deals.
+  // Operations (Marco). Keeps the closer workflow — triage cockpit +
+  // dispo — on top of the full leadership tab set.
   bird_dog_manager: grant(
-    ...STANDARD_NAV,
+    ...LEADERSHIP_NAV,
     "create_deals", "edit_deals",
     "create_contacts", "edit_contacts",
     "create_bird_dogs", "edit_bird_dogs",
     "use_triage_cockpit", "dispo_to_buyers",
-    "view_pipeline_value", "view_revenue",
-    "view_hires", "manage_hires",
-    "view_reimbursements", "manage_reimbursements",
   ),
 
   transaction_coord: grant(
@@ -293,20 +311,17 @@ export const DEFAULT_PERMISSIONS: Record<Role, Record<PermissionKey, boolean>> =
     "view_pipeline_value",
   ),
 
-  // Finance (Kevin) sees Park Performance + the Hires queue (he runs
-  // the finance/tax/legal pass on every new hire request).
+  // Finance (Kevin). Full leadership tab set — he runs the finance/
+  // tax/legal pass on every hire + approves reimbursements.
   cfo: grant(
-    ...STANDARD_NAV,
-    "view_pipeline_value",
-    "view_revenue",
-    "view_hires", "manage_hires",
-    "view_reimbursements", "manage_reimbursements",
+    ...LEADERSHIP_NAV,
   ),
 
+  // Due Diligence (Kerry). Leadership tab set + deal editing for her
+  // DD checklists.
   due_diligence: grant(
-    ...STANDARD_NAV,
+    ...LEADERSHIP_NAV,
     "edit_deals",
-    "view_pipeline_value",
   ),
 
   // viewer is deprecated — kept for DB-enum compatibility only.
@@ -323,17 +338,13 @@ export const DEFAULT_PERMISSIONS: Record<Role, Record<PermissionKey, boolean>> =
   // because dispositionLeadAction writes server-side, not through the
   // permission-gated deal actions. All three tiers are identical for
   // now — the level split is for comp/status, not access.
-  bd_level_1: grant("view_today"),
-  bd_level_2: grant("view_today"),
-  bd_level_3: grant("view_today"),
+  bd_level_1: grant("view_today", "view_lead_work", "view_my_leads", "view_leaderboard"),
+  bd_level_2: grant("view_today", "view_lead_work", "view_my_leads", "view_leaderboard"),
+  bd_level_3: grant("view_today", "view_lead_work", "view_my_leads", "view_leaderboard"),
 
-  // Park manager (Lyn). Runs operations at a specific park; counts as
-  // leadership for the New Hires queue (so she can initiate hire
-  // requests for her park's staff). Light grants beyond Hires +
-  // standard nav — they can be widened from /settings/roles later.
+  // Park manager (Lyn). Full leadership tab set — she's on the
+  // leadership team for Hires + Reimbursements and the weekly L10.
   park_manager: grant(
-    ...STANDARD_NAV,
-    "view_hires", "manage_hires",
-    "view_reimbursements", "manage_reimbursements",
+    ...LEADERSHIP_NAV,
   ),
 };

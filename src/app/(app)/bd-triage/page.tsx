@@ -13,6 +13,7 @@ import { and, desc, eq, gte, ne, sql } from "drizzle-orm";
 import { db } from "@/db";
 import { rawLeadDispositions, rawLeads, user as userTable } from "@/db/schema";
 import { auth } from "@/lib/auth";
+import { hasPermission } from "@/lib/has-permission";
 import { PageShell } from "../page-shell";
 import { BdTriageClient } from "./client";
 import { getQueueCountsForUser } from "@/app/actions/leads";
@@ -35,6 +36,7 @@ export default async function BdTriagePage({
 
   const session = await auth.api.getSession({ headers: await headers() });
   if (!session) notFound();
+  if (!(await hasPermission(session.user, "view_lead_work"))) notFound();
   const me = session.user.id;
 
   // Pick up the claimed lead if any. Since connected_* outcomes now recycle

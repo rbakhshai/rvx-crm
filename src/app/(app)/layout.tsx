@@ -14,6 +14,8 @@ import { MobileNavToggle } from "@/components/mobile-nav";
 import { getPermissionsFor } from "@/lib/has-permission";
 import { ROLES } from "@/lib/permissions";
 import { FeedbackWidget } from "@/components/feedback-widget";
+import { getActiveViewAs, VIEWABLE_ROLES } from "@/lib/view-as";
+import { ViewAsPicker, ViewAsBanner } from "@/components/view-as";
 
 /**
  * Map a DB role value to its display label. Falls back to "—" rather than
@@ -32,7 +34,12 @@ export default async function AppLayout(props: {
   const { children, drawer } = props;
   const session = await auth.api.getSession({ headers: await headers() });
   if (!session) redirect("/login");
-  const role = (session.user as { role?: string }).role;
+  const realRole = (session.user as { role?: string }).role;
+  // "View as": when the CEO is previewing another role, the whole shell
+  // (nav, permissions, role chip) renders as that role. Suspension and
+  // onboarding checks below stay on the REAL identity.
+  const viewAs = await getActiveViewAs(realRole);
+  const role = viewAs ?? realRole;
   // Look up suspendedAt/deletedAt directly — Better Auth's session payload
   // doesn't carry them by default, and we want this check on every page.
   const [me] = await db
@@ -85,21 +92,27 @@ export default async function AppLayout(props: {
         <div className="p-3 flex-1">
           <Nav permissions={permissions} role={role} />
         </div>
-        <div className="p-3 border-t border-border">
+        <div className="p-3 border-t border-border space-y-3">
+          {/* View-As picker — REAL admins only, regardless of preview state,
+              so the CEO always has the controls to switch / exit. */}
+          {realRole === "admin" && (
+            <ViewAsPicker roles={[...VIEWABLE_ROLES]} active={viewAs} />
+          )}
           <div className="text-xs">
             <div className="font-medium text-foreground">{session.user.name}</div>
             <div className="text-muted truncate">{session.user.email}</div>
             <div className="mt-1 inline-flex items-center gap-1.5">
-              <span className="size-1.5 rounded-full bg-green-500" />
-              <span className="text-muted">{roleLabelOf((session.user as { role?: string }).role)}</span>
+              <span className={viewAs ? "size-1.5 rounded-full bg-amber-500" : "size-1.5 rounded-full bg-green-500"} />
+              <span className="text-muted">{roleLabelOf(role)}</span>
             </div>
           </div>
-          <div className="mt-3">
+          <div>
             <SignOutButton />
           </div>
         </div>
       </aside>
       <div className="flex-1 min-w-0 flex flex-col">
+        {viewAs && <ViewAsBanner label={roleLabelOf(viewAs)} />}
         <header className="h-12 border-b border-border px-3 sm:px-6 flex items-center gap-2 sm:gap-3 bg-background/95 backdrop-blur sticky top-0 z-10">
           <MobileNavToggle />
           <CommandPaletteTrigger />

@@ -8,17 +8,17 @@ import { auth } from "@/lib/auth";
 
 /**
  * Roles allowed to edit ops_content (Mission Control text, Team depts,
- * onboarding copy, the Today meeting card). BD-tier seats can VIEW
- * Mission Control via standard nav, but letting 10 dialers rewrite the
- * company priorities inline is a week-one embarrassment waiting to
- * happen. Kerry (due_diligence) is intentionally out — content edits
- * are a leadership job; widen here if that changes.
+ * onboarding copy, the Today meeting card). BD-tier seats can't —
+ * letting 10 dialers rewrite the company priorities inline is a
+ * week-one embarrassment waiting to happen. This is the full
+ * leadership team (Reza, 2026-06: all six are leadership).
  */
 const OPS_EDITOR_ROLES = new Set([
-  "admin",
+  "admin",                // Reza — CEO
   "acquisitions_manager", // Erica — Sales & Marketing
   "bird_dog_manager",     // Marco — Operations
   "cfo",                  // Kevin — Finance
+  "due_diligence",        // Kerry — DD
   "park_manager",         // Lyn
 ]);
 
