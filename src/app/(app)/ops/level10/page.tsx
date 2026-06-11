@@ -1,6 +1,10 @@
 /**
  * Level 10 — Monday Leadership Meeting structure.
- * Six sections with EOS time budgets. Issues section embeds /issues by link.
+ *
+ * Mirrors the classic EOS 90-minute agenda (Segue → Scorecard → Rock
+ * Review → Headlines → To-Do List → IDS → Conclude). The AgendaTimer
+ * card at the top runs live per-section countdowns so the team can SEE
+ * when a section is eating the IDS hour.
  */
 import Link from "next/link";
 import { and, asc, desc, eq, gte, inArray, isNull, ne, sql } from "drizzle-orm";
@@ -10,6 +14,7 @@ import { getOpsBlocks } from "@/lib/ops-content";
 import { OpsHeader, StatusPill } from "../ops-primitives";
 import { EditableBlock } from "@/components/editable-block";
 import { MeetingTextarea, MeetingRating, RefreshSnapshotButton, ActionItemsBlock } from "./level10-widgets";
+import { AgendaTimer, type AgendaSection } from "./agenda-timer";
 import { mondayOf } from "@/lib/level10-week";
 import { fmtDate } from "@/lib/date-format";
 import {
@@ -23,6 +28,17 @@ const REVALIDATE = "/ops/level10";
 
 // Scorecard metric defs + live-actual query live in @/lib/level10-scorecard
 // so the snapshot server action can reuse them.
+
+/** The classic EOS 90-minute agenda — order, budgets, and anchors. */
+const AGENDA: AgendaSection[] = [
+  { key: "segue",      title: "Segue",       minutes: 5,  anchorId: "l10-segue",      emoji: "👥" },
+  { key: "scorecard",  title: "Scorecard",   minutes: 5,  anchorId: "l10-scorecard",  emoji: "📈" },
+  { key: "rocks",      title: "Rock Review", minutes: 5,  anchorId: "l10-rocks",      emoji: "🔺" },
+  { key: "headlines",  title: "Headlines",   minutes: 5,  anchorId: "l10-headlines",  emoji: "📣" },
+  { key: "todos",      title: "To-Do List",  minutes: 5,  anchorId: "l10-todos",      emoji: "📝" },
+  { key: "ids",        title: "IDS",         minutes: 60, anchorId: "l10-ids",        emoji: "💡" },
+  { key: "conclude",   title: "Conclude",    minutes: 5,  anchorId: "l10-conclude",   emoji: "🏁" },
+];
 
 const ROCKS_DEFAULTS = [
   { title: "Brokerage flywheel documented", owner: "Reza / Q4",       progress: 40, status: "on_track" as const },
@@ -142,7 +158,11 @@ export default async function Level10Page({
         }
       />
 
-      <Section title="Segue" minutes={5}>
+      {/* Live agenda + per-section timers — current week only (no point
+          timing a past meeting you're just reading). */}
+      {isCurrentWeek && <AgendaTimer sections={AGENDA} />}
+
+      <Section id="l10-segue" title="Segue" minutes={5}>
         <p className="text-sm text-muted mb-2">
           Share personal and professional good news. Connect as humans before diving into business.
         </p>
@@ -155,7 +175,7 @@ export default async function Level10Page({
         />
       </Section>
 
-      <Section title="Scorecard" minutes={5}>
+      <Section id="l10-scorecard" title="Scorecard" minutes={5}>
         {/* Provenance banner — snapshot vs live vs stale */}
         <div className="mb-2 flex items-center justify-between gap-3 flex-wrap">
           {scorecardSource === "live" && (
@@ -240,7 +260,7 @@ export default async function Level10Page({
         </div>
       </Section>
 
-      <Section title="Company Rocks" minutes={10}>
+      <Section id="l10-rocks" title="Rock Review" minutes={5}>
         <div className="space-y-3">
           {ROCKS_DEFAULTS.map((r, i) => {
             const titleScope = `level10.rocks.${i}.title`;
@@ -265,39 +285,26 @@ export default async function Level10Page({
         </div>
       </Section>
 
-      <Section title="Issues" minutes={10}>
+      <Section id="l10-headlines" title="Headlines" minutes={5}>
         <p className="text-sm text-muted mb-2">
-          Live issues list lives in the CRM at{" "}
-          <Link href="/issues" className="text-foreground hover:underline font-medium">/issues</Link>.
-          That's where IDS happens — capture, discuss, solve. Reza + Marco see only Triage in
-          Pipeline; everyone here works the Issues board.
+          One-liners only: customer + employee good news and bad news. Anything worth a
+          discussion drops to the IDS list instead.
         </p>
-        <Link
-          href="/issues"
-          className="inline-flex items-center gap-1.5 rounded-md border border-border bg-background px-3 py-1.5 text-xs hover:bg-foreground/[0.04]"
-        >
-          Open Issues board →
-        </Link>
-      </Section>
-
-      <Section title="Conclude" minutes={5}>
-        <p className="text-sm text-muted mb-2">
-          Recap action items, cascading messages, rate the meeting.
-        </p>
-        <div className="text-[11px] uppercase tracking-widest text-muted font-semibold mb-1.5">Meeting Rating</div>
-        <div className="mb-3">
-          <MeetingRating meetingDate={weekMonday} initial={meetingRow?.rating ?? null} />
-        </div>
         <MeetingTextarea
           meetingDate={weekMonday}
-          field="conclude"
-          initial={meetingRow?.concludeNotes ?? ""}
+          field="headlines"
+          initial={meetingRow?.headlinesNotes ?? ""}
           initialSavedAt={meetingRow?.updatedAt ?? null}
-          placeholder="Meeting recap / cascading messages…"
-          rows={3}
+          placeholder="• Seller in TX referred a neighbor…&#10;• New BD crushed week one…"
         />
+      </Section>
 
-        <div className="mt-5 rounded-lg border border-border bg-foreground/[0.015] p-4">
+      <Section id="l10-todos" title="To-Do List" minutes={5}>
+        <p className="text-sm text-muted mb-2">
+          Review last week's to-dos — done or not done. 90% done rate is the EOS bar. New
+          to-dos get added here as they come up during the meeting.
+        </p>
+        <div className="rounded-lg border border-border bg-foreground/[0.015] p-4">
           <ActionItemsBlock
             meetingDate={weekMonday}
             items={thisMeetingItems.map((i) => ({
@@ -318,6 +325,38 @@ export default async function Level10Page({
             isCurrentWeek={isCurrentWeek}
           />
         </div>
+      </Section>
+
+      <Section id="l10-ids" title="IDS" minutes={60}>
+        <p className="text-sm text-muted mb-2">
+          The heart of the meeting — Identify, Discuss, Solve. The live list is the{" "}
+          <Link href="/issues" className="text-foreground hover:underline font-medium">Issues board</Link>:
+          rank the list, take the top issue, IDS it to a to-do, repeat.
+        </p>
+        <Link
+          href="/issues"
+          className="inline-flex items-center gap-1.5 rounded-md border border-border bg-background px-3 py-1.5 text-xs hover:bg-foreground/[0.04]"
+        >
+          Open Issues board →
+        </Link>
+      </Section>
+
+      <Section id="l10-conclude" title="Conclude" minutes={5}>
+        <p className="text-sm text-muted mb-2">
+          Recap to-dos, cascading messages, rate the meeting 1–10.
+        </p>
+        <div className="text-[11px] uppercase tracking-widest text-muted font-semibold mb-1.5">Meeting Rating</div>
+        <div className="mb-3">
+          <MeetingRating meetingDate={weekMonday} initial={meetingRow?.rating ?? null} />
+        </div>
+        <MeetingTextarea
+          meetingDate={weekMonday}
+          field="conclude"
+          initial={meetingRow?.concludeNotes ?? ""}
+          initialSavedAt={meetingRow?.updatedAt ?? null}
+          placeholder="Meeting recap / cascading messages…"
+          rows={3}
+        />
       </Section>
 
       {/* History — last 12 meetings, newest first */}
@@ -393,16 +432,19 @@ function formatMondayLabel(d: string): string {
 }
 
 function Section({
+  id,
   title,
   minutes,
   children,
 }: {
+  /** Anchor for the AgendaTimer's scroll-to-section. */
+  id?: string;
   title: string;
   minutes: number;
   children: React.ReactNode;
 }) {
   return (
-    <section className="mb-8">
+    <section id={id} className="mb-8 scroll-mt-20">
       <div className="flex items-center gap-2 mb-3">
         <h2 className="text-lg font-bold tracking-tight">{title}</h2>
         <span className="text-[10px] rounded-full bg-foreground/[0.06] px-2 py-0.5 text-muted font-medium tabular-nums">

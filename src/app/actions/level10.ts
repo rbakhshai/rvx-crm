@@ -54,7 +54,7 @@ async function ensureMeeting(meetingDate: string, userId: string | null) {
 
 async function patchMeeting(
   meetingDate: string,
-  patch: Partial<{ segueNotes: string | null; concludeNotes: string | null; rating: number | null }>,
+  patch: Partial<{ segueNotes: string | null; headlinesNotes: string | null; concludeNotes: string | null; rating: number | null }>,
 ): Promise<void> {
   const user = await requireUser();
   await ensureMeeting(meetingDate, user.id);
@@ -81,6 +81,10 @@ export async function saveSegueNotesAction(meetingDate: string, notes: string): 
 }
 
 /** Save the Conclude text for a specific meeting week. */
+export async function saveHeadlinesNotesAction(meetingDate: string, notes: string): Promise<void> {
+  await patchMeeting(meetingDate, { headlinesNotes: notes });
+}
+
 export async function saveConcludeNotesAction(meetingDate: string, notes: string): Promise<void> {
   await patchMeeting(meetingDate, { concludeNotes: notes });
 }

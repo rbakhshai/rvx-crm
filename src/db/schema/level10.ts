@@ -24,6 +24,8 @@ export const level10Meetings = pgTable(
     id: text("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
     meetingDate: date("meeting_date").notNull(),
     segueNotes: text("segue_notes"),
+    /** Section 4 of the EOS agenda — customer/employee headlines. */
+    headlinesNotes: text("headlines_notes"),
     concludeNotes: text("conclude_notes"),
     rating: integer("rating"),
     createdById: text("created_by_id").references(() => user.id, { onDelete: "set null" }),

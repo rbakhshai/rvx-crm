@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { cn } from "@/lib/cn";
 import {
   saveSegueNotesAction,
+  saveHeadlinesNotesAction,
   saveConcludeNotesAction,
   setMeetingRatingAction,
   snapshotScorecardAction,
@@ -35,7 +36,7 @@ export function MeetingTextarea({
   rows = 3,
 }: {
   meetingDate: string;
-  field: "segue" | "conclude";
+  field: "segue" | "headlines" | "conclude";
   initial: string;
   initialSavedAt?: Date | string | null;
   placeholder?: string;
@@ -58,6 +59,7 @@ export function MeetingTextarea({
     startTransition(async () => {
       try {
         if (field === "segue") await saveSegueNotesAction(meetingDate, value);
+        else if (field === "headlines") await saveHeadlinesNotesAction(meetingDate, value);
         else await saveConcludeNotesAction(meetingDate, value);
         lastSaved.current = value;
         setSavedAt(new Date());
