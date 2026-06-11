@@ -22,6 +22,8 @@ export type BdDayStats = {
   connectsToday: number;
   qualifiedToday: number;
   callsThisWeek: number;
+  /** Calls in the 7 days before this week — week-over-week trend. */
+  callsPriorWeek: number;
   /** Consecutive weekdays (incl. today once met) hitting the goal. */
   streak: number;
   /** True when today's goal is met — the flame is lit. */
@@ -85,11 +87,15 @@ export async function getBdDayStats(userId: string): Promise<BdDayStats> {
     cursor.setUTCDate(cursor.getUTCDate() - 1);
   }
 
-  // Calls this week (last 7 days — matches the leaderboard window).
+  // Calls this week (last 7 days — matches the leaderboard window) and
+  // the prior 7 days for the week-over-week trend chip.
   const weekFloor = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
+  const priorFloor = new Date(Date.now() - 14 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
   let callsThisWeek = 0;
+  let callsPriorWeek = 0;
   for (const [day, v] of byDay) {
     if (day >= weekFloor) callsThisWeek += v.calls;
+    else if (day >= priorFloor) callsPriorWeek += v.calls;
   }
 
   // Rank from the existing leaderboard query.
@@ -102,10 +108,50 @@ export async function getBdDayStats(userId: string): Promise<BdDayStats> {
     connectsToday: today.connects,
     qualifiedToday: today.qualified,
     callsThisWeek,
+    callsPriorWeek,
     streak,
     goalMetToday,
     weekRank: idx >= 0 ? idx + 1 : null,
     weekPoints: idx >= 0 ? board[idx].points : 0,
     boardSize: board.length,
+  };
+}
+
+export type BdCareerStats = {
+  totalCalls: number;
+  totalConnects: number;
+  totalQualified: number;
+  /** All-time LOI / PSA credits from the leaderboard attribution. */
+  lois: number;
+  psas: number;
+};
+
+/**
+ * Career totals — power the milestone badges. One aggregate over the
+ * BD's full disposition history plus the all-time leaderboard row for
+ * downstream LOI/PSA credit.
+ */
+export async function getBdCareerStats(userId: string): Promise<BdCareerStats> {
+  const result = await db.execute(sql`
+    SELECT
+      COUNT(*)::int AS calls,
+      COUNT(*) FILTER (WHERE outcome::text LIKE 'connected_%')::int AS connects,
+      COUNT(*) FILTER (WHERE outcome = 'qualified')::int AS qualified
+    FROM raw_lead_dispositions
+    WHERE by_user_id = ${userId}
+  `);
+  const rows = ((result as unknown as { rows?: Array<Record<string, unknown>> }).rows
+    ?? (result as unknown as Array<Record<string, unknown>>)) ?? [];
+  const r = rows[0] ?? {};
+
+  const allTime = await getLeaderboard("all");
+  const meRow = allTime.find((b) => b.userId === userId);
+
+  return {
+    totalCalls: Number(r.calls) || 0,
+    totalConnects: Number(r.connects) || 0,
+    totalQualified: Number(r.qualified) || 0,
+    lois: meRow?.lois ?? 0,
+    psas: meRow?.psas ?? 0,
   };
 }

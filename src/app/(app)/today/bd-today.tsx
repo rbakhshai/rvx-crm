@@ -14,7 +14,8 @@
  * totals, no other BDs' lead data.
  */
 import Link from "next/link";
-import { getBdDayStats } from "@/lib/bd-stats";
+import { getBdDayStats, getBdCareerStats } from "@/lib/bd-stats";
+import { computeBadges } from "@/lib/bd-badges";
 import { getFollowUpsDueForUser, followUpBand } from "@/lib/my-leads";
 import { getLeaderboard } from "@/lib/bd-leaderboard";
 import { getQueueCountsForUser } from "@/app/actions/leads";
@@ -27,14 +28,21 @@ import { fmtRelative } from "@/lib/date-format";
 import { cn } from "@/lib/cn";
 
 export async function BdToday({ userId, userName }: { userId: string; userName: string }) {
-  const [stats, followUps, counts, board, brief, meetingBlocks] = await Promise.all([
+  const [stats, career, followUps, counts, board, brief, meetingBlocks] = await Promise.all([
     getBdDayStats(userId).catch(() => null),
+    getBdCareerStats(userId).catch(() => null),
     getFollowUpsDueForUser(userId, 8).catch(() => []),
     getQueueCountsForUser().catch(() => ({ fresh: 0, followup: 0 })),
     getLeaderboard("week").catch(() => []),
     getOrCreateDailyBrief(userId),
     getOpsBlocks("today.meeting.").catch(() => new Map<string, string>()),
   ]);
+
+  const badges = stats && career ? computeBadges(career, stats) : [];
+  const earnedCount = badges.filter((b) => b.earned).length;
+
+  // Week-over-week delta for the trend chip on the goal card.
+  const wow = stats ? stats.callsThisWeek - stats.callsPriorWeek : 0;
 
   const goal = stats?.goal ?? 40;
   const calls = stats?.callsToday ?? 0;
@@ -62,6 +70,14 @@ export async function BdToday({ userId, userName }: { userId: string; userName: 
               <div className="text-[11px] text-emerald-700 dark:text-emerald-400 mt-0.5">
                 {stats.connectsToday} connect{stats.connectsToday === 1 ? "" : "s"}
                 {stats.qualifiedToday > 0 && ` · ${stats.qualifiedToday} qualified 🎉`}
+              </div>
+            )}
+            {stats && (stats.callsThisWeek > 0 || stats.callsPriorWeek > 0) && (
+              <div className={cn(
+                "text-[11px] mt-0.5",
+                wow > 0 ? "text-emerald-700 dark:text-emerald-400" : wow < 0 ? "text-rose-700 dark:text-rose-400" : "text-muted",
+              )}>
+                {wow > 0 ? "▲" : wow < 0 ? "▼" : "—"} {Math.abs(wow)} vs last week
               </div>
             )}
           </div>
@@ -207,6 +223,35 @@ export async function BdToday({ userId, userName }: { userId: string; userName: 
               </ul>
             )}
           </div>
+
+          {/* Badge ladder — the whole journey visible from day one */}
+          {badges.length > 0 && (
+            <div className="rounded-xl border border-border bg-background p-4">
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-[10px] uppercase tracking-widest text-muted font-semibold">
+                  Milestones
+                </span>
+                <span className="text-[11px] text-muted tabular-nums">{earnedCount} / {badges.length}</span>
+              </div>
+              <ul className="grid grid-cols-4 gap-2">
+                {badges.map((b) => (
+                  <li
+                    key={b.key}
+                    title={b.earned ? b.label : `${b.label} — ${b.hint}`}
+                    className={cn(
+                      "rounded-lg border p-2 text-center transition",
+                      b.earned
+                        ? "border-amber-300 bg-amber-50/60 dark:border-amber-500/40 dark:bg-amber-500/10"
+                        : "border-border bg-foreground/[0.02] grayscale opacity-50",
+                    )}
+                  >
+                    <div className="text-xl leading-none">{b.emoji}</div>
+                    <div className="text-[9px] font-semibold mt-1 leading-tight">{b.label}</div>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
 
           {/* Weekly call */}
           <TeamMeetingWidget
