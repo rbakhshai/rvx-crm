@@ -3,9 +3,13 @@
  * Items linger here until manually purged or auto-purged after 30 days.
  * Until then they can be restored with one click.
  */
+import { notFound } from "next/navigation";
+import { headers } from "next/headers";
 import { desc, inArray, isNotNull } from "drizzle-orm";
 import { db } from "@/db";
 import { deals, contacts, companies, birdDogs, user as userTable } from "@/db/schema";
+import { auth } from "@/lib/auth";
+import { hasPermission } from "@/lib/has-permission";
 import { PageShell } from "../page-shell";
 import { Avatar } from "@/components/avatar";
 import { ConfirmButton } from "@/components/confirm-button";
@@ -57,6 +61,18 @@ function nameOf(first: string | null, last: string | null): string {
 }
 
 export default async function TrashPage() {
+  // Nav hides Trash without view_trash, but the URL is typeable —
+  // deleted records often hold exactly the data someone wanted gone.
+  const session = await auth.api.getSession({ headers: await headers() });
+  if (!session) notFound();
+  if (!(await hasPermission(session.user, "view_trash"))) {
+    return (
+      <PageShell title="Trash" subtitle="You don't have permission to view deleted records.">
+        <p className="text-sm text-muted">Ask an admin to grant you the &quot;See trash&quot; capability.</p>
+      </PageShell>
+    );
+  }
+
   const [deletedDeals, deletedContacts, deletedCompanies, deletedBirdDogs] = await Promise.all([
     db.select().from(deals).where(isNotNull(deals.deletedAt)).orderBy(desc(deals.deletedAt)),
     db.select().from(contacts).where(isNotNull(contacts.deletedAt)).orderBy(desc(contacts.deletedAt)),

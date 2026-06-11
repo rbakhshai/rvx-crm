@@ -7,6 +7,10 @@
  * branding "Ops Machine" left and "Founder OS" right.
  */
 import Link from "next/link";
+import { notFound } from "next/navigation";
+import { headers } from "next/headers";
+import { auth } from "@/lib/auth";
+import { hasPermission } from "@/lib/has-permission";
 import { OpsTabs } from "./ops-tabs";
 
 const TABS = [
@@ -21,7 +25,14 @@ const TABS = [
   { href: "/ops/vision",      label: "Vision" },
 ] as const;
 
-export default function OpsLayout({ children }: { children: React.ReactNode }) {
+export default async function OpsLayout({ children }: { children: React.ReactNode }) {
+  // One gate covers all nine /ops/* tabs. Nav already hides the entry
+  // without view_mission_control, but the layout enforces it so a
+  // revoked role can't deep-link to /ops/command.
+  const session = await auth.api.getSession({ headers: await headers() });
+  if (!session) notFound();
+  if (!(await hasPermission(session.user, "view_mission_control"))) notFound();
+
   return (
     <div className="min-h-screen bg-foreground/[0.015]">
       <div className="max-w-[1400px] mx-auto px-6 py-6">
