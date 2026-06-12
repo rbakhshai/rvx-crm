@@ -22,6 +22,7 @@ import { getQueueCountsForUser } from "@/app/actions/leads";
 import { getOrCreateDailyBrief } from "@/app/actions/daily-brief";
 import { getOpsBlocks } from "@/lib/ops-content";
 import { getAnnouncements } from "@/lib/announcements";
+import { getAcceptedSubCounts, PATHWAY_LEVELS } from "@/lib/bd-pathway";
 import { DailyBrief } from "@/components/daily-brief";
 import { TeamMeetingWidget } from "@/components/team-meeting-widget";
 import { ExitFlow } from "./exit-flow";
@@ -29,8 +30,8 @@ import { Avatar } from "@/components/avatar";
 import { fmtRelative } from "@/lib/date-format";
 import { cn } from "@/lib/cn";
 
-export async function BdToday({ userId, userName }: { userId: string; userName: string }) {
-  const [stats, career, followUps, counts, board, meetingBlocks, news] = await Promise.all([
+export async function BdToday({ userId, userName, role }: { userId: string; userName: string; role: string }) {
+  const [stats, career, followUps, counts, board, meetingBlocks, news, acceptedMap] = await Promise.all([
     getBdDayStats(userId).catch(() => null),
     getBdCareerStats(userId).catch(() => null),
     getFollowUpsDueForUser(userId, 8).catch(() => []),
@@ -38,7 +39,10 @@ export async function BdToday({ userId, userName }: { userId: string; userName: 
     getLeaderboard("week").catch(() => []),
     getOpsBlocks("today.meeting.").catch(() => new Map<string, string>()),
     getAnnouncements(3).catch(() => []),
+    getAcceptedSubCounts([userId]).catch(() => new Map<string, number>()),
   ]);
+  const accepted = acceptedMap.get(userId) ?? 0;
+  const pathway = PATHWAY_LEVELS[role] ?? null;
 
   // A brand-new BD has no numbers for the AI coach to talk about — it
   // would generate confident nonsense ("you're at zero, get on the
@@ -106,8 +110,8 @@ export async function BdToday({ userId, userName }: { userId: string; userName: 
         </section>
       )}
 
-      {/* Goal + streak + rank strip */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+      {/* Goal + subs + streak + rank strip */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
         {/* Goal ring */}
         <div className="rounded-xl border border-border bg-background p-4 flex items-center gap-4">
           <GoalRing pct={pct} met={stats?.goalMetToday ?? false} />
@@ -132,6 +136,34 @@ export async function BdToday({ userId, userName }: { userId: string; userName: 
                 {wow > 0 ? "▲" : wow < 0 ? "▼" : "—"} {Math.abs(wow)} vs last week
               </div>
             )}
+          </div>
+        </div>
+
+        {/* Weekly submissions — "3 minimum, 5 ideal" */}
+        <div className="rounded-xl border border-border bg-background p-4 flex items-center gap-4">
+          <div className={cn("text-4xl", (stats?.qualifiedThisWeek ?? 0) > 0 ? "" : "grayscale opacity-40")}>📬</div>
+          <div>
+            <div className="text-2xl font-bold tabular-nums leading-none">
+              {stats?.qualifiedThisWeek ?? 0}
+              <span className="text-sm text-muted font-medium"> / {stats?.weeklySubGoal ?? 3}</span>
+            </div>
+            <div className="text-[10px] uppercase tracking-widest text-muted font-semibold mt-1">
+              Submissions this week
+            </div>
+            <div className={cn(
+              "text-[11px] mt-0.5",
+              (stats?.qualifiedThisWeek ?? 0) >= (stats?.weeklySubStretch ?? 5)
+                ? "text-emerald-700 dark:text-emerald-400 font-semibold"
+                : (stats?.qualifiedThisWeek ?? 0) >= (stats?.weeklySubGoal ?? 3)
+                  ? "text-lime-700 dark:text-lime-400"
+                  : "text-muted",
+            )}>
+              {(stats?.qualifiedThisWeek ?? 0) >= (stats?.weeklySubStretch ?? 5)
+                ? "Stretch goal smashed 🏆"
+                : (stats?.qualifiedThisWeek ?? 0) >= (stats?.weeklySubGoal ?? 3)
+                  ? `Minimum hit — ${stats?.weeklySubStretch ?? 5} is the stretch.`
+                  : `${stats?.weeklySubGoal ?? 3} minimum · ${stats?.weeklySubStretch ?? 5} ideal.`}
+            </div>
           </div>
         </div>
 
@@ -178,6 +210,42 @@ export async function BdToday({ userId, userName }: { userId: string; userName: 
             label="Call → submission"
             value={career.totalCalls > 0 ? `${((career.totalQualified / career.totalCalls) * 100).toFixed(1)}%` : "—"}
           />
+        </div>
+      )}
+
+      {/* Pathway — current level + progress to the next rung */}
+      {pathway && (
+        <div className="rounded-xl border border-border bg-background p-4">
+          <div className="flex flex-wrap items-center justify-between gap-2 mb-1">
+            <div>
+              <span className="text-[10px] uppercase tracking-widest text-muted font-semibold mr-2">
+                🪜 Pathway
+              </span>
+              <span className="text-sm font-bold">{pathway.name}</span>
+            </div>
+            {pathway.nextGate != null && (
+              <span className="text-xs tabular-nums font-semibold">
+                {Math.min(accepted, pathway.nextGate)} / {pathway.nextGate} accepted submissions
+              </span>
+            )}
+          </div>
+          {pathway.nextGate != null ? (
+            <>
+              <div className="h-2 rounded-full bg-foreground/[0.07] overflow-hidden">
+                <div
+                  className="h-full rounded-full bg-gradient-to-r from-lime-400 to-emerald-500 transition-all"
+                  style={{ width: `${Math.min(100, Math.max(2, (accepted / pathway.nextGate) * 100))}%` }}
+                />
+              </div>
+              <p className="text-[11px] text-muted mt-1.5">
+                {accepted >= pathway.nextGate
+                  ? <>🎉 Gate cleared — leadership reviews your promotion to <strong>{pathway.nextName}</strong>.</>
+                  : <><strong>{pathway.nextName}</strong> unlocks: {pathway.nextUnlocks}</>}
+              </p>
+            </>
+          ) : (
+            <p className="text-[11px] text-muted">{pathway.blurb}</p>
+          )}
         </div>
       )}
 

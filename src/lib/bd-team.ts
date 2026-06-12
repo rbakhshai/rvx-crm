@@ -17,6 +17,7 @@ import { db } from "@/db";
 import { bdExitSurveys, user } from "@/db/schema";
 import { getOpsBlocks } from "./ops-content";
 import { getLeaderboard } from "./bd-leaderboard";
+import { getAcceptedSubCounts, PATHWAY_GATES } from "./bd-pathway";
 
 export type BdTeamRow = {
   userId: string;
@@ -39,8 +40,10 @@ export type BdTeamRow = {
   onboardedAt: Date | null;
   /** When the expectations checklist was acknowledged (null = never). */
   acksAt: string | null;
+  /** Accepted submissions (career) — the pathway promotion counter. */
+  acceptedSubs: number;
   /** Manager flags, precomputed so the UI just renders chips. */
-  flags: Array<"not_onboarded" | "quiet" | "overdue_backlog" | "submission_drought">;
+  flags: Array<"not_onboarded" | "quiet" | "overdue_backlog" | "submission_drought" | "ready_l2" | "ready_l3">;
 };
 
 const BD_ROLES = ["bd_level_1", "bd_level_2", "bd_level_3"] as const;
@@ -135,7 +138,10 @@ export async function getBdTeamPulse(): Promise<BdTeamRow[]> {
     ]),
   );
 
-  const board = await getLeaderboard("week");
+  const [board, acceptedByUser] = await Promise.all([
+    getLeaderboard("week"),
+    getAcceptedSubCounts(ids).catch(() => new Map<string, number>()),
+  ]);
 
   // Index day rows per user.
   const byUser = new Map<string, Map<string, { calls: number; connects: number; qualified: number }>>();
@@ -206,6 +212,10 @@ export async function getBdTeamPulse(): Promise<BdTeamRow[]> {
       }
       if (qualified21d === 0) flags.push("submission_drought");
     }
+    // Pathway promotion gates — accepted submissions only.
+    const accepted = acceptedByUser.get(u.id) ?? 0;
+    if (u.role === "bd_level_1" && accepted >= PATHWAY_GATES.toL2) flags.push("ready_l2");
+    if (u.role === "bd_level_2" && accepted >= PATHWAY_GATES.toL3) flags.push("ready_l3");
 
     return {
       userId: u.id,
@@ -220,6 +230,7 @@ export async function getBdTeamPulse(): Promise<BdTeamRow[]> {
       weekPoints: boardIdx >= 0 ? board[boardIdx].points : 0,
       weekRank: boardIdx >= 0 ? boardIdx + 1 : null,
       overdueFollowUps: overdue,
+      acceptedSubs: accepted,
       skips30d: skipsByUser.get(u.id)?.count ?? 0,
       recentSkipReasons: skipsByUser.get(u.id)?.recent ?? [],
       lastActivityAt: lastAt,

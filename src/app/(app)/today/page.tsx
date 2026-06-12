@@ -91,7 +91,7 @@ export default async function TodayPage() {
   if (role === "bd_level_1" || role === "bd_level_2" || role === "bd_level_3") {
     return (
       <PageShell title={<LocalGreeting name={session.user.name} />} subtitle={fmtDateWithWeekday(new Date())} width="default">
-        <BdToday userId={me} userName={session.user.name} />
+        <BdToday userId={me} userName={session.user.name} role={role} />
       </PageShell>
     );
   }

@@ -26,6 +26,9 @@ export type BdDayStats = {
   callsPriorWeek: number;
   /** Qualified submissions in the last 7 days (spec Phase 5 metric). */
   qualifiedThisWeek: number;
+  /** Weekly submission targets — "3 minimum, 5 ideal" (ops-tunable). */
+  weeklySubGoal: number;
+  weeklySubStretch: number;
   /** Consecutive weekdays (incl. today once met) hitting the goal. */
   streak: number;
   /** True when today's goal is met — the flame is lit. */
@@ -42,6 +45,10 @@ export async function getBdDayStats(userId: string): Promise<BdDayStats> {
   const blocks = await getOpsBlocks("bd.");
   const goalRaw = parseInt(blocks.get("bd.daily_call_goal") ?? "", 10);
   const goal = Number.isFinite(goalRaw) && goalRaw > 0 ? goalRaw : DEFAULT_GOAL;
+  const subGoalRaw = parseInt(blocks.get("bd.weekly_sub_goal") ?? "", 10);
+  const weeklySubGoal = Number.isFinite(subGoalRaw) && subGoalRaw > 0 ? subGoalRaw : 3;
+  const subStretchRaw = parseInt(blocks.get("bd.weekly_sub_stretch") ?? "", 10);
+  const weeklySubStretch = Number.isFinite(subStretchRaw) && subStretchRaw > 0 ? subStretchRaw : 5;
 
   // Per-day disposition counts for the trailing 30 days, one round-trip.
   // Day boundaries in UTC — consistent with the rest of the app's
@@ -115,6 +122,8 @@ export async function getBdDayStats(userId: string): Promise<BdDayStats> {
     callsThisWeek,
     callsPriorWeek,
     qualifiedThisWeek,
+    weeklySubGoal,
+    weeklySubStretch,
     streak,
     goalMetToday,
     weekRank: idx >= 0 ? idx + 1 : null,
