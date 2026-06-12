@@ -1,5 +1,5 @@
 /**
- * /bd-triage — the BD's lead-work page.
+ * /lead-work — the BD's lead-work page.
  *
  * Server queries:
  *   - The lead currently claimed by this BD (if any).

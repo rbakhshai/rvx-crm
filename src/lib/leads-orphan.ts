@@ -9,7 +9,7 @@
  * Notes are NOT affected: raw_lead_dispositions rows are immutable and
  * include every BD's call notes, so the lead's history follows the
  * park profile, not the BD who left. The "Prior touches" panel on
- * /bd-triage surfaces them to the next BD who claims it.
+ * /lead-work surfaces them to the next BD who claims it.
  *
  * Closes feedback #7000 (Erica).
  */

@@ -2,7 +2,7 @@
  * Follow-up cadence config shared between the server action
  * (dispositionLeadAction, setLeadFollowUpAction) and any client UI that
  * surfaces the picker (FollowUpPicker on /my-leads, the disposition
- * panel on /bd-triage).
+ * panel on /lead-work).
  *
  * Lives in lib/ rather than actions/ so the constants can be imported
  * from both sides without violating "use server" file rules (which

@@ -313,7 +313,7 @@ export async function setUserSuspendedAction(userId: string, suspend: boolean): 
   revalidatePath("/settings/users");
   if (recycled > 0) {
     revalidatePath("/admin/leads");
-    revalidatePath("/bd-triage");
+    revalidatePath("/lead-work");
   }
 }
 
@@ -353,7 +353,7 @@ export async function deleteUserAction(userId: string): Promise<void> {
   revalidatePath("/settings/users");
   if (recycled > 0) {
     revalidatePath("/admin/leads");
-    revalidatePath("/bd-triage");
+    revalidatePath("/lead-work");
   }
 }
 

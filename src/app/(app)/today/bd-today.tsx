@@ -145,7 +145,7 @@ export async function BdToday({ userId, userName }: { userId: string; userName: 
         </div>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <Link
-            href="/bd-triage?mode=followup"
+            href="/lead-work?mode=followup"
             className={cn(
               "rounded-xl border p-4 transition group",
               counts.followup > 0
@@ -166,7 +166,7 @@ export async function BdToday({ userId, userName }: { userId: string; userName: 
             </p>
           </Link>
           <Link
-            href="/bd-triage"
+            href="/lead-work"
             className={cn(
               "rounded-xl border p-4 transition",
               counts.fresh > 0

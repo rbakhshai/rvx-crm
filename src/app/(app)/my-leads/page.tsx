@@ -103,7 +103,7 @@ export default async function MyLeadsPage({
       {total === 0 ? (
         <div className="rounded-xl border border-dashed border-border bg-foreground/[0.02] p-12 text-center text-sm text-muted">
           You haven&apos;t worked any leads yet. Head over to{" "}
-          <Link href="/bd-triage" className="text-foreground hover:underline">/bd-triage</Link>{" "}
+          <Link href="/lead-work" className="text-foreground hover:underline">/lead-work</Link>{" "}
           to claim your first one.
         </div>
       ) : view === "calendar" ? (

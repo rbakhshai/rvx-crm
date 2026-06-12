@@ -125,7 +125,7 @@ export const rawLeadOutcome = pgEnum("raw_lead_outcome", [
   "busy",
   "wrong_number",
   // Top-level connected outcomes — set by clicking the big "Connected"
-  // buttons on /bd-triage. Each carries its own default follow-up
+  // buttons on /lead-work. Each carries its own default follow-up
   // cadence (see lib/follow-up.ts).
   "connected_interested",
   "connected_not_selling",

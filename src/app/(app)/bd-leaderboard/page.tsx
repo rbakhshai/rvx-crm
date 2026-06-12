@@ -79,7 +79,7 @@ export default async function BdLeaderboardPage({
       {rows.length === 0 ? (
         <div className="rounded-xl border border-dashed border-border bg-foreground/[0.02] p-12 text-center text-sm text-muted">
           No activity {periodLabel(period).toLowerCase() === "all time" ? "yet" : `in the ${periodLabel(period).toLowerCase()}`}. Once the team
-          starts working leads at <Link href="/bd-triage" className="text-foreground hover:underline">/bd-triage</Link>, scores show up here.
+          starts working leads at <Link href="/lead-work" className="text-foreground hover:underline">/lead-work</Link>, scores show up here.
         </div>
       ) : (
         <div className="overflow-x-auto rounded-xl border border-border bg-background">
@@ -118,8 +118,7 @@ export default async function BdLeaderboardPage({
           <li>Each PSA signed (downstream credit) → <strong>{POINT_RULES.psa} pts</strong></li>
         </ul>
         <p className="text-[11px] text-muted mt-3">
-          LOI + PSA credit flows to whoever fired the &quot;qualified&quot; disposition that created the deal — the BD who first
-          got the seller into closing.
+          Scoring credits flow when the &quot;qualified&quot; disposition is updated within the CRM.
         </p>
       </div>
     </PageShell>

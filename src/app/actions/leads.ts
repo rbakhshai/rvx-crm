@@ -284,7 +284,7 @@ export async function claimNextLeadAction(mode: ClaimMode = "fresh"): Promise<Cl
     return { ok: true, leadId: null, poolEmpty: true };
   }
 
-  revalidatePath("/bd-triage");
+  revalidatePath("/lead-work");
   return { ok: true, leadId: claimedId };
 }
 
@@ -337,7 +337,7 @@ export async function releaseLeadAction(leadId: string): Promise<void> {
     .update(rawLeads)
     .set({ status: "pool", claimedById: null, claimedAt: null, updatedAt: new Date() })
     .where(and(eq(rawLeads.id, leadId), eq(rawLeads.claimedById, user.id)));
-  revalidatePath("/bd-triage");
+  revalidatePath("/lead-work");
 }
 
 type DispositionInput = {
@@ -520,7 +520,7 @@ export async function dispositionLeadAction(input: DispositionInput): Promise<Di
           : {}),
       })
       .where(eq(rawLeads.id, leadId));
-    revalidatePath("/bd-triage");
+    revalidatePath("/lead-work");
     revalidatePath("/my-leads");
     revalidatePath("/today");
     return { ok: true, next: "recycled", celebrations };
@@ -538,7 +538,7 @@ export async function dispositionLeadAction(input: DispositionInput): Promise<Di
         nextFollowUpAt: null,
       })
       .where(eq(rawLeads.id, leadId));
-    revalidatePath("/bd-triage");
+    revalidatePath("/lead-work");
     revalidatePath("/my-leads");
     revalidatePath("/today");
     return { ok: true, next: "dead", celebrations };
@@ -581,7 +581,7 @@ export async function dispositionLeadAction(input: DispositionInput): Promise<Di
     })
     .where(eq(rawLeads.id, leadId));
 
-  revalidatePath("/bd-triage");
+  revalidatePath("/lead-work");
   revalidatePath("/triage");
   revalidatePath("/deals");
   revalidatePath("/my-leads");
@@ -639,7 +639,7 @@ export async function correctLeadContactAction(
 
   await db.update(rawLeads).set(patch).where(eq(rawLeads.id, leadId));
 
-  revalidatePath("/bd-triage");
+  revalidatePath("/lead-work");
   revalidatePath("/my-leads");
   revalidatePath("/admin/leads");
   return { ok: true };
@@ -698,6 +698,6 @@ export async function setLeadFollowUpAction(
 
   revalidatePath("/my-leads");
   revalidatePath("/today");
-  revalidatePath("/bd-triage");
+  revalidatePath("/lead-work");
   return { ok: true };
 }

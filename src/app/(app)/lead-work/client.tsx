@@ -396,7 +396,7 @@ export function BdTriageClient({
 function ModeChip({ mode, active, count }: { mode: ClaimMode; active: boolean; count: number }) {
   return (
     <Link
-      href={mode === "fresh" ? "/bd-triage" : "/bd-triage?mode=followup"}
+      href={mode === "fresh" ? "/lead-work" : "/lead-work?mode=followup"}
       className={cn(
         "inline-flex items-center gap-2 rounded-full px-3.5 py-1.5 text-xs transition",
         active
