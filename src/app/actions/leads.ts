@@ -248,11 +248,12 @@ export async function claimNextLeadAction(mode: ClaimMode = "fresh"): Promise<Cl
       AND next_follow_up_at < NOW() - INTERVAL '14 days'
   `);
 
-  // 3. Inactive BDs (spec Phase 12): a BD with zero dial activity for
-  //    21 consecutive days releases their whole follow-up pipeline back
-  //    to the pool, automatically. (Keyed on dispositions rather than
-  //    submissions so an active caller in a dry spell keeps their
-  //    pipeline; leadership sees the no-submissions drought on /bd-team.)
+  // 3. Submission inactivity (spec Phase 12, literal — Reza confirmed):
+  //    a BD with zero QUALIFIED submissions for 21 consecutive days
+  //    isn't in a dry spell, they're quitting — their whole follow-up
+  //    pipeline releases back to the pool automatically. Accounts
+  //    younger than 21 days are exempt (they haven't had 21 days to
+  //    submit yet). Notes stay on every park.
   await db.execute(sql`
     UPDATE raw_leads
     SET next_follow_up_at = NULL, follow_up_cadence_days = NULL,
@@ -262,9 +263,11 @@ export async function claimNextLeadAction(mode: ClaimMode = "fresh"): Promise<Cl
       AND last_call_by_id IN (
         SELECT u.id FROM "user" u
         WHERE u.role IN ('bd_level_1', 'bd_level_2', 'bd_level_3')
+          AND u.created_at < NOW() - INTERVAL '21 days'
           AND NOT EXISTS (
             SELECT 1 FROM raw_lead_dispositions d
             WHERE d.by_user_id = u.id
+              AND d.outcome = 'qualified'
               AND d.created_at >= NOW() - INTERVAL '21 days'
           )
       )

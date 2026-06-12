@@ -196,9 +196,9 @@ export async function getBdTeamPulse(): Promise<BdTeamRow[]> {
     const sinceActivityMs = lastAt ? Date.now() - lastAt.getTime() : accountAgeMs;
     if (u.onboardedAt && sinceActivityMs > QUIET_HOURS * 60 * 60 * 1000) flags.push("quiet");
     if (overdue >= OVERDUE_BACKLOG_THRESHOLD) flags.push("overdue_backlog");
-    // Spec Phase 12 signal: no qualified submission in 21 days. Surfaced
-    // to leadership rather than auto-stripping pipelines — the automatic
-    // release keys on true inactivity (no dials in 21d, see claim reaper).
+    // Spec Phase 12 signal: no qualified submission in 21 days. This is
+    // the same condition the claim-time reaper uses to auto-release the
+    // BD's follow-up pipeline — the flag tells leadership it happened.
     if (u.onboardedAt && accountAgeMs > 21 * 24 * 60 * 60 * 1000) {
       let qualified21d = 0;
       for (const [day, v] of days) {
