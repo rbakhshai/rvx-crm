@@ -158,6 +158,15 @@ export function BdTriageClient({
           toast.success("Logged — getting next…");
         }
 
+        // Milestone celebrations — fired AT the dial that earned them
+        // (100th call, first connect, daily goal…). Longer duration +
+        // stagger so back-to-back unlocks don't stomp each other.
+        for (const [i, msg] of (r.celebrations ?? []).entries()) {
+          window.setTimeout(() => {
+            toast.success(msg, { duration: 8000 });
+          }, 400 + i * 600);
+        }
+
         const claim = await claimNextLeadAction(mode);
         if (claim.poolEmpty) {
           toast(

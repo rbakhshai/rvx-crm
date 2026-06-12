@@ -24,12 +24,24 @@ import { getMyLeads, followUpBand, outcomeLabel, leadStatusLabel } from "@/lib/m
 import { labelForStage } from "@/lib/pipeline-stages";
 import { fmtRelative } from "@/lib/date-format";
 import { FollowUpPicker } from "./follow-up-picker";
+import { FollowUpCalendar } from "./follow-up-calendar";
 import { cn } from "@/lib/cn";
 
-export default async function MyLeadsPage() {
+export default async function MyLeadsPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ view?: string; m?: string }>;
+}) {
   const session = await auth.api.getSession({ headers: await headers() });
   if (!session) notFound();
   if (!(await hasPermission(session.user, "view_my_leads"))) notFound();
+
+  const params = await searchParams;
+  const view = params.view === "calendar" ? "calendar" : "list";
+  // ?m=YYYY-MM for calendar month nav; default = current month.
+  const month = /^\d{4}-\d{2}$/.test(params.m ?? "")
+    ? params.m!
+    : `${new Date().getFullYear()}-${String(new Date().getMonth() + 1).padStart(2, "0")}`;
 
   const rows = await getMyLeads(session.user.id);
   const now = new Date();
@@ -66,12 +78,36 @@ export default async function MyLeadsPage() {
         <Kpi label="Converted" value={convertedCount} tone={convertedCount > 0 ? "green" : "neutral"} />
       </div>
 
+      {/* List ⇄ Calendar toggle */}
+      <div className="inline-flex rounded-full border border-border bg-background p-1 text-xs mb-5">
+        <Link
+          href="/my-leads"
+          className={cn(
+            "rounded-full px-3.5 py-1 transition",
+            view === "list" ? "bg-foreground text-background font-semibold" : "text-foreground/70 hover:text-foreground",
+          )}
+        >
+          List
+        </Link>
+        <Link
+          href={`/my-leads?view=calendar&m=${month}`}
+          className={cn(
+            "rounded-full px-3.5 py-1 transition",
+            view === "calendar" ? "bg-foreground text-background font-semibold" : "text-foreground/70 hover:text-foreground",
+          )}
+        >
+          📅 Calendar
+        </Link>
+      </div>
+
       {total === 0 ? (
         <div className="rounded-xl border border-dashed border-border bg-foreground/[0.02] p-12 text-center text-sm text-muted">
           You haven&apos;t worked any leads yet. Head over to{" "}
           <Link href="/bd-triage" className="text-foreground hover:underline">/bd-triage</Link>{" "}
           to claim your first one.
         </div>
+      ) : view === "calendar" ? (
+        <FollowUpCalendar rows={rows} month={month} />
       ) : (
         <div className="space-y-7">
           {dueNow.length > 0 && (

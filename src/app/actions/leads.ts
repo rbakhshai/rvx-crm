@@ -9,6 +9,7 @@ import { auth } from "@/lib/auth";
 import { addressKey, parseLeadsCsv } from "@/lib/raw-leads-csv";
 import { CONNECTED_OUTCOMES, DEFAULT_FOLLOW_UP_DAYS, FOLLOW_UP_DAYS_OPTIONS } from "@/lib/follow-up";
 import { requirePermission } from "@/lib/has-permission";
+import { getOpsBlocks } from "@/lib/ops-content";
 
 /**
  * Build a SQL literal like `ARRAY['connected_interested', …]` from
@@ -370,8 +371,58 @@ type DispositionResult = {
   next: "recycled" | "converted" | "dead";
   /** When converted, the new deal id so the BD can be linked over. */
   newDealId?: string;
+  /** Milestones crossed by THIS disposition — the client toasts each
+   *  one so the celebration lands at the moment of the behavior. */
+  celebrations?: string[];
   error?: string;
 };
+
+/**
+ * Did this disposition cross a milestone? One indexed aggregate over
+ * the BD's own history — cheap enough to run on every dial. Exact
+ * equality against thresholds means each fires exactly once (the
+ * 100th call, not every call after).
+ */
+async function computeCelebrations(userId: string, outcome: string): Promise<string[]> {
+  try {
+    const result = await db.execute(sql`
+      SELECT
+        COUNT(*)::int AS total,
+        COUNT(*) FILTER (WHERE outcome::text LIKE 'connected_%')::int AS connects,
+        COUNT(*) FILTER (WHERE outcome = 'qualified')::int AS qualified,
+        COUNT(*) FILTER (WHERE created_at >= (NOW() AT TIME ZONE 'UTC')::date)::int AS today
+      FROM raw_lead_dispositions
+      WHERE by_user_id = ${userId}
+    `);
+    const rows = ((result as unknown as { rows?: Array<Record<string, unknown>> }).rows
+      ?? (result as unknown as Array<Record<string, unknown>>)) ?? [];
+    const r = rows[0] ?? {};
+    const total = Number(r.total) || 0;
+    const connects = Number(r.connects) || 0;
+    const qualified = Number(r.qualified) || 0;
+    const today = Number(r.today) || 0;
+
+    const isConnected = outcome.startsWith("connected_");
+    const out: string[] = [];
+    if (total === 1) out.push("🏅 First call logged — you're on the board!");
+    if (total === 100) out.push("💯 100 career calls — badge unlocked!");
+    if (total === 1000) out.push("🚀 1,000 career calls. Legend.");
+    if (isConnected && connects === 1) out.push("🗣️ First owner connect — badge unlocked!");
+    if (outcome === "qualified" && qualified === 1) out.push("✅ First qualified lead — badge unlocked!");
+
+    // Daily goal crossing — fires on the exact dial that hits it.
+    const blocks = await getOpsBlocks("bd.");
+    const goalRaw = parseInt(blocks.get("bd.daily_call_goal") ?? "", 10);
+    const goal = Number.isFinite(goalRaw) && goalRaw > 0 ? goalRaw : 40;
+    if (today === goal) out.push(`🔥 Daily goal hit — ${goal}/${goal}! Streak extended.`);
+
+    return out;
+  } catch (e) {
+    // Celebrations are gravy — never let them break a disposition.
+    console.error("[celebrations] failed:", e);
+    return [];
+  }
+}
 
 // All non-terminal outcomes recycle the lead back to the pool. The BD's
 // history is preserved via raw_lead_dispositions, so follow-up mode can
@@ -423,6 +474,10 @@ export async function dispositionLeadAction(input: DispositionInput): Promise<Di
     notes: notes?.trim() || null,
   });
 
+  // Milestone check AFTER the insert so this dial counts toward its
+  // own celebration (the 100th call celebrates on the 100th call).
+  const celebrations = await computeCelebrations(user.id, outcome);
+
   // Common updates: bump attempts + stamp last call.
   const baseUpdate = {
     callAttempts: sql`${rawLeads.callAttempts} + 1`,
@@ -468,7 +523,7 @@ export async function dispositionLeadAction(input: DispositionInput): Promise<Di
     revalidatePath("/bd-triage");
     revalidatePath("/my-leads");
     revalidatePath("/today");
-    return { ok: true, next: "recycled" };
+    return { ok: true, next: "recycled", celebrations };
   }
 
   if (outcome === "do_not_call") {
@@ -486,7 +541,7 @@ export async function dispositionLeadAction(input: DispositionInput): Promise<Di
     revalidatePath("/bd-triage");
     revalidatePath("/my-leads");
     revalidatePath("/today");
-    return { ok: true, next: "dead" };
+    return { ok: true, next: "dead", celebrations };
   }
 
   // outcome === "qualified" — promote to a real deal.
@@ -531,7 +586,7 @@ export async function dispositionLeadAction(input: DispositionInput): Promise<Di
   revalidatePath("/deals");
   revalidatePath("/my-leads");
   revalidatePath("/today");
-  return { ok: true, next: "converted", newDealId: newDeal?.id };
+  return { ok: true, next: "converted", newDealId: newDeal?.id, celebrations };
 }
 
 /**

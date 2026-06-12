@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState, useTransition } from "react";
+import { toast } from "sonner";
 import { saveOpsBlockAction } from "@/app/actions/ops";
 import { cn } from "@/lib/cn";
 
@@ -68,12 +69,25 @@ export function EditableBlock({
     if (value === initial) return;
     startTransition(async () => {
       try {
-        await saveOpsBlockAction(scope, value, revalidate);
+        const result = await saveOpsBlockAction(scope, value, revalidate);
+        if (!result.ok) {
+          // Server declined (bad scope) — don't pretend it saved.
+          setValue(initial);
+          toast.error("Couldn't save that edit");
+          return;
+        }
         setSavedFlash(true);
         window.setTimeout(() => setSavedFlash(false), 1200);
-      } catch {
-        // Roll back to the server value on save failure.
+      } catch (e) {
+        // Roll back + tell the truth. The common case here is a
+        // non-leadership role clicking Mission Control text — the
+        // server rejects, and silently reverting made it look like
+        // the app ate their edit.
         setValue(initial);
+        const msg = e instanceof Error && e.message.includes("leadership")
+          ? "Only leadership can edit this content"
+          : "Couldn't save — your change was rolled back";
+        toast.error(msg);
       }
     });
   }
