@@ -146,6 +146,42 @@ export function outcomeLabel(o: string | null): string {
     .replace(/^./, (c) => c.toUpperCase());
 }
 
+/**
+ * Map a granular deal status_code → the BD-facing tracker status
+ * (Bird Dog spec Phase 11). BDs don't see closer-internal codes; they
+ * see where their submission sits in the acquisition journey — the
+ * visibility that keeps them motivated through a 2-5 month cycle.
+ */
+export function bdDealStatusLabel(code: string | null): string {
+  if (!code) return "Submitted – Awaiting Closer Review";
+  if (code.startsWith("closed_")) return "Closed 🎉";
+  if (code.includes("dead")) return "Dead Deal";
+  const map: Record<string, string> = {
+    new_lead_received: "Submitted – Awaiting Closer Review",
+    pace_leads: "Submitted – Awaiting Closer Review",
+    incomplete_file: "Submitted – Awaiting Closer Review",
+    sent_back_to_bd: "Sent Back – Needs More Info",
+    closer_first_contact_attempted: "Assigned to Closer",
+    closer_first_contact_made: "Contact Made",
+    closer_under_negotiation: "Contact Made",
+    closer_gathering_docs: "Financials Requested",
+    uw_ready_phase_2: "Financials Received",
+    uw_under_phase_2: "Underwriting",
+    loi_ready: "Underwriting",
+    loi_submitted: "LOI Submitted",
+    loi_in_negotiation: "LOI Submitted",
+    loi_signed_by_seller: "LOI Submitted",
+    loi_accepted_both_sides: "LOI Submitted",
+    tc_writing_psa: "Under Contract",
+    tc_psa_submitted: "Under Contract",
+    psa_accepted: "Under Contract",
+    dm_dispo_initiated: "Under Contract",
+    tc_dd_in_escrow: "Under Contract",
+    dd_completed_in_escrow: "Under Contract",
+  };
+  return map[code] ?? "In Pipeline";
+}
+
 /** Pretty-print a raw_leads.status. */
 export function leadStatusLabel(s: string): string {
   return ({

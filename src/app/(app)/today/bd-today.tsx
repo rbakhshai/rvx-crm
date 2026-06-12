@@ -21,6 +21,7 @@ import { getLeaderboard } from "@/lib/bd-leaderboard";
 import { getQueueCountsForUser } from "@/app/actions/leads";
 import { getOrCreateDailyBrief } from "@/app/actions/daily-brief";
 import { getOpsBlocks } from "@/lib/ops-content";
+import { getAnnouncements } from "@/lib/announcements";
 import { DailyBrief } from "@/components/daily-brief";
 import { TeamMeetingWidget } from "@/components/team-meeting-widget";
 import { Avatar } from "@/components/avatar";
@@ -28,13 +29,14 @@ import { fmtRelative } from "@/lib/date-format";
 import { cn } from "@/lib/cn";
 
 export async function BdToday({ userId, userName }: { userId: string; userName: string }) {
-  const [stats, career, followUps, counts, board, meetingBlocks] = await Promise.all([
+  const [stats, career, followUps, counts, board, meetingBlocks, news] = await Promise.all([
     getBdDayStats(userId).catch(() => null),
     getBdCareerStats(userId).catch(() => null),
     getFollowUpsDueForUser(userId, 8).catch(() => []),
     getQueueCountsForUser().catch(() => ({ fresh: 0, followup: 0 })),
     getLeaderboard("week").catch(() => []),
     getOpsBlocks("today.meeting.").catch(() => new Map<string, string>()),
+    getAnnouncements(3).catch(() => []),
   ]);
 
   // A brand-new BD has no numbers for the AI coach to talk about — it
@@ -74,6 +76,33 @@ export async function BdToday({ userId, userName }: { userId: string; userName: 
         </section>
       ) : (
         brief && <DailyBrief contentMd={brief.contentMd} createdAt={brief.createdAt} />
+      )}
+
+      {/* Company announcements — leadership posts, newest first. */}
+      {news.length > 0 && (
+        <section className="rounded-xl border border-border bg-background p-4 ring-1 ring-amber-200/50 dark:ring-amber-500/[0.1]">
+          <div className="text-[10px] uppercase tracking-widest text-amber-700 dark:text-amber-300 font-semibold mb-2">
+            📣 Announcements
+          </div>
+          <ul className="space-y-2.5">
+            {news.map((a) => {
+              const isFresh = Date.now() - a.createdAt.getTime() < 48 * 60 * 60 * 1000;
+              return (
+                <li key={a.id} className="text-sm">
+                  <p className="text-foreground/90 whitespace-pre-line leading-snug">{a.body}</p>
+                  <div className="text-[11px] text-muted mt-0.5">
+                    {a.authorName} · {fmtRelative(a.createdAt)}
+                    {isFresh && (
+                      <span className="ml-2 inline-flex items-center rounded-full bg-amber-100 text-amber-800 dark:bg-amber-500/20 dark:text-amber-200 px-1.5 py-px text-[9px] font-bold uppercase tracking-wider">
+                        New
+                      </span>
+                    )}
+                  </div>
+                </li>
+              );
+            })}
+          </ul>
+        </section>
       )}
 
       {/* Goal + streak + rank strip */}
@@ -137,6 +166,19 @@ export async function BdToday({ userId, userName }: { userId: string; userName: 
           </div>
         </div>
       </div>
+
+      {/* Career numbers — the Phase 5 profile metrics, always visible. */}
+      {career && !isFirstTimer && (
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
+          <CareerStat label="All-time calls" value={career.totalCalls.toLocaleString()} />
+          <CareerStat label="All-time qualified" value={career.totalQualified.toLocaleString()} />
+          <CareerStat label="Submissions this week" value={(stats?.qualifiedThisWeek ?? 0).toLocaleString()} />
+          <CareerStat
+            label="Call → submission"
+            value={career.totalCalls > 0 ? `${((career.totalQualified / career.totalCalls) * 100).toFixed(1)}%` : "—"}
+          />
+        </div>
+      )}
 
       {/* The one decision: what to dial next */}
       <div className="rounded-2xl border border-border bg-background p-5">
@@ -284,6 +326,15 @@ export async function BdToday({ userId, userName }: { userId: string; userName: 
           />
         </div>
       </div>
+    </div>
+  );
+}
+
+function CareerStat({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="rounded-lg border border-border bg-foreground/[0.02] px-3 py-2">
+      <div className="text-lg font-bold tabular-nums leading-tight">{value}</div>
+      <div className="text-[10px] uppercase tracking-widest text-muted font-semibold mt-0.5">{label}</div>
     </div>
   );
 }

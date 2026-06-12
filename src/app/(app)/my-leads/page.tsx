@@ -20,8 +20,7 @@ import Link from "next/link";
 import { auth } from "@/lib/auth";
 import { hasPermission } from "@/lib/has-permission";
 import { PageShell } from "../page-shell";
-import { getMyLeads, followUpBand, outcomeLabel, leadStatusLabel } from "@/lib/my-leads";
-import { labelForStage } from "@/lib/pipeline-stages";
+import { getMyLeads, followUpBand, outcomeLabel, leadStatusLabel, bdDealStatusLabel } from "@/lib/my-leads";
 import { fmtRelative } from "@/lib/date-format";
 import { FollowUpPicker } from "./follow-up-picker";
 import { FollowUpCalendar } from "./follow-up-calendar";
@@ -52,9 +51,13 @@ export default async function MyLeadsPage({
     return b === "overdue" || b === "due_today";
   });
   const upcoming = rows.filter((r) => followUpBand(r.nextFollowUpAt, now) === "upcoming");
+  // Submitted parks get their own tracker section (spec Phase 11) —
+  // pulled out of History so the wins stay visible through the long
+  // acquisition cycle.
+  const submitted = rows.filter((r) => r.leadStatus === "converted");
   const history = rows.filter((r) => {
     const b = followUpBand(r.nextFollowUpAt, now);
-    return b === "none";
+    return b === "none" && r.leadStatus !== "converted";
   });
 
   const total = rows.length;
@@ -120,6 +123,11 @@ export default async function MyLeadsPage({
               <LeadTable rows={upcoming} now={now} />
             </Section>
           )}
+          {submitted.length > 0 && (
+            <Section title="Submitted parks" tone="green" count={submitted.length}>
+              <LeadTable rows={submitted} now={now} />
+            </Section>
+          )}
           {history.length > 0 && (
             <Section title="History" tone="muted" count={history.length}>
               <LeadTable rows={history} now={now} />
@@ -153,13 +161,14 @@ function Section({
   children,
 }: {
   title: string;
-  tone: "red" | "amber" | "muted";
+  tone: "red" | "amber" | "green" | "muted";
   count: number;
   children: React.ReactNode;
 }) {
   const dot: Record<string, string> = {
     red:   "bg-rose-500",
     amber: "bg-amber-500",
+    green: "bg-emerald-500",
     muted: "bg-foreground/30",
   };
   return (
@@ -190,7 +199,7 @@ function LeadTable({
             <Th>Owner</Th>
             <Th>Last outcome</Th>
             <Th>Status</Th>
-            <Th>Deal stage</Th>
+            <Th>Deal status</Th>
             <Th>Next follow-up</Th>
           </tr>
         </thead>
@@ -212,7 +221,6 @@ function Row({
   now: Date;
 }) {
   const band = followUpBand(row.nextFollowUpAt, now);
-  const dealStageLabel = row.dealStage ? labelForStage(row.dealStage) : null;
   const closerTouched = row.closerLastTouchAt != null;
 
   return (
@@ -248,7 +256,7 @@ function Row({
           // IS their need-to-know.
           <div>
             <div className="text-sm font-semibold text-foreground">
-              {dealStageLabel ?? row.dealStatusCode ?? "—"}
+              {bdDealStatusLabel(row.dealStatusCode)}
             </div>
             <div className="text-[11px] text-muted mt-0.5">
               {closerTouched

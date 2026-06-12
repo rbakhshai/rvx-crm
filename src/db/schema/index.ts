@@ -21,3 +21,4 @@ export * from "./leads";
 export * from "./command-rocks";
 export * from "./hires";
 export * from "./reimbursements";
+export * from "./announcements";

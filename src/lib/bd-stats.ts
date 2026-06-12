@@ -24,6 +24,8 @@ export type BdDayStats = {
   callsThisWeek: number;
   /** Calls in the 7 days before this week — week-over-week trend. */
   callsPriorWeek: number;
+  /** Qualified submissions in the last 7 days (spec Phase 5 metric). */
+  qualifiedThisWeek: number;
   /** Consecutive weekdays (incl. today once met) hitting the goal. */
   streak: number;
   /** True when today's goal is met — the flame is lit. */
@@ -93,9 +95,12 @@ export async function getBdDayStats(userId: string): Promise<BdDayStats> {
   const priorFloor = new Date(Date.now() - 14 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
   let callsThisWeek = 0;
   let callsPriorWeek = 0;
+  let qualifiedThisWeek = 0;
   for (const [day, v] of byDay) {
-    if (day >= weekFloor) callsThisWeek += v.calls;
-    else if (day >= priorFloor) callsPriorWeek += v.calls;
+    if (day >= weekFloor) {
+      callsThisWeek += v.calls;
+      qualifiedThisWeek += v.qualified;
+    } else if (day >= priorFloor) callsPriorWeek += v.calls;
   }
 
   // Rank from the existing leaderboard query.
@@ -109,6 +114,7 @@ export async function getBdDayStats(userId: string): Promise<BdDayStats> {
     qualifiedToday: today.qualified,
     callsThisWeek,
     callsPriorWeek,
+    qualifiedThisWeek,
     streak,
     goalMetToday,
     weekRank: idx >= 0 ? idx + 1 : null,

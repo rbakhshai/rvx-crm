@@ -16,6 +16,8 @@ import { auth } from "@/lib/auth";
 import { hasPermission } from "@/lib/has-permission";
 import { PageShell } from "../page-shell";
 import { getBdTeamPulse, type BdTeamRow } from "@/lib/bd-team";
+import { getAnnouncements } from "@/lib/announcements";
+import { AnnouncementsManager } from "./announcements-manager";
 import { Avatar } from "@/components/avatar";
 import { fmtRelative, fmtDate } from "@/lib/date-format";
 import { cn } from "@/lib/cn";
@@ -52,7 +54,7 @@ export default async function BdTeamPage() {
     );
   }
 
-  const rows = await getBdTeamPulse();
+  const [rows, news] = await Promise.all([getBdTeamPulse(), getAnnouncements(10).catch(() => [])]);
   const flagged = rows.filter((r) => r.flags.length > 0);
   const goal = rows[0]?.goal ?? 40;
   const teamCallsToday = rows.reduce((acc, r) => acc + r.callsToday, 0);
@@ -72,6 +74,15 @@ export default async function BdTeamPage() {
       }
       width="wide"
     >
+      <AnnouncementsManager
+        items={news.map((a) => ({
+          id: a.id,
+          body: a.body,
+          authorName: a.authorName,
+          createdAt: a.createdAt.toISOString(),
+        }))}
+      />
+
       {rows.length === 0 ? (
         <div className="rounded-xl border border-dashed border-border bg-foreground/[0.02] p-12 text-center text-sm text-muted">
           No bird-dog accounts yet. They&apos;ll appear here the moment you create them in{" "}
