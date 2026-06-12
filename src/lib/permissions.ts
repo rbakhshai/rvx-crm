@@ -97,7 +97,8 @@ export type PermissionKey =
   | "view_lead_work"
   | "view_my_leads"
   | "view_leaderboard"
-  | "view_bd_team";
+  | "view_bd_team"
+  | "view_pool";
 
 export type PermissionGroup = {
   label: string;
@@ -176,6 +177,7 @@ export const PERMISSION_GROUPS: ReadonlyArray<PermissionGroup> = [
       { key: "view_my_leads", label: "See My Leads", description: "/my-leads personal lead status board" },
       { key: "view_leaderboard", label: "See Leaderboard", description: "/bd-leaderboard gamification board" },
       { key: "view_bd_team", label: "See BD Team", description: "/bd-team manager pulse — who's dialing, who's quiet" },
+      { key: "view_pool", label: "See The Pool", description: "/pool 10-10-10 leadership profit share — vesting + payouts" },
     ],
   },
   {
@@ -253,6 +255,7 @@ const LEADERSHIP_NAV: PermissionKey[] = [
   "view_pipeline_value",
   "view_trash",
   "view_bd_team",
+  "view_pool",
 ];
 
 export const DEFAULT_PERMISSIONS: Record<Role, Record<PermissionKey, boolean>> = {

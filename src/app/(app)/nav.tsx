@@ -78,6 +78,7 @@ const GROUPS: NavItem[] = [
   // explicitly grant view_revenue (Reza/Marco/Kevin by default; Erica
   // intentionally not).
   { href: "/admin/revenue", label: "Park Performance", requires: "view_revenue" },
+  { href: "/pool",          label: "The Pool",         requires: "view_pool" },
   { href: "/trash",         label: "Trash",            requires: "view_trash" },
 ];
 
