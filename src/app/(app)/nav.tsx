@@ -87,8 +87,8 @@ const SECTIONS: NavSection[] = [
   {
     label: "Company",
     items: [
-      { href: "/ops/command", label: "Mission Control", requires: "view_mission_control" },
-      { href: "/dashboard",   label: "Dashboard",       requires: "view_dashboard" },
+      { href: "/mission-control", label: "Mission Control", requires: "view_mission_control" },
+      { href: "/ops/level10",     label: "Ops Machine",     requires: "view_mission_control" },
       // Park Performance stays gated to roles that explicitly grant
       // view_revenue (Reza/Marco/Kevin by default; Erica intentionally not).
       { href: "/admin/revenue",  label: "Park Performance",       requires: "view_revenue" },

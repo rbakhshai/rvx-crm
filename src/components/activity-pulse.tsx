@@ -20,6 +20,7 @@ const KIND_ACCENT: Record<ActivityEvent["kind"], string> = {
   form_submission: "border-blue-300/60",
   new_deal: "border-emerald-300/60",
   dispo: "border-fuchsia-300/60",
+  bd_dial: "border-lime-300/60",
 };
 
 export function ActivityPulse({ events }: { events: ActivityEvent[] }) {

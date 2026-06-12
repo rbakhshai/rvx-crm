@@ -51,7 +51,7 @@ export async function addCommandRockAction(
     })
     .returning({ id: commandRocks.id });
 
-  revalidatePath("/ops/command");
+  revalidatePath("/mission-control");
   return { ok: true, id: row?.id };
 }
 
@@ -64,7 +64,7 @@ export async function updateCommandRockAction(rockId: string, title: string): Pr
     .update(commandRocks)
     .set({ title: trimmed, updatedAt: new Date() })
     .where(eq(commandRocks.id, rockId));
-  revalidatePath("/ops/command");
+  revalidatePath("/mission-control");
 }
 
 /** Toggle a rock done/undone. */
@@ -78,12 +78,12 @@ export async function toggleCommandRockAction(rockId: string, done: boolean): Pr
       updatedAt: new Date(),
     })
     .where(eq(commandRocks.id, rockId));
-  revalidatePath("/ops/command");
+  revalidatePath("/mission-control");
 }
 
 /** Remove a rock. */
 export async function deleteCommandRockAction(rockId: string): Promise<void> {
   await requireRockAdmin();
   await db.delete(commandRocks).where(eq(commandRocks.id, rockId));
-  revalidatePath("/ops/command");
+  revalidatePath("/mission-control");
 }

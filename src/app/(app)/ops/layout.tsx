@@ -14,7 +14,7 @@ import { hasPermission } from "@/lib/has-permission";
 import { OpsTabs } from "./ops-tabs";
 
 const TABS = [
-  { href: "/ops/command",     label: "Command" },
+  
   { href: "/ops/level10",     label: "Level 10" },
   { href: "/ops/initiatives", label: "Initiatives" },
   { href: "/ops/team",        label: "Team" },
@@ -39,7 +39,7 @@ export default async function OpsLayout({ children }: { children: React.ReactNod
         <div className="rounded-2xl border border-border bg-background shadow-sm">
           {/* Brand row */}
           <div className="flex items-center justify-between px-8 py-4 border-b border-border">
-            <Link href="/ops/command" className="inline-flex items-center gap-2">
+            <Link href="/ops/level10" className="inline-flex items-center gap-2">
               <span className="size-2 rounded-full bg-lime-400" />
               <span className="text-sm font-semibold tracking-tight">RVX Operating System</span>
             </Link>

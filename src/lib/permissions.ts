@@ -85,7 +85,6 @@ export type PermissionKey =
   // Per-tab visibility — every left-sidebar entry has a key here so admins
   // can toggle which roles see which tabs from /settings/roles.
   | "view_mission_control"
-  | "view_dashboard"
   | "view_today"
   | "view_tasks"
   | "view_issues"
@@ -165,8 +164,7 @@ export const PERMISSION_GROUPS: ReadonlyArray<PermissionGroup> = [
   {
     label: "Sidebar Tabs",
     permissions: [
-      { key: "view_mission_control", label: "See Mission Control", description: "/mission-control top-level tab" },
-      { key: "view_dashboard", label: "See Dashboard", description: "/dashboard per-role dashboard" },
+      { key: "view_mission_control", label: "See Mission Control", description: "/mission-control company page + /ops/* tools" },
       { key: "view_today", label: "See Today", description: "/today daily driver" },
       { key: "view_tasks", label: "See Tasks", description: "/tasks queue" },
       { key: "view_issues", label: "See Issues", description: "/issues IDS board" },
@@ -230,7 +228,6 @@ const ALL: Record<PermissionKey, boolean> = grant(...ALL_PERMISSION_KEYS);
  */
 const STANDARD_NAV: PermissionKey[] = [
   "view_mission_control",
-  "view_dashboard",
   "view_today",
   "view_tasks",
   "view_issues",

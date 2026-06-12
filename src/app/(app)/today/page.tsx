@@ -22,7 +22,7 @@ import {
   dealStatuses,
 } from "@/db/schema";
 import { auth } from "@/lib/auth";
-import { fetchRecentActivity } from "@/lib/dashboard-queries";
+import { fetchRecentActivity, fetchHotTier1Buyers } from "@/lib/dashboard-queries";
 import { PageShell } from "../page-shell";
 import { ActivityPulse } from "@/components/activity-pulse";
 import { Widget, ListLink, EmptyHint, StatTile, PriorityBadge, StaleBadge } from "../dashboard/widgets";
@@ -178,6 +178,12 @@ export default async function TodayPage() {
     getOpsBlocks("today.meeting.").catch((e) => { console.error("[meeting-blocks] failed:", e); return new Map<string, string>(); }),
     getLeadershipQueueForUser(me, role).catch((e) => { console.error("[leadership-queue] failed:", e); return []; }),
   ]);
+
+  // Closers inherit the one widget worth saving from the retired
+  // /dashboard: hot tier-1 buyers, for outreach inspiration.
+  const hotBuyers = role === "closer"
+    ? await fetchHotTier1Buyers(6).catch(() => [])
+    : [];
 
   const statusLabel = new Map(statusRows.map((s) => [s.code, s.label]));
 
@@ -376,6 +382,25 @@ export default async function TodayPage() {
               url={meetingUrl}
               notes={meetingNotes}
             />
+          )}
+          {hotBuyers.length > 0 && (
+            <Widget
+              title="Hot tier-1 buyers"
+              hint="Active 🔥, top-shelf book — outreach inspiration"
+              href="/contacts?status=active_looking_hot&tier=tier_1_experienced_rvp_network"
+              count={hotBuyers.length}
+            >
+              <div className="space-y-0.5">
+                {hotBuyers.map((b) => (
+                  <ListLink
+                    key={b.id}
+                    href={`/contacts/${b.id}`}
+                    primary={[b.firstName, b.lastName].filter(Boolean).join(" ") || b.email || "(unnamed)"}
+                    secondary={b.pofAmount ? `POF ${Number(b.pofAmount).toLocaleString("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 0 })}` : undefined}
+                  />
+                ))}
+              </div>
+            </Widget>
           )}
           <Widget
             title="Deals waiting on you"

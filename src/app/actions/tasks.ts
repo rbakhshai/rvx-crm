@@ -25,7 +25,7 @@ async function requireUser() {
 function revalidateBoth(parentTable: string, parentId: string) {
   revalidatePath(`${PARENT_PATHS[parentTable] ?? ""}/${parentId}`);
   revalidatePath("/tasks");
-  revalidatePath("/dashboard");
+  revalidatePath("/mission-control");
 }
 
 export type TaskActionResult = { ok: boolean; error?: string };

@@ -15,7 +15,7 @@ import { headers } from "next/headers";
 import { auth } from "@/lib/auth";
 import { hasPermission } from "@/lib/has-permission";
 import { PageShell } from "../page-shell";
-import { getBdTeamPulse, getRecentBdExits, type BdTeamRow } from "@/lib/bd-team";
+import { getBdTeamPulse, getRecentBdExits, getBdApplicationQueue, type BdTeamRow } from "@/lib/bd-team";
 import { getAnnouncements } from "@/lib/announcements";
 import { getOpsBlocks } from "@/lib/ops-content";
 import { AnnouncementsManager } from "./announcements-manager";
@@ -68,11 +68,12 @@ export default async function BdTeamPage() {
     );
   }
 
-  const [rows, news, exits, bdBlocks] = await Promise.all([
+  const [rows, news, exits, bdBlocks, applications] = await Promise.all([
     getBdTeamPulse(),
     getAnnouncements(10).catch(() => []),
     getRecentBdExits().catch(() => []),
     getOpsBlocks("bd.").catch(() => new Map<string, string>()),
+    getBdApplicationQueue().catch(() => []),
   ]);
   const flagged = rows.filter((r) => r.flags.length > 0);
   const goal = rows[0]?.goal ?? 40;
@@ -121,6 +122,42 @@ export default async function BdTeamPage() {
           className="font-mono text-xs break-all"
         />
       </section>
+
+      {/* Applications awaiting review */}
+      {applications.length > 0 && (
+        <section className="mb-6 rounded-xl border border-border bg-background p-4">
+          <div className="flex items-center justify-between mb-2">
+            <div className="text-[10px] uppercase tracking-widest text-muted font-semibold">
+              📥 Applications awaiting review
+            </div>
+            <Link href="/bird-dogs?status=hold_see_notes" className="text-[11px] text-muted hover:text-foreground">
+              All →
+            </Link>
+          </div>
+          <ul className="divide-y divide-border">
+            {applications.map((a) => (
+              <li key={a.id} className="py-2 flex flex-wrap items-center justify-between gap-2 text-sm">
+                <Link href={`/bird-dogs/${a.id}`} className="font-medium hover:underline min-w-0 truncate">
+                  {a.name}
+                </Link>
+                <span className="flex items-center gap-2.5 shrink-0">
+                  {a.qualified === true && (
+                    <span className="inline-flex items-center rounded-full border border-emerald-300 bg-emerald-50 text-emerald-700 dark:border-emerald-500/30 dark:bg-emerald-500/10 dark:text-emerald-300 px-2 py-0.5 text-[10px] font-semibold">
+                      ✅ all 5 acks — book discovery call
+                    </span>
+                  )}
+                  {a.qualified === false && (
+                    <span className="inline-flex items-center rounded-full border border-amber-300 bg-amber-50 text-amber-800 dark:border-amber-500/40 dark:bg-amber-500/10 dark:text-amber-200 px-2 py-0.5 text-[10px] font-semibold">
+                      ⚠️ referral path offered
+                    </span>
+                  )}
+                  <span className="text-[11px] text-muted">{fmtRelative(a.createdAt)}</span>
+                </span>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
 
       {/* Break / leave requests (spec Phase 14) */}
       {exits.length > 0 && (

@@ -14,7 +14,7 @@
  */
 import { and, desc, eq, gte, inArray, isNull, sql } from "drizzle-orm";
 import { db } from "@/db";
-import { bdExitSurveys, user } from "@/db/schema";
+import { bdExitSurveys, birdDogs, user } from "@/db/schema";
 import { getOpsBlocks } from "./ops-content";
 import { getLeaderboard } from "./bd-leaderboard";
 import { getAcceptedSubCounts, PATHWAY_GATES } from "./bd-pathway";
@@ -243,6 +243,39 @@ export async function getBdTeamPulse(): Promise<BdTeamRow[]> {
   // Most active first; flagged folks still pop via the attention strip.
   rows.sort((a, b) => b.callsToday - a.callsToday || b.callsThisWeek - a.callsThisWeek || a.name.localeCompare(b.name));
   return rows;
+}
+
+export type BdApplicationRow = {
+  id: string;
+  name: string;
+  email: string | null;
+  /** True = checked all 5 program acknowledgments; null = pre-acks application. */
+  qualified: boolean | null;
+  createdAt: Date;
+};
+
+/** Applicants awaiting review (status 1.0 HOLD) — Erica's recruiting queue. */
+export async function getBdApplicationQueue(): Promise<BdApplicationRow[]> {
+  const rows = await db
+    .select({
+      id: birdDogs.id,
+      firstName: birdDogs.firstName,
+      lastName: birdDogs.lastName,
+      email: birdDogs.email,
+      qualified: birdDogs.applicationQualified,
+      createdAt: birdDogs.createdAt,
+    })
+    .from(birdDogs)
+    .where(eq(birdDogs.statusCode, "hold_see_notes"))
+    .orderBy(desc(birdDogs.createdAt))
+    .limit(12);
+  return rows.map((r) => ({
+    id: r.id,
+    name: [r.firstName, r.lastName].filter(Boolean).join(" ") || r.email || "(unnamed)",
+    email: r.email,
+    qualified: r.qualified,
+    createdAt: r.createdAt,
+  }));
 }
 
 export type BdExitRow = {

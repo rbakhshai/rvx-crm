@@ -447,7 +447,7 @@ import { user as userTable } from "@/db/schema";
 
 export type ActivityEvent = {
   id: string;          // unique row id
-  kind: "note" | "call_log" | "form_submission" | "new_deal" | "dispo";
+  kind: "note" | "call_log" | "form_submission" | "new_deal" | "dispo" | "bd_dial";
   icon: string;        // emoji
   title: string;       // one-line description
   detail?: string;     // optional second line (note body, etc.)
@@ -539,9 +539,55 @@ export async function fetchRecentActivity(limit = 25): Promise<ActivityEvent[]> 
     });
   }
 
+  // 3) Recent BD dials — the company heartbeat (Reza: include on the
+  //    Mission Control pulse). Joined to the park + caller name.
+  const dialRows = await db.execute(sql`
+    SELECT d.id, d.outcome::text AS outcome, d.created_at,
+           u.name AS caller, rl.park_name, rl.city, rl.state
+    FROM raw_lead_dispositions d
+    LEFT JOIN "user" u ON u.id = d.by_user_id
+    LEFT JOIN raw_leads rl ON rl.id = d.raw_lead_id
+    ORDER BY d.created_at DESC
+    LIMIT ${limit}
+  `);
+  const dials = ((dialRows as unknown as { rows?: Array<Record<string, unknown>> }).rows
+    ?? (dialRows as unknown as Array<Record<string, unknown>>)) ?? [];
+  for (const d of dials) {
+    const outcome = String(d.outcome ?? "");
+    const park = (d.park_name as string | null) ?? "(unnamed park)";
+    const loc = [d.city, d.state].filter(Boolean).join(", ");
+    const pretty = outcome === "qualified"
+      ? "Qualified ✅"
+      : outcome.replace(/^connected_/, "Connected · ").replace(/_/g, " ").replace(/^./, (c) => c.toUpperCase());
+    events.push({
+      id: `dial:${d.id}`,
+      kind: "bd_dial",
+      icon: outcome === "qualified" ? "✅" : "📞",
+      title: `${pretty} — ${park}`,
+      detail: loc || undefined,
+      authorName: (d.caller as string | null) ?? null,
+      at: new Date(d.created_at as string),
+    });
+  }
+
   // Merge, sort, truncate
   events.sort((a, b) => b.at.getTime() - a.at.getTime());
   return events.slice(0, limit);
+}
+
+/** Hot tier-1 buyers — moved to closers' Today when /dashboard died. */
+export async function fetchHotTier1Buyers(limit = 6) {
+  return db
+    .select({ id: contacts.id, firstName: contacts.firstName, lastName: contacts.lastName, email: contacts.email, pofAmount: contacts.pofAmount })
+    .from(contacts)
+    .where(
+      and(
+        eq(contacts.status, "active_looking_hot"),
+        eq(contacts.qualificationTier, "tier_1_experienced_rvp_network"),
+      ),
+    )
+    .orderBy(desc(contacts.pofAmount))
+    .limit(limit);
 }
 
 function firstLine(body: string): string {
