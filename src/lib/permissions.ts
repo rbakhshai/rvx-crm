@@ -179,7 +179,7 @@ export const PERMISSION_GROUPS: ReadonlyArray<PermissionGroup> = [
       { key: "view_my_leads", label: "See My Leads", description: "/my-leads personal lead status board" },
       { key: "view_leaderboard", label: "See Leaderboard", description: "/bd-leaderboard gamification board" },
       { key: "view_bd_team", label: "See BD Team", description: "/bd-team manager pulse — who's dialing, who's quiet" },
-      { key: "view_pool", label: "See The Pool", description: "/pool 10-10-10 leadership profit share — vesting + payouts" },
+      { key: "view_pool", label: "See Pathway to Partnership", description: "/pool 10-10-10 leadership profit share — vesting + payouts" },
     ],
   },
   {

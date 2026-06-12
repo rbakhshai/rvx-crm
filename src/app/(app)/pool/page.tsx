@@ -46,7 +46,7 @@ export default async function PoolPage() {
 
   return (
     <PageShell
-      title="The Pool"
+      title="Pathway to Partnership"
       subtitle={`${pool.targetParks} parks · 10 years · ${pool.poolPct}% of portfolio cash flow, shared quarterly with leadership past the 4-year cliff.`}
       width="default"
     >
@@ -75,7 +75,7 @@ export default async function PoolPage() {
           />
         </div>
         <p className="text-[11px] text-muted mt-2">
-          Every park RVX closes and keeps moves this bar — and grows the pool underneath everyone&apos;s share.
+          Every park RVX closes and keeps moves this bar — and grows the pool.
         </p>
       </section>
 
