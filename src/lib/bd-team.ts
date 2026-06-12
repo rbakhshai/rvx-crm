@@ -40,7 +40,7 @@ export type BdTeamRow = {
   /** When the expectations checklist was acknowledged (null = never). */
   acksAt: string | null;
   /** Manager flags, precomputed so the UI just renders chips. */
-  flags: Array<"not_onboarded" | "quiet" | "overdue_backlog">;
+  flags: Array<"not_onboarded" | "quiet" | "overdue_backlog" | "submission_drought">;
 };
 
 const BD_ROLES = ["bd_level_1", "bd_level_2", "bd_level_3"] as const;
@@ -85,6 +85,7 @@ export async function getBdTeamPulse(): Promise<BdTeamRow[]> {
       (d.created_at AT TIME ZONE 'UTC')::date AS day,
       COUNT(*)::int AS calls,
       COUNT(*) FILTER (WHERE d.outcome::text LIKE 'connected_%')::int AS connects,
+      COUNT(*) FILTER (WHERE d.outcome = 'qualified')::int AS qualified,
       MAX(d.created_at) AS last_at
     FROM raw_lead_dispositions d
     WHERE d.by_user_id = ANY(${sql.raw(idArray)})
@@ -137,7 +138,7 @@ export async function getBdTeamPulse(): Promise<BdTeamRow[]> {
   const board = await getLeaderboard("week");
 
   // Index day rows per user.
-  const byUser = new Map<string, Map<string, { calls: number; connects: number }>>();
+  const byUser = new Map<string, Map<string, { calls: number; connects: number; qualified: number }>>();
   const lastActivity = new Map<string, Date>();
   for (const r of dayRows) {
     const uid = String(r.user_id);
@@ -145,6 +146,7 @@ export async function getBdTeamPulse(): Promise<BdTeamRow[]> {
     byUser.get(uid)!.set(String(r.day), {
       calls: Number(r.calls) || 0,
       connects: Number(r.connects) || 0,
+      qualified: Number(r.qualified) || 0,
     });
     const at = new Date(r.last_at as string);
     if (!lastActivity.has(uid) || at > lastActivity.get(uid)!) lastActivity.set(uid, at);
@@ -154,9 +156,11 @@ export async function getBdTeamPulse(): Promise<BdTeamRow[]> {
   const weekFloor = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
   const priorFloor = new Date(Date.now() - 14 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
 
+  const droughtFloor = new Date(Date.now() - 21 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
+
   const rows: BdTeamRow[] = roster.map((u) => {
-    const days = byUser.get(u.id) ?? new Map<string, { calls: number; connects: number }>();
-    const today = days.get(todayKey) ?? { calls: 0, connects: 0 };
+    const days = byUser.get(u.id) ?? new Map<string, { calls: number; connects: number; qualified: number }>();
+    const today = days.get(todayKey) ?? { calls: 0, connects: 0, qualified: 0 };
 
     let callsThisWeek = 0;
     let callsPriorWeek = 0;
@@ -192,6 +196,16 @@ export async function getBdTeamPulse(): Promise<BdTeamRow[]> {
     const sinceActivityMs = lastAt ? Date.now() - lastAt.getTime() : accountAgeMs;
     if (u.onboardedAt && sinceActivityMs > QUIET_HOURS * 60 * 60 * 1000) flags.push("quiet");
     if (overdue >= OVERDUE_BACKLOG_THRESHOLD) flags.push("overdue_backlog");
+    // Spec Phase 12 signal: no qualified submission in 21 days. Surfaced
+    // to leadership rather than auto-stripping pipelines — the automatic
+    // release keys on true inactivity (no dials in 21d, see claim reaper).
+    if (u.onboardedAt && accountAgeMs > 21 * 24 * 60 * 60 * 1000) {
+      let qualified21d = 0;
+      for (const [day, v] of days) {
+        if (day >= droughtFloor) qualified21d += v.qualified;
+      }
+      if (qualified21d === 0) flags.push("submission_drought");
+    }
 
     return {
       userId: u.id,

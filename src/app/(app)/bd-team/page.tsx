@@ -41,6 +41,10 @@ const FLAG_META: Record<BdTeamRow["flags"][number], { label: string; tone: strin
     label: "Overdue follow-up backlog",
     tone: "bg-violet-50 text-violet-800 border-violet-300 dark:bg-violet-500/10 dark:text-violet-200 dark:border-violet-500/40",
   },
+  submission_drought: {
+    label: "No submissions in 21d",
+    tone: "bg-sky-50 text-sky-800 border-sky-300 dark:bg-sky-500/10 dark:text-sky-200 dark:border-sky-500/40",
+  },
 };
 
 export default async function BdTeamPage() {

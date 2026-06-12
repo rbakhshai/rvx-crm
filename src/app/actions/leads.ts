@@ -225,15 +225,49 @@ export type ClaimMode = "fresh" | "followup";
 export async function claimNextLeadAction(mode: ClaimMode = "fresh"): Promise<ClaimResult> {
   const user = await requireUser();
 
-  // Self-healing reaper: any lead claimed >24h ago goes back to the
-  // pool before we pick. A BD who claims a lead and walks away would
-  // otherwise strand it forever — the orphan-recycle on suspend/delete
-  // doesn't cover "went home for the weekend." Runs on every claim, so
-  // the pool heals itself without a cron. History is untouched.
+  // Self-healing reapers — run on every claim so the pool heals itself
+  // without a cron. History (dispositions, notes) is never touched.
+  //
+  // 1. Stranded claims: any lead claimed >24h ago goes back to the pool.
+  //    A BD who claims a lead and walks away would otherwise strand it.
   await db.execute(sql`
     UPDATE raw_leads
     SET status = 'pool', claimed_by_id = NULL, claimed_at = NULL, updated_at = NOW()
     WHERE status = 'claimed' AND claimed_at < NOW() - INTERVAL '24 hours'
+  `);
+
+  // 2. Missed follow-ups (spec Phase 9): a scheduled callback ignored
+  //    for 14 days past its date loses its owner — the schedule clears
+  //    and the park returns to general fresh distribution. The original
+  //    BD's notes stay attached for whoever picks it up next.
+  await db.execute(sql`
+    UPDATE raw_leads
+    SET next_follow_up_at = NULL, follow_up_cadence_days = NULL,
+        follow_up_set_by_id = NULL, updated_at = NOW()
+    WHERE status = 'pool'
+      AND next_follow_up_at < NOW() - INTERVAL '14 days'
+  `);
+
+  // 3. Inactive BDs (spec Phase 12): a BD with zero dial activity for
+  //    21 consecutive days releases their whole follow-up pipeline back
+  //    to the pool, automatically. (Keyed on dispositions rather than
+  //    submissions so an active caller in a dry spell keeps their
+  //    pipeline; leadership sees the no-submissions drought on /bd-team.)
+  await db.execute(sql`
+    UPDATE raw_leads
+    SET next_follow_up_at = NULL, follow_up_cadence_days = NULL,
+        follow_up_set_by_id = NULL, updated_at = NOW()
+    WHERE status = 'pool'
+      AND next_follow_up_at IS NOT NULL
+      AND last_call_by_id IN (
+        SELECT u.id FROM "user" u
+        WHERE u.role IN ('bd_level_1', 'bd_level_2', 'bd_level_3')
+          AND NOT EXISTS (
+            SELECT 1 FROM raw_lead_dispositions d
+            WHERE d.by_user_id = u.id
+              AND d.created_at >= NOW() - INTERVAL '21 days'
+          )
+      )
   `);
 
   // Two distinct sub-SELECTs — same UPDATE shape.
@@ -242,6 +276,10 @@ export async function claimNextLeadAction(mode: ClaimMode = "fresh"): Promise<Cl
       ? sql`
           SELECT id FROM raw_leads rl
           WHERE rl.status = 'pool' AND rl.deleted_at IS NULL
+            -- Phase 9 exclusivity: a park with a live follow-up schedule
+            -- belongs to the BD who set it — fresh mode skips it until
+            -- the 14-day reaper releases it.
+            AND rl.next_follow_up_at IS NULL
             AND NOT EXISTS (
               SELECT 1 FROM raw_lead_dispositions d
               WHERE d.raw_lead_id = rl.id AND d.by_user_id = ${user.id}
@@ -305,6 +343,7 @@ export async function getQueueCountsForUser(): Promise<{ fresh: number; followup
   const fresh = await db.execute(sql`
     SELECT COUNT(*)::int AS c FROM raw_leads rl
     WHERE rl.status = 'pool' AND rl.deleted_at IS NULL
+      AND rl.next_follow_up_at IS NULL
       AND NOT EXISTS (
         SELECT 1 FROM raw_lead_dispositions d
         WHERE d.raw_lead_id = rl.id AND d.by_user_id = ${user.id}
