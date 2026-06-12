@@ -4,6 +4,7 @@ import { useTransition } from "react";
 import { toast } from "sonner";
 import { regenerateDailyBriefAction } from "@/app/actions/daily-brief";
 import { fmtDate } from "@/lib/date-format";
+import { LocalBriefLabel } from "./local-greeting";
 
 /**
  * Renders Claude's morning brief at the top of /today, with a refresh
@@ -42,7 +43,7 @@ export function DailyBrief({
           <span className="inline-flex size-6 items-center justify-center rounded-md bg-foreground/10 text-[14px]">
             ✨
           </span>
-          <h2 className="text-sm font-semibold">Morning brief</h2>
+          <h2 className="text-sm font-semibold"><LocalBriefLabel /></h2>
           <span className="text-[11px] text-muted">· generated {timeAgo(created)} by Claude</span>
         </div>
         <button

@@ -14,7 +14,9 @@ export function PageShell({
   children,
   width = "default",
 }: {
-  title: string;
+  /** Usually a string; accepts a node so client components (e.g. the
+   *  local-time greeting) can render inside the h1. */
+  title: React.ReactNode;
   subtitle?: string;
   action?: React.ReactNode;
   children: React.ReactNode;

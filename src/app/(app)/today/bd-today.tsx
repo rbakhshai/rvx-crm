@@ -28,15 +28,23 @@ import { fmtRelative } from "@/lib/date-format";
 import { cn } from "@/lib/cn";
 
 export async function BdToday({ userId, userName }: { userId: string; userName: string }) {
-  const [stats, career, followUps, counts, board, brief, meetingBlocks] = await Promise.all([
+  const [stats, career, followUps, counts, board, meetingBlocks] = await Promise.all([
     getBdDayStats(userId).catch(() => null),
     getBdCareerStats(userId).catch(() => null),
     getFollowUpsDueForUser(userId, 8).catch(() => []),
     getQueueCountsForUser().catch(() => ({ fresh: 0, followup: 0 })),
     getLeaderboard("week").catch(() => []),
-    getOrCreateDailyBrief(userId),
     getOpsBlocks("today.meeting.").catch(() => new Map<string, string>()),
   ]);
+
+  // A brand-new BD has no numbers for the AI coach to talk about — it
+  // would generate confident nonsense ("you're at zero, get on the
+  // board") that reads like gibberish to someone who started 5 minutes
+  // ago. First-timers get a warm static welcome instead, and we skip
+  // the Claude call entirely. The coach brief starts the day after
+  // their first dial.
+  const isFirstTimer = (career?.totalCalls ?? 0) === 0;
+  const brief = isFirstTimer ? null : await getOrCreateDailyBrief(userId);
 
   const badges = stats && career ? computeBadges(career, stats) : [];
   const earnedCount = badges.filter((b) => b.earned).length;
@@ -51,8 +59,22 @@ export async function BdToday({ userId, userName }: { userId: string; userName: 
 
   return (
     <div className="space-y-5">
-      {/* AI coach brief */}
-      {brief && <DailyBrief contentMd={brief.contentMd} createdAt={brief.createdAt} />}
+      {/* First-timer welcome OR the AI coach brief */}
+      {isFirstTimer ? (
+        <section className="rounded-xl border border-border bg-gradient-to-br from-lime-50 to-background dark:from-lime-500/[0.06] dark:to-background p-5">
+          <h2 className="text-base font-bold mb-1.5">
+            👋 Welcome to the team, {userName.split(" ")[0]}!
+          </h2>
+          <p className="text-sm text-foreground/80 leading-relaxed">
+            This page is your home base — your goal ring, streak, callbacks, and rank all live
+            here. To get on the board: hit <strong>Lead Work</strong>, claim your first park, and
+            make the call. Your daily goal is {goal} dials. After your first call, a personal
+            coach brief shows up here every day with your numbers and your plan.
+          </p>
+        </section>
+      ) : (
+        brief && <DailyBrief contentMd={brief.contentMd} createdAt={brief.createdAt} />
+      )}
 
       {/* Goal + streak + rank strip */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">

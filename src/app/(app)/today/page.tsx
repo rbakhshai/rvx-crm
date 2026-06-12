@@ -39,6 +39,7 @@ import { getOpsBlocks } from "@/lib/ops-content";
 import { TeamMeetingWidget } from "@/components/team-meeting-widget";
 import { getLeadershipQueueForUser } from "@/lib/leadership-queue";
 import { getEffectiveRole } from "@/lib/view-as";
+import { LocalGreeting } from "@/components/local-greeting";
 import { BdToday } from "./bd-today";
 
 const DAY_MS = 24 * 60 * 60 * 1000;
@@ -61,12 +62,8 @@ const ACTIVE_DEAL_STAGES = [
   "tc_dd_in_escrow",
 ];
 
-function greeting(name: string | null): string {
-  const h = new Date().getHours();
-  const first = name?.split(" ")[0] ?? "";
-  const prefix = h < 5 ? "Working late" : h < 12 ? "Good morning" : h < 17 ? "Good afternoon" : "Good evening";
-  return first ? `${prefix}, ${first}` : prefix;
-}
+// Greeting moved to <LocalGreeting> (client) — the server is UTC, so a
+// server-computed "Good morning" was wrong for everyone in the US.
 
 function dueLabel(d: Date | null): { label: string; tone: "danger" | "warning" | "muted" } {
   if (!d) return { label: "no due", tone: "muted" };
@@ -93,7 +90,7 @@ export default async function TodayPage() {
   const role = await getEffectiveRole((session.user as { role?: string }).role);
   if (role === "bd_level_1" || role === "bd_level_2" || role === "bd_level_3") {
     return (
-      <PageShell title={greeting(session.user.name)} subtitle={fmtDateWithWeekday(new Date())} width="default">
+      <PageShell title={<LocalGreeting name={session.user.name} />} subtitle={fmtDateWithWeekday(new Date())} width="default">
         <BdToday userId={me} userName={session.user.name} />
       </PageShell>
     );
@@ -200,7 +197,7 @@ export default async function TodayPage() {
   const pipelineValue = Number(pipelineValueRows[0]?.total ?? 0);
 
   return (
-    <PageShell title={greeting(session.user.name)} subtitle={fmtDateWithWeekday(new Date())} width="wide">
+    <PageShell title={<LocalGreeting name={session.user.name} />} subtitle={fmtDateWithWeekday(new Date())} width="wide">
       {/* ===== AI morning brief ===== */}
       {brief && <DailyBrief contentMd={brief.contentMd} createdAt={brief.createdAt} />}
 

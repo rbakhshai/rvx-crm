@@ -88,14 +88,17 @@ export function TeamMeetingWidget({
               className="font-mono text-[11px] break-all"
             />
           </div>
-        ) : hostLabel ? (
+        ) : hostLabel && !notes.trim() ? (
+          // Bare host label only when there are no notes — the notes
+          // usually carry a richer "Where: Zoom / When: …" line.
           <span>{hostLabel}</span>
         ) : null}
       </div>
 
-      {/* Optional body — kept short. */}
+      {/* Optional body — kept short. whitespace-pre-line so "Where:" /
+          "When:" lines stack the way they were typed. */}
       {(canEdit || notes) && (
-        <div className="mt-2 text-xs text-foreground/70 leading-snug">
+        <div className="mt-2 text-xs text-foreground/70 leading-snug whitespace-pre-line">
           {canEdit ? (
             <EditableBlock
               scope="today.meeting.notes"
