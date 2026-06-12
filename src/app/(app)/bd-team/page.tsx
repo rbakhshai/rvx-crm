@@ -15,9 +15,11 @@ import { headers } from "next/headers";
 import { auth } from "@/lib/auth";
 import { hasPermission } from "@/lib/has-permission";
 import { PageShell } from "../page-shell";
-import { getBdTeamPulse, type BdTeamRow } from "@/lib/bd-team";
+import { getBdTeamPulse, getRecentBdExits, type BdTeamRow } from "@/lib/bd-team";
 import { getAnnouncements } from "@/lib/announcements";
+import { getOpsBlocks } from "@/lib/ops-content";
 import { AnnouncementsManager } from "./announcements-manager";
+import { EditableBlock } from "@/components/editable-block";
 import { Avatar } from "@/components/avatar";
 import { fmtRelative, fmtDate } from "@/lib/date-format";
 import { cn } from "@/lib/cn";
@@ -58,7 +60,12 @@ export default async function BdTeamPage() {
     );
   }
 
-  const [rows, news] = await Promise.all([getBdTeamPulse(), getAnnouncements(10).catch(() => [])]);
+  const [rows, news, exits, bdBlocks] = await Promise.all([
+    getBdTeamPulse(),
+    getAnnouncements(10).catch(() => []),
+    getRecentBdExits().catch(() => []),
+    getOpsBlocks("bd.").catch(() => new Map<string, string>()),
+  ]);
   const flagged = rows.filter((r) => r.flags.length > 0);
   const goal = rows[0]?.goal ?? 40;
   const teamCallsToday = rows.reduce((acc, r) => acc + r.callsToday, 0);
@@ -86,6 +93,55 @@ export default async function BdTeamPage() {
           createdAt: a.createdAt.toISOString(),
         }))}
       />
+
+      {/* Recruiting settings — the discovery-call booking link shown to
+          qualified applicants on the public thank-you page. */}
+      <section className="rounded-xl border border-border bg-background p-4 mb-6">
+        <div className="text-[10px] uppercase tracking-widest text-muted font-semibold mb-1.5">
+          🗓️ Discovery-call booking link
+        </div>
+        <p className="text-[11px] text-muted mb-2">
+          Qualified applicants see a &quot;Book your discovery call&quot; button on the application
+          thank-you page pointing here. Leave blank to fall back to &quot;we&apos;ll email you.&quot;
+        </p>
+        <EditableBlock
+          scope="bd.discovery_call_url"
+          initial={bdBlocks.get("bd.discovery_call_url") ?? ""}
+          revalidate="/bd-team"
+          placeholder="https://calendly.com/…"
+          variant="inline"
+          className="font-mono text-xs break-all"
+        />
+      </section>
+
+      {/* Break / leave requests (spec Phase 14) */}
+      {exits.length > 0 && (
+        <section className="mb-6 rounded-xl border border-amber-300 bg-amber-50/50 dark:border-amber-500/40 dark:bg-amber-500/[0.06] p-4">
+          <div className="text-[10px] uppercase tracking-widest text-amber-800 dark:text-amber-300 font-semibold mb-2">
+            🚪 Recent break / leave requests
+          </div>
+          <ul className="divide-y divide-amber-200/60 dark:divide-amber-500/20">
+            {exits.map((e) => (
+              <li key={e.id} className="py-2 flex flex-wrap items-center justify-between gap-2 text-sm">
+                <div className="min-w-0">
+                  <span className="font-semibold">{e.name}</span>{" "}
+                  <span className="text-foreground/70">
+                    {e.kind === "break" ? "is taking a break" : "left the team"} · {e.reason}
+                  </span>
+                  {e.referralPartner && (
+                    <span className="ml-2 inline-flex items-center rounded-full border border-emerald-300 bg-emerald-50 text-emerald-700 dark:border-emerald-500/30 dark:bg-emerald-500/10 dark:text-emerald-300 px-2 py-0.5 text-[10px] font-semibold">
+                      wants Referral Partner
+                    </span>
+                  )}
+                </div>
+                <span className="text-[11px] text-muted shrink-0">
+                  {e.parksReleased} park{e.parksReleased === 1 ? "" : "s"} released · {fmtRelative(e.createdAt)}
+                </span>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
 
       {rows.length === 0 ? (
         <div className="rounded-xl border border-dashed border-border bg-foreground/[0.02] p-12 text-center text-sm text-muted">

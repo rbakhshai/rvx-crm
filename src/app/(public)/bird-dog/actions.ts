@@ -55,6 +55,15 @@ const applicationSchema = z.object({
   whyJoinRvx: optionalText,
   howHeardAboutRvx: optionalText,
   weeklyExecutionPlan: optionalText,
+
+  // Program acknowledgments (spec Phase 1). Deliberately NOT required —
+  // an applicant who can't check all five isn't blocked, they're routed
+  // to the Referral Partner offer on the thank-you page.
+  ackColdCalling: checkboxBool,
+  ackHours: checkboxBool,
+  ackExclusive: checkboxBool,
+  ackAccelerator: checkboxBool,
+  ackTimeline: checkboxBool,
 });
 
 export async function submitBirdDogApplicationAction(
@@ -68,6 +77,15 @@ export async function submitBirdDogApplicationAction(
   }
   const v = parsed.data;
 
+  const acks = [
+    v.ackColdCalling && "cold_calling",
+    v.ackHours && "hours",
+    v.ackExclusive && "exclusive",
+    v.ackAccelerator && "accelerator",
+    v.ackTimeline && "timeline",
+  ].filter(Boolean) as string[];
+  const qualified = acks.length === 5;
+
   const [row] = await db
     .insert(birdDogs)
     .values({
@@ -78,6 +96,8 @@ export async function submitBirdDogApplicationAction(
       facebookUrl: v.facebookUrl,
       statusCode: "hold_see_notes",
       acquisitionLevel: "onboarding",
+      applicationQualified: qualified,
+      applicationAcks: acks.join(","),
       rvClass: v.rvClass,
       rvRig: v.rvRig,
       yearsFullTimeTraveling: v.yearsFullTimeTraveling,
@@ -117,6 +137,10 @@ export async function submitBirdDogApplicationAction(
     bodyMd: [
       `${v.firstName} ${v.lastName} applied to join the RVX bird-dog team.`,
       ``,
+      qualified
+        ? `Qualification: ✅ acknowledged all 5 program commitments — proceed to discovery call.`
+        : `Qualification: ⚠️ checked ${acks.length}/5 commitments (${acks.join(", ") || "none"}) — offered the Referral Partner path.`,
+      ``,
       `Email:        ${v.email}`,
       `Phone:        ${v.cellPhone}`,
       v.facebookUrl ? `Facebook:     ${v.facebookUrl}` : ``,
@@ -139,5 +163,5 @@ export async function submitBirdDogApplicationAction(
     payload: { birdDogId: row.id, source: "bird-dog-apply" },
   });
 
-  redirect(`/bird-dog/thank-you`);
+  redirect(qualified ? `/bird-dog/thank-you` : `/bird-dog/thank-you?path=referral`);
 }

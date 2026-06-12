@@ -45,6 +45,13 @@ export const birdDogs = pgTable(
     statusCode: text("status_code").references(() => birdDogStatuses.code, { onDelete: "set null" }),
     acquisitionLevel: birdDogAcquisitionLevel("acquisition_level"),
 
+    // Application qualification (Bird Dog spec Phase 1): true only when
+    // the applicant checked all five program acknowledgments. False →
+    // they were offered the Referral Partner path instead.
+    applicationQualified: boolean("application_qualified"),
+    // Which acknowledgments they checked, e.g. ["cold_calling","hours",…].
+    applicationAcks: text("application_acks"),
+
     // Lifecycle dates
     startDate: date("start_date"),
     agreementSignDate: date("agreement_sign_date"),

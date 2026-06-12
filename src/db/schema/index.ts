@@ -22,3 +22,4 @@ export * from "./command-rocks";
 export * from "./hires";
 export * from "./reimbursements";
 export * from "./announcements";
+export * from "./bd-exits";

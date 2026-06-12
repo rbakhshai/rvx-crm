@@ -12,9 +12,9 @@
  *   counts → this week's leaderboard. Streak math mirrors lib/bd-stats
  *   so the number a BD sees on their hub matches what Erica sees here.
  */
-import { and, inArray, isNull, sql } from "drizzle-orm";
+import { and, desc, eq, gte, inArray, isNull, sql } from "drizzle-orm";
 import { db } from "@/db";
-import { user } from "@/db/schema";
+import { bdExitSurveys, user } from "@/db/schema";
 import { getOpsBlocks } from "./ops-content";
 import { getLeaderboard } from "./bd-leaderboard";
 
@@ -232,4 +232,46 @@ export async function getBdTeamPulse(): Promise<BdTeamRow[]> {
   // Most active first; flagged folks still pop via the attention strip.
   rows.sort((a, b) => b.callsToday - a.callsToday || b.callsThisWeek - a.callsThisWeek || a.name.localeCompare(b.name));
   return rows;
+}
+
+export type BdExitRow = {
+  id: string;
+  name: string;
+  kind: "break" | "leave";
+  reason: string;
+  referralPartner: boolean;
+  parksReleased: number;
+  createdAt: Date;
+};
+
+/** Break/leave requests from the last 60 days, newest first (Phase 14). */
+export async function getRecentBdExits(): Promise<BdExitRow[]> {
+  const floor = new Date(Date.now() - 60 * 24 * 60 * 60 * 1000);
+  const rows = await db
+    .select({
+      id: bdExitSurveys.id,
+      name: user.name,
+      kind: bdExitSurveys.kind,
+      answers: bdExitSurveys.answers,
+      parksReleased: bdExitSurveys.parksReleased,
+      createdAt: bdExitSurveys.createdAt,
+    })
+    .from(bdExitSurveys)
+    .leftJoin(user, eq(user.id, bdExitSurveys.userId))
+    .where(gte(bdExitSurveys.createdAt, floor))
+    .orderBy(desc(bdExitSurveys.createdAt))
+    .limit(20);
+
+  return rows.map((r) => {
+    const a = (r.answers ?? {}) as { reason?: string; referralPartner?: boolean };
+    return {
+      id: r.id,
+      name: r.name ?? "(deleted account)",
+      kind: r.kind,
+      reason: a.reason ?? "—",
+      referralPartner: !!a.referralPartner,
+      parksReleased: parseInt(r.parksReleased ?? "0", 10) || 0,
+      createdAt: r.createdAt,
+    };
+  });
 }

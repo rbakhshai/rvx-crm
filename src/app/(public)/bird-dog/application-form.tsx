@@ -32,6 +32,19 @@ function SectionHeader({ title, description }: { title: string; description?: st
   );
 }
 
+function AckRow({ name, label }: { name: string; label: string }) {
+  return (
+    <label className="flex items-start gap-2.5 text-sm cursor-pointer rounded-lg border border-border bg-foreground/[0.02] px-3 py-2.5 hover:bg-foreground/[0.04] transition">
+      <input
+        type="checkbox"
+        name={name}
+        className="mt-0.5 size-4 shrink-0 rounded border-border text-primary focus:ring-1 focus:ring-primary"
+      />
+      <span className="leading-snug">{label}</span>
+    </label>
+  );
+}
+
 function CommunityRow({
   flagName,
   sinceName,
@@ -175,6 +188,19 @@ export function ApplicationForm() {
           className={`${inputClass} resize-y`}
         />
       </label>
+
+      {/* --- Program acknowledgments (spec Phase 1) --- */}
+      <SectionHeader
+        title="The commitment"
+        description="Be honest here — checking all five is what qualifies you for the Active Bird Dog program. If some don't fit your life right now, that's okay: you can still send us deals as a Referral Partner."
+      />
+      <div className="space-y-2.5">
+        <AckRow name="ackColdCalling" label="I understand that Bird Dogging requires cold calling and speaking with strangers." />
+        <AckRow name="ackHours" label="I have 5–10 hours per week to dedicate to calls and follow-ups." />
+        <AckRow name="ackExclusive" label="I agree that while Bird Dogging for RVX, I will not Bird Dog for another RV park team or end buyer." />
+        <AckRow name="ackAccelerator" label="I commit to attending (or watching the replay of) the weekly Acquisition Accelerator calls." />
+        <AckRow name="ackTimeline" label="I understand that commercial acquisitions may take 2–5+ months from submission to payment." />
+      </div>
 
       <div className="pt-4 border-t border-border">
         <Button type="submit" variant="gold" disabled={isPending} className="w-full sm:w-auto px-6 py-3 text-base">

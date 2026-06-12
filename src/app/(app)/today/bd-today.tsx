@@ -24,6 +24,7 @@ import { getOpsBlocks } from "@/lib/ops-content";
 import { getAnnouncements } from "@/lib/announcements";
 import { DailyBrief } from "@/components/daily-brief";
 import { TeamMeetingWidget } from "@/components/team-meeting-widget";
+import { ExitFlow } from "./exit-flow";
 import { Avatar } from "@/components/avatar";
 import { fmtRelative } from "@/lib/date-format";
 import { cn } from "@/lib/cn";
@@ -326,6 +327,9 @@ export async function BdToday({ userId, userName }: { userId: string; userName: 
           />
         </div>
       </div>
+
+      {/* Quiet self-serve offboarding (spec Phase 14) */}
+      <ExitFlow />
     </div>
   );
 }
