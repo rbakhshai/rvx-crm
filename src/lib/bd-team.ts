@@ -31,6 +31,10 @@ export type BdTeamRow = {
   weekPoints: number;
   weekRank: number | null;
   overdueFollowUps: number;
+  /** Leads skipped without calling, trailing 30 days (leadership-only signal). */
+  skips30d: number;
+  /** Up to 3 most-recent skip reasons, for the hover tooltip. */
+  recentSkipReasons: string[];
   lastActivityAt: Date | null;
   onboardedAt: Date | null;
   /** When the expectations checklist was acknowledged (null = never). */
@@ -105,6 +109,31 @@ export async function getBdTeamPulse(): Promise<BdTeamRow[]> {
     ?? (overdueResult as unknown as Array<Record<string, unknown>>)) ?? [];
   const overdueByUser = new Map(overdueRows.map((r) => [String(r.user_id), Number(r.overdue) || 0]));
 
+  // Skip log, trailing 30 days — the anti-cherry-picking signal. Count
+  // plus the 3 most-recent reasons for the tooltip. Leadership-only by
+  // construction: this lib is only called from the perm-gated /bd-team.
+  const skipResult = await db.execute(sql`
+    SELECT
+      s.by_user_id AS user_id,
+      COUNT(*)::int AS skips,
+      (ARRAY_AGG(s.reason ORDER BY s.created_at DESC))[1:3] AS recent
+    FROM raw_lead_skips s
+    WHERE s.by_user_id = ANY(${sql.raw(idArray)})
+      AND s.created_at >= NOW() - INTERVAL '30 days'
+    GROUP BY 1
+  `);
+  const skipRows = ((skipResult as unknown as { rows?: Array<Record<string, unknown>> }).rows
+    ?? (skipResult as unknown as Array<Record<string, unknown>>)) ?? [];
+  const skipsByUser = new Map(
+    skipRows.map((r) => [
+      String(r.user_id),
+      {
+        count: Number(r.skips) || 0,
+        recent: Array.isArray(r.recent) ? (r.recent as string[]).filter(Boolean) : [],
+      },
+    ]),
+  );
+
   const board = await getLeaderboard("week");
 
   // Index day rows per user.
@@ -177,6 +206,8 @@ export async function getBdTeamPulse(): Promise<BdTeamRow[]> {
       weekPoints: boardIdx >= 0 ? board[boardIdx].points : 0,
       weekRank: boardIdx >= 0 ? boardIdx + 1 : null,
       overdueFollowUps: overdue,
+      skips30d: skipsByUser.get(u.id)?.count ?? 0,
+      recentSkipReasons: skipsByUser.get(u.id)?.recent ?? [],
       lastActivityAt: lastAt,
       onboardedAt: u.onboardedAt,
       acksAt: acks?.at ?? null,

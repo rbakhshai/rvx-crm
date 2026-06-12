@@ -52,7 +52,9 @@ type DispositionKey =
   | "connected_future_maybe"
   | "connected_manager_only"
   | "qualified"
-  | "do_not_call";
+  | "do_not_call"
+  | "bad_contact_info"
+  | "email_follow_up";
 
 // Each disposition button carries an optional `hotkey` that the global
 // keydown handler matches (number row for no-connect, top letter row
@@ -60,10 +62,11 @@ type DispositionKey =
 // deal-creating / dead-marking, click-only so a misplaced finger
 // can't qualify a lead by accident.
 const RECYCLE: Array<{ key: DispositionKey; label: string; icon: string; sub?: string; hotkey: string }> = [
-  { key: "no_answer",     label: "No answer",     icon: "📞", sub: "Recycles to pool", hotkey: "1" },
-  { key: "voicemail",     label: "Voicemail",     icon: "📩", sub: "Recycles to pool", hotkey: "2" },
-  { key: "busy",          label: "Busy",          icon: "📵", sub: "Recycles to pool", hotkey: "3" },
-  { key: "wrong_number",  label: "Wrong number",  icon: "❌", sub: "Recycles to pool", hotkey: "4" },
+  { key: "no_answer",        label: "No answer",        icon: "📞", sub: "Recycles to pool", hotkey: "1" },
+  { key: "voicemail",        label: "Voicemail",        icon: "📩", sub: "Recycles to pool", hotkey: "2" },
+  { key: "busy",             label: "Busy",             icon: "📵", sub: "Recycles to pool", hotkey: "3" },
+  { key: "wrong_number",     label: "Wrong number",     icon: "❌", sub: "Recycles to pool", hotkey: "4" },
+  { key: "bad_contact_info", label: "Bad contact info", icon: "🚧", sub: "All contacts bad · pool", hotkey: "5" },
 ];
 
 // Buttons ordered hottest → coldest so the BD's eye lands on the
@@ -75,6 +78,7 @@ const CONNECTED: Array<{ key: DispositionKey; label: string; icon: string; sub?:
   { key: "connected_not_selling",       label: "Not selling now",     icon: "🤷", sub: "Follow up in 30d",         hotkey: "R" },
   { key: "connected_future_maybe",      label: "Future maybe",        icon: "🌱", sub: "Follow up in 90d",         hotkey: "T" },
   { key: "connected_selling_to_family", label: "Selling to family",   icon: "👨‍👩‍👧", sub: "Follow up in 90d",         hotkey: "Y" },
+  { key: "email_follow_up",             label: "Sent follow-up email", icon: "📧", sub: "Call back in 3d",          hotkey: "U" },
 ];
 
 const TERMINAL: Array<{ key: DispositionKey; label: string; icon: string; sub: string; tone: "good" | "bad" }> = [
@@ -107,6 +111,11 @@ export function BdTriageClient({
   const [lead, setLead] = useState<Lead | null>(initialLead);
   const [notes, setNotes] = useState("");
   const [isPending, startTransition] = useTransition();
+  // Skip modal — the spec requires a reason on every skip.
+  const [skipOpen, setSkipOpen] = useState(false);
+  // Qualified gate modal — three required confirmations before a
+  // submission can fire (spec Phase 10 minimums).
+  const [qualOpen, setQualOpen] = useState(false);
 
   // Convenience — single number for the current mode's queue.
   const queueSize = mode === "fresh" ? freshCount : followupCount;
@@ -136,11 +145,22 @@ export function BdTriageClient({
     });
   }
 
-  function disposition(outcome: DispositionKey) {
+  function disposition(outcome: DispositionKey, opts?: { qualifiedConfirmed?: boolean }) {
     if (!lead) return;
+    // Qualified can only fire through the gate modal — a stray click or
+    // keystroke can't create a deal.
+    if (outcome === "qualified" && !opts?.qualifiedConfirmed) {
+      setQualOpen(true);
+      return;
+    }
     startTransition(async () => {
       try {
-        const r = await dispositionLeadAction({ leadId: lead.id, outcome, notes });
+        const r = await dispositionLeadAction({
+          leadId: lead.id,
+          outcome,
+          notes,
+          qualifiedConfirmed: opts?.qualifiedConfirmed,
+        });
         if (!r.ok) {
           toast.error(r.error ?? "Couldn't save");
           return;
@@ -221,7 +241,7 @@ export function BdTriageClient({
    * Closes feedback #23000 (Charlotte).
    */
   useEffect(() => {
-    if (!lead) return;
+    if (!lead || skipOpen || qualOpen) return;
     function onKey(e: KeyboardEvent) {
       // Skip when typing into a field, or when a modifier is held.
       const t = e.target as HTMLElement | null;
@@ -239,18 +259,23 @@ export function BdTriageClient({
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
   // disposition is stable per render; including it would re-bind on
-  // every keystroke. We re-bind only when the claimed lead changes.
+  // every keystroke. We re-bind only when the claimed lead or a modal
+  // changes (hotkeys are dead while a modal is up).
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [lead]);
+  }, [lead, skipOpen, qualOpen]);
 
-  function skip() {
+  function skip(reason: string) {
     if (!lead) return;
-    if (!confirm("Skip this lead without calling? It goes back to the pool for someone else.")) return;
     startTransition(async () => {
       try {
-        await releaseLeadAction(lead.id);
+        const r = await releaseLeadAction(lead.id, reason);
+        if (!r.ok) {
+          toast.error(r.error ?? "Couldn't release");
+          return;
+        }
+        setSkipOpen(false);
         toast.success("Released — getting next…");
-        await claimNextLeadAction();
+        await claimNextLeadAction(mode);
         router.refresh();
       } catch {
         toast.error("Couldn't release");
@@ -314,21 +339,31 @@ export function BdTriageClient({
               </div>
               <button
                 type="button"
-                onClick={skip}
+                onClick={() => setSkipOpen(true)}
                 disabled={isPending}
                 className="text-xs text-muted hover:text-foreground hover:underline shrink-0"
-                title="Release this lead back to the pool"
+                title="Release this lead back to the pool (reason required)"
               >
                 Skip
               </button>
             </header>
 
+            {/* Spec Phase 13: a park coming back out of the pool announces
+                its history so the BD reviews before dialing. */}
+            {lead.callAttempts > 0 && (
+              <div className="rounded-lg border border-sky-300 bg-sky-50 text-sky-900 dark:border-sky-500/40 dark:bg-sky-500/10 dark:text-sky-200 px-3 py-2 mb-3 text-xs">
+                📋 <strong>Previously contacted</strong> — {lead.callAttempts} prior{" "}
+                {lead.callAttempts === 1 ? "attempt" : "attempts"} on this park. Review the
+                notes below before you dial.
+              </div>
+            )}
+
             {lead.wrongNumberCount > 0 && (
               <div className="rounded-lg border border-amber-300 bg-amber-50 text-amber-900 dark:border-amber-500/40 dark:bg-amber-500/10 dark:text-amber-200 px-3 py-2 mb-3 flex items-center justify-between gap-3 text-xs">
                 <span>
-                  ⚠️ <strong>Heads up:</strong> this number was flagged as wrong by{" "}
-                  {lead.wrongNumberCount} prior {lead.wrongNumberCount === 1 ? "BD" : "BDs"}.
-                  If you find the right number, edit the field on the right.
+                  ⚠️ <strong>Heads up:</strong> this lead&apos;s contact info was flagged bad{" "}
+                  {lead.wrongNumberCount} {lead.wrongNumberCount === 1 ? "time" : "times"} by
+                  prior BDs. If you find the right number or email, edit the field below.
                 </span>
               </div>
             )}
@@ -383,12 +418,161 @@ export function BdTriageClient({
 
           {/* Disposition buttons */}
           <section className="space-y-4">
-            <DispositionGroup label="No connect (recycles to pool)" buttons={RECYCLE} onClick={disposition} disabled={isPending} cols={4} />
-            <DispositionGroup label="Connected — pick the closest match" buttons={CONNECTED} onClick={disposition} disabled={isPending} cols={3} />
+            <DispositionGroup label="No connect (recycles to pool)" buttons={RECYCLE} onClick={disposition} disabled={isPending} cols={5} />
+            <DispositionGroup label="Connected / outreach — pick the closest match" buttons={CONNECTED} onClick={disposition} disabled={isPending} cols={3} />
             <DispositionGroup label="Final outcome" buttons={TERMINAL.map((t) => ({ ...t }))} onClick={disposition} disabled={isPending} terminal />
           </section>
+
+          {skipOpen && (
+            <SkipModal
+              parkName={lead.parkName}
+              busy={isPending}
+              onCancel={() => setSkipOpen(false)}
+              onConfirm={(reason) => skip(reason)}
+            />
+          )}
+          {qualOpen && (
+            <QualifiedGateModal
+              parkName={lead.parkName}
+              busy={isPending}
+              onCancel={() => setQualOpen(false)}
+              onConfirm={() => {
+                setQualOpen(false);
+                disposition("qualified", { qualifiedConfirmed: true });
+              }}
+            />
+          )}
         </>
       )}
+    </div>
+  );
+}
+
+/**
+ * Skip modal — releasing a lead without calling requires a reason
+ * (anti-cherry-picking, per the Bird Dog spec). The reason is logged
+ * for leadership; other BDs never see it.
+ */
+function SkipModal({
+  parkName,
+  busy,
+  onCancel,
+  onConfirm,
+}: {
+  parkName: string | null;
+  busy: boolean;
+  onCancel: () => void;
+  onConfirm: (reason: string) => void;
+}) {
+  const [reason, setReason] = useState("");
+  const valid = reason.trim().length >= 3;
+  return (
+    <ModalShell onCancel={onCancel}>
+      <h3 className="text-base font-bold mb-1">Skip {parkName ?? "this lead"}?</h3>
+      <p className="text-xs text-muted mb-3">
+        It goes back to the pool for someone else. A quick reason is required — leadership
+        reviews these to keep distribution fair.
+      </p>
+      <textarea
+        autoFocus
+        value={reason}
+        onChange={(e) => setReason(e.target.value)}
+        rows={2}
+        placeholder="Why are you skipping? (e.g. I know this owner personally)"
+        className="w-full resize-y rounded-md border border-border bg-background px-3 py-2 text-sm focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary"
+      />
+      <div className="mt-3 flex items-center justify-end gap-2">
+        <button type="button" onClick={onCancel} className="text-xs text-muted hover:text-foreground px-2 py-1.5">
+          Cancel
+        </button>
+        <button
+          type="button"
+          disabled={!valid || busy}
+          onClick={() => onConfirm(reason.trim())}
+          className="rounded-md bg-foreground text-background px-3.5 py-1.5 text-xs font-semibold hover:opacity-90 disabled:opacity-40 transition"
+        >
+          {busy ? "Releasing…" : "Skip lead"}
+        </button>
+      </div>
+    </ModalShell>
+  );
+}
+
+/**
+ * Qualified gate — the spec's minimum submission requirements. All
+ * three must be checked before the deal-creating disposition can fire.
+ */
+const QUAL_CHECKS = [
+  "I spoke with the owner / decision-maker directly",
+  "Owner verbally confirmed $150,000+ NOI",
+  "Owner is willing to discuss a sale",
+] as const;
+
+function QualifiedGateModal({
+  parkName,
+  busy,
+  onCancel,
+  onConfirm,
+}: {
+  parkName: string | null;
+  busy: boolean;
+  onCancel: () => void;
+  onConfirm: () => void;
+}) {
+  const [checked, setChecked] = useState<boolean[]>(QUAL_CHECKS.map(() => false));
+  const allChecked = checked.every(Boolean);
+  return (
+    <ModalShell onCancel={onCancel}>
+      <h3 className="text-base font-bold mb-1">✅ Qualify {parkName ?? "this park"}</h3>
+      <p className="text-xs text-muted mb-3">
+        This creates a deal and hands it to the closers. Confirm the minimums first:
+      </p>
+      <ul className="space-y-2 mb-4">
+        {QUAL_CHECKS.map((label, i) => (
+          <li key={label}>
+            <label className="flex items-start gap-2.5 text-sm cursor-pointer">
+              <input
+                type="checkbox"
+                checked={checked[i]}
+                onChange={(e) =>
+                  setChecked((prev) => prev.map((c, j) => (j === i ? e.target.checked : c)))
+                }
+                className="mt-0.5 size-4 rounded border-border text-primary focus:ring-1 focus:ring-primary"
+              />
+              <span>{label}</span>
+            </label>
+          </li>
+        ))}
+      </ul>
+      <div className="flex items-center justify-end gap-2">
+        <button type="button" onClick={onCancel} className="text-xs text-muted hover:text-foreground px-2 py-1.5">
+          Cancel
+        </button>
+        <button
+          type="button"
+          disabled={!allChecked || busy}
+          onClick={onConfirm}
+          className="rounded-md bg-emerald-600 text-white px-3.5 py-1.5 text-xs font-semibold hover:bg-emerald-700 disabled:opacity-40 transition"
+        >
+          {busy ? "Submitting…" : "Submit to closers"}
+        </button>
+      </div>
+    </ModalShell>
+  );
+}
+
+/** Shared overlay + card chrome for the two dialer modals. */
+function ModalShell({ children, onCancel }: { children: React.ReactNode; onCancel: () => void }) {
+  return (
+    <div
+      className="fixed inset-0 z-50 grid place-items-center bg-black/40 p-4"
+      onClick={(e) => {
+        if (e.target === e.currentTarget) onCancel();
+      }}
+    >
+      <div className="w-full max-w-md rounded-xl border border-border bg-background p-5 shadow-xl">
+        {children}
+      </div>
     </div>
   );
 }
@@ -627,13 +811,14 @@ function DispositionGroup({
   onClick: (k: DispositionKey) => void;
   disabled: boolean;
   terminal?: boolean;
-  /** Wide-screen column count (mobile is always 2). 3 for the 6
-   *  connected outcomes; 4 for the 4 recycle outcomes. */
-  cols?: 3 | 4;
+  /** Wide-screen column count (mobile is always 2). 3 for the 7
+   *  connected/outreach outcomes; 5 for the 5 recycle outcomes. */
+  cols?: 3 | 4 | 5;
 }) {
   const colClass =
     terminal ? "grid-cols-2" :
     cols === 3 ? "grid-cols-2 sm:grid-cols-3" :
+    cols === 5 ? "grid-cols-2 sm:grid-cols-3 lg:grid-cols-5" :
     "grid-cols-2 sm:grid-cols-4";
   return (
     <div>

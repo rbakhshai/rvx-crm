@@ -128,6 +128,7 @@ export default async function BdTeamPage() {
                   <Th right>Week</Th>
                   <Th right>Points</Th>
                   <Th right>Overdue</Th>
+                  <Th right>Skips 30d</Th>
                   <Th>Last active</Th>
                   <Th>Onboarding</Th>
                 </tr>
@@ -187,6 +188,18 @@ export default async function BdTeamPage() {
                         {r.overdueFollowUps > 0 ? (
                           <span className={cn(r.overdueFollowUps >= 5 && "text-rose-700 dark:text-rose-400 font-semibold")}>
                             {r.overdueFollowUps}
+                          </span>
+                        ) : (
+                          <span className="text-muted">0</span>
+                        )}
+                      </td>
+                      <td className="px-3 py-3 text-right tabular-nums">
+                        {r.skips30d > 0 ? (
+                          <span
+                            className={cn(r.skips30d >= 10 && "text-amber-700 dark:text-amber-400 font-semibold")}
+                            title={r.recentSkipReasons.length > 0 ? `Recent reasons:\n• ${r.recentSkipReasons.join("\n• ")}` : undefined}
+                          >
+                            {r.skips30d}
                           </span>
                         ) : (
                           <span className="text-muted">0</span>

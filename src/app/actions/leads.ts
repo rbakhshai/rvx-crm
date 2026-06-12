@@ -4,21 +4,27 @@ import { revalidatePath } from "next/cache";
 import { headers } from "next/headers";
 import { and, eq, inArray, isNull, sql } from "drizzle-orm";
 import { db } from "@/db";
-import { deals, rawLeadDispositions, rawLeads } from "@/db/schema";
+import { deals, rawLeadDispositions, rawLeads, rawLeadSkips } from "@/db/schema";
 import { auth } from "@/lib/auth";
 import { addressKey, parseLeadsCsv } from "@/lib/raw-leads-csv";
-import { CONNECTED_OUTCOMES, DEFAULT_FOLLOW_UP_DAYS, FOLLOW_UP_DAYS_OPTIONS } from "@/lib/follow-up";
+import {
+  DEFAULT_FOLLOW_UP_DAYS,
+  FOLLOW_UP_DAYS_OPTIONS,
+  FOLLOW_UP_OUTCOMES,
+  isFollowUpOutcome,
+} from "@/lib/follow-up";
 import { requirePermission } from "@/lib/has-permission";
 import { getOpsBlocks } from "@/lib/ops-content";
 
 /**
- * Build a SQL literal like `ARRAY['connected_interested', …]` from
- * the central CONNECTED_OUTCOMES list. Used inside raw `sql` templates
- * via sql.raw so we don't have to re-thread the list every time we
- * add a new sub-status.
+ * Build a SQL literal like `ARRAY['connected_interested', …]` from the
+ * central FOLLOW_UP_OUTCOMES list (connected_* + email_follow_up). Used
+ * inside raw `sql` templates via sql.raw so we don't have to re-thread
+ * the list every time we add a new sub-status. Drives Follow-up mode:
+ * any of these outcomes keeps the lead in the BD's callback pipeline.
  */
-function connectedOutcomesArrayLiteral(): string {
-  return `ARRAY[${CONNECTED_OUTCOMES.map((o) => `'${o}'`).join(", ")}]`;
+function followUpOutcomesArrayLiteral(): string {
+  return `ARRAY[${FOLLOW_UP_OUTCOMES.map((o) => `'${o}'`).join(", ")}]`;
 }
 
 async function requireUser() {
@@ -251,7 +257,7 @@ export async function claimNextLeadAction(mode: ClaimMode = "fresh"): Promise<Cl
               SELECT 1 FROM raw_lead_dispositions d
               WHERE d.raw_lead_id = rl.id
                 AND d.by_user_id = ${user.id}
-                AND d.outcome::text = ANY(${sql.raw(connectedOutcomesArrayLiteral())})
+                AND d.outcome::text = ANY(${sql.raw(followUpOutcomesArrayLiteral())})
             )
           -- Order: scheduled-overdue first (next_follow_up_at <= NOW),
           -- then the oldest scheduled date, then unscheduled. Falls back
@@ -311,7 +317,7 @@ export async function getQueueCountsForUser(): Promise<{ fresh: number; followup
         SELECT 1 FROM raw_lead_dispositions d
         WHERE d.raw_lead_id = rl.id
           AND d.by_user_id = ${user.id}
-          AND d.outcome::text = ANY(${sql.raw(connectedOutcomesArrayLiteral())})
+          AND d.outcome::text = ANY(${sql.raw(followUpOutcomesArrayLiteral())})
       )
   `);
 
@@ -327,17 +333,38 @@ export async function getQueueCountsForUser(): Promise<{ fresh: number; followup
 }
 
 /**
- * Release a claimed lead back to the pool without logging a disposition.
- * Used when the BD wants to skip the current lead and grab a different one
- * (e.g. they recognize the park as theirs personally).
+ * Release a claimed lead back to the pool without logging a disposition
+ * (a "skip"). The spec requires a reason on every skip — it's the
+ * anti-cherry-picking pressure valve — and the reason is logged to
+ * raw_lead_skips for leadership eyes only (surfaced on /bd-team).
+ * Skips are NOT dispositions, so they never count as calls or points.
  */
-export async function releaseLeadAction(leadId: string): Promise<void> {
+export async function releaseLeadAction(
+  leadId: string,
+  reason: string,
+): Promise<{ ok: boolean; error?: string }> {
   const user = await requireUser();
-  await db
+  const trimmed = (reason ?? "").trim();
+  if (trimmed.length < 3) {
+    return { ok: false, error: "A skip reason is required." };
+  }
+
+  const result = await db
     .update(rawLeads)
     .set({ status: "pool", claimedById: null, claimedAt: null, updatedAt: new Date() })
-    .where(and(eq(rawLeads.id, leadId), eq(rawLeads.claimedById, user.id)));
+    .where(and(eq(rawLeads.id, leadId), eq(rawLeads.claimedById, user.id)))
+    .returning({ id: rawLeads.id });
+  // Only log when the release actually happened (the WHERE guards
+  // against skipping a lead someone else holds).
+  if (result.length > 0) {
+    await db.insert(rawLeadSkips).values({
+      rawLeadId: leadId,
+      byUserId: user.id,
+      reason: trimmed.slice(0, 500),
+    });
+  }
   revalidatePath("/lead-work");
+  return { ok: true };
 }
 
 type DispositionInput = {
@@ -354,15 +381,24 @@ type DispositionInput = {
     | "connected_future_maybe"
     | "connected_manager_only"
     | "qualified"
-    | "do_not_call";
+    | "do_not_call"
+    | "bad_contact_info"
+    | "email_follow_up";
   notes?: string;
   /**
    * Optional explicit follow-up cadence in days. Honored only when the
-   * outcome is a connected_* (the other outcomes don't schedule).
-   * If omitted on a connected_* outcome, we fall back to the
-   * DEFAULT_FOLLOW_UP_DAYS map.
+   * outcome schedules a follow-up (connected_* / email_follow_up).
+   * If omitted, we fall back to the DEFAULT_FOLLOW_UP_DAYS map.
    */
   followUpDays?: number;
+  /**
+   * Required true when outcome === "qualified". The client collects the
+   * three spec-mandated confirmations (spoke with decision-maker,
+   * $150k+ NOI verbally confirmed, willing to discuss a sale); this
+   * flag asserts all three were checked. Server rejects without it so
+   * a raw POST can't shortcut the gate.
+   */
+  qualifiedConfirmed?: boolean;
 };
 
 type DispositionResult = {
@@ -432,9 +468,11 @@ const RECYCLE_OUTCOMES = new Set<string>([
   "voicemail",
   "busy",
   "wrong_number",
-  // Every connected_* outcome — sourced from the central list in
-  // lib/follow-up.ts so adding a new sub-status here Just Works.
-  ...CONNECTED_OUTCOMES,
+  "bad_contact_info",
+  // Every follow-up-scheduling outcome (connected_* + email_follow_up) —
+  // sourced from the central list in lib/follow-up.ts so adding a new
+  // sub-status here Just Works.
+  ...FOLLOW_UP_OUTCOMES,
 ]);
 
 /**
@@ -463,7 +501,29 @@ export async function dispositionLeadAction(input: DispositionInput): Promise<Di
     return { ok: false, next: "recycled", error: "This lead isn't claimed by you" };
   }
 
+  // Qualified gate — the spec's minimum submission requirements. The
+  // client can't render a qualified submission without the three
+  // checkboxes; this guards the action itself.
+  if (outcome === "qualified" && !input.qualifiedConfirmed) {
+    return {
+      ok: false,
+      next: "recycled",
+      error: "Confirm the three qualification requirements first.",
+    };
+  }
+
   const now = new Date();
+
+  // Stamp the audit line into the disposition notes so the confirmation
+  // survives on the park record forever, not just in the request.
+  const noteBody = notes?.trim() || "";
+  const finalNotes =
+    outcome === "qualified"
+      ? [
+          "[Confirmed: spoke with decision-maker · $150k+ NOI verbal · willing to discuss sale]",
+          noteBody,
+        ].filter(Boolean).join("\n")
+      : noteBody || null;
 
   // Log the attempt no matter what — single source of truth for "what's
   // happened on this lead historically".
@@ -471,7 +531,7 @@ export async function dispositionLeadAction(input: DispositionInput): Promise<Di
     rawLeadId: leadId,
     byUserId: user.id,
     outcome,
-    notes: notes?.trim() || null,
+    notes: finalNotes,
   });
 
   // Milestone check AFTER the insert so this dial counts toward its
@@ -487,12 +547,13 @@ export async function dispositionLeadAction(input: DispositionInput): Promise<Di
   };
 
   if (RECYCLE_OUTCOMES.has(outcome)) {
-    // Compute next follow-up only for connected_* outcomes — no-answer /
-    // voicemail / busy / wrong_number recycle without scheduling.
-    const isConnected = outcome.startsWith("connected_");
+    // Compute next follow-up only for scheduling outcomes (connected_* +
+    // email_follow_up) — no-answer / voicemail / busy / wrong_number /
+    // bad_contact_info recycle without scheduling.
+    const schedules = isFollowUpOutcome(outcome);
     let nextFollowUpAt: Date | null = null;
     let cadence: number | null = null;
-    if (isConnected) {
+    if (schedules) {
       cadence =
         followUpDays && (FOLLOW_UP_DAYS_OPTIONS as readonly number[]).includes(followUpDays)
           ? followUpDays
@@ -510,8 +571,8 @@ export async function dispositionLeadAction(input: DispositionInput): Promise<Di
         claimedById: null,
         claimedAt: null,
         // Only stamp when we actually have a date — preserves any existing
-        // value from a prior connected touch on the non-connected branches.
-        ...(isConnected
+        // value from a prior connected touch on the non-scheduling branches.
+        ...(schedules
           ? {
               nextFollowUpAt,
               followUpCadenceDays: cadence,

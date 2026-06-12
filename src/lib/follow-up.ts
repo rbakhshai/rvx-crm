@@ -24,6 +24,7 @@ export const FOLLOW_UP_DAYS_OPTIONS = [7, 14, 30, 45, 90] as const;
  *   not_selling       → 30 days  touch back in a month
  *   future_maybe      → 90 days  long-tail re-check
  *   selling_to_family → 90 days  near-dead but worth a 1-quarter knock
+ *   email_follow_up   → 3 days   sent an email; call back once they've read it
  */
 export const DEFAULT_FOLLOW_UP_DAYS: Record<string, number> = {
   connected_interested: 7,
@@ -32,6 +33,7 @@ export const DEFAULT_FOLLOW_UP_DAYS: Record<string, number> = {
   connected_not_selling: 30,
   connected_future_maybe: 90,
   connected_selling_to_family: 90,
+  email_follow_up: 3,
 };
 
 /**
@@ -55,4 +57,17 @@ export type ConnectedOutcome = (typeof CONNECTED_OUTCOMES)[number];
 
 export function isConnectedOutcome(o: string): o is ConnectedOutcome {
   return (CONNECTED_OUTCOMES as readonly string[]).includes(o);
+}
+
+/**
+ * Outcomes that SCHEDULE a follow-up and keep the lead in the BD's
+ * Follow-up queue. Superset of CONNECTED_OUTCOMES: "email_follow_up"
+ * schedules a callback like a connect does, but is deliberately NOT in
+ * CONNECTED_OUTCOMES — sending an email isn't an owner conversation, so
+ * it earns call credit (1 pt) without the 5-pt connect bonus.
+ */
+export const FOLLOW_UP_OUTCOMES = [...CONNECTED_OUTCOMES, "email_follow_up"] as const;
+
+export function isFollowUpOutcome(o: string): boolean {
+  return (FOLLOW_UP_OUTCOMES as readonly string[]).includes(o);
 }

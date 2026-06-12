@@ -9,7 +9,7 @@
  */
 import { notFound } from "next/navigation";
 import { headers } from "next/headers";
-import { and, desc, eq, gte, ne, sql } from "drizzle-orm";
+import { and, desc, eq, gte, inArray, ne, sql } from "drizzle-orm";
 import { db } from "@/db";
 import { rawLeadDispositions, rawLeads, user as userTable } from "@/db/schema";
 import { auth } from "@/lib/auth";
@@ -66,7 +66,7 @@ export default async function BdTriagePage({
           .where(
             and(
               eq(rawLeadDispositions.rawLeadId, claimed.id),
-              eq(rawLeadDispositions.outcome, "wrong_number"),
+              inArray(rawLeadDispositions.outcome, ["wrong_number", "bad_contact_info"]),
             ),
           )
           .then((r) => Number(r[0]?.c ?? 0))

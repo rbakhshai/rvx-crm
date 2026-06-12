@@ -138,6 +138,9 @@ export const rawLeadOutcome = pgEnum("raw_lead_outcome", [
   "connected_manager_only",            // spoke to manager, waiting on owner
   "qualified",          // → triggers deal creation
   "do_not_call",        // → status='dead'
+  // Appended (pg enums grow at the end) — Bird Dog spec Phase 8:
+  "bad_contact_info",   // every number/email on the record is bad → recycle, flag for skip-trace
+  "email_follow_up",    // BD sent a follow-up email — schedules a callback, NOT a connect
 ]);
 
 export const rawLeadDispositions = pgTable(
@@ -158,3 +161,26 @@ export const rawLeadDispositions = pgTable(
 
 export type RawLeadDisposition = typeof rawLeadDispositions.$inferSelect;
 export type NewRawLeadDisposition = typeof rawLeadDispositions.$inferInsert;
+
+/**
+ * Skip log — a BD released a claimed lead WITHOUT calling it. The spec
+ * requires a reason on every skip (anti-cherry-picking), visible to
+ * leadership only. Deliberately separate from raw_lead_dispositions so
+ * skips never pollute call counts, streaks, or leaderboard points.
+ */
+export const rawLeadSkips = pgTable(
+  "raw_lead_skips",
+  {
+    id: text("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
+    rawLeadId: text("raw_lead_id").notNull().references(() => rawLeads.id, { onDelete: "cascade" }),
+    byUserId: text("by_user_id").references(() => user.id, { onDelete: "set null" }),
+    reason: text("reason").notNull(),
+    createdAt: timestamp("created_at").notNull().defaultNow(),
+  },
+  (t) => ({
+    byUserIdx: index("raw_lead_skips_by_user_idx").on(t.byUserId, t.createdAt),
+    leadIdx: index("raw_lead_skips_lead_idx").on(t.rawLeadId),
+  }),
+);
+
+export type RawLeadSkip = typeof rawLeadSkips.$inferSelect;
