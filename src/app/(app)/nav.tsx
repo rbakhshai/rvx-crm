@@ -26,60 +26,78 @@ type NavItem = {
 };
 
 /**
- * 5-group information architecture, verb-driven not noun-driven:
- *   Today      — what needs me right now (default landing)
- *   Pipeline   — every active deal, three lenses (triage / list / board)
- *   Contacts   — buyers · sellers · bird dogs, unified directory
- *   Tasks      — full queue across every record
- *   Insights   — revenue + future analytics (admin only)
+ * Sectioned sidebar — matches the org's mental model instead of one
+ * flat 17-tab run (Reza, 2026-06-12: "seems messy and confusing"):
  *
- * Pipeline parent links to /triage so the default click lands on triage,
- * which is the daily-driver view for closers + admin.
+ *   (no header)  — the daily drivers everyone opens first
+ *   Deals        — the acquisition pipeline + the people in it
+ *   BD Program   — the sourcing engine (BD-facing + manager-facing)
+ *   Company      — command center, money, people-ops, the long game
+ *   Admin        — Reza/Erica only (unchanged)
+ *
+ * Pure presentation: every URL and permission gate is unchanged, and a
+ * section header only renders when the viewer can see something in it —
+ * a BD still gets just Today + the BD Program block.
  */
-/**
- * Sidebar order matches the org's mental model: command-center first,
- * then daily-driver, then the work itself, then the people, then the
- * gated stuff at the bottom. Every entry's visibility is permission-
- * gated so admins can toggle from /settings/roles.
- */
-const GROUPS: NavItem[] = [
-  { href: "/ops/command", label: "Mission Control", requires: "view_mission_control" },
-  { href: "/dashboard",   label: "Dashboard",       requires: "view_dashboard" },
-  { href: "/today",       label: "Today",           requires: "view_today" },
-  { href: "/tasks",       label: "Tasks",           requires: "view_tasks" },
-  { href: "/issues",      label: "Issues",          requires: "view_issues" },
-  { href: "/hires",          label: "New Hires",      requires: "view_hires" },
-  { href: "/reimbursements", label: "Reimbursements", requires: "view_reimbursements" },
+type NavSection = { label: string | null; items: NavItem[] };
+
+const SECTIONS: NavSection[] = [
   {
-    href: "/triage",
-    label: "Pipeline",
-    requires: "view_pipeline",
-    children: [
-      { href: "/triage",      label: "Triage" },
-      { href: "/deals",       label: "List view" },
-      { href: "/deals/board", label: "Board view" },
+    label: null,
+    items: [
+      { href: "/today",  label: "Today",  requires: "view_today" },
+      { href: "/tasks",  label: "Tasks",  requires: "view_tasks" },
+      { href: "/issues", label: "Issues", requires: "view_issues" },
     ],
   },
   {
-    href: "/contacts",
-    label: "Contacts",
-    requires: "view_contacts",
-    children: [
-      { href: "/contacts",  label: "Buyers" },
-      { href: "/companies", label: "Sellers" },
+    label: "Deals",
+    items: [
+      {
+        href: "/triage",
+        label: "Pipeline",
+        requires: "view_pipeline",
+        children: [
+          { href: "/triage",      label: "Triage" },
+          { href: "/deals",       label: "List view" },
+          { href: "/deals/board", label: "Board view" },
+        ],
+      },
+      {
+        href: "/contacts",
+        label: "Contacts",
+        requires: "view_contacts",
+        children: [
+          { href: "/contacts",  label: "Buyers" },
+          { href: "/companies", label: "Sellers" },
+        ],
+      },
     ],
   },
-  { href: "/bird-dogs",      label: "Bird Dogs",   requires: "view_bird_dogs_directory" },
-  { href: "/bd-team",        label: "BD Team",     requires: "view_bd_team" },
-  { href: "/lead-work",      label: "Lead Work",   requires: "view_lead_work" },
-  { href: "/my-leads",       label: "My Leads",    requires: "view_my_leads" },
-  { href: "/bd-leaderboard", label: "Leaderboard", requires: "view_leaderboard" },
-  // Park Performance is renamed from Insights and gated to roles that
-  // explicitly grant view_revenue (Reza/Marco/Kevin by default; Erica
-  // intentionally not).
-  { href: "/admin/revenue", label: "Park Performance", requires: "view_revenue" },
-  { href: "/pool",          label: "Pathway to Partnership", requires: "view_pool" },
-  { href: "/trash",         label: "Trash",            requires: "view_trash" },
+  {
+    label: "BD Program",
+    items: [
+      { href: "/lead-work",      label: "Lead Work",   requires: "view_lead_work" },
+      { href: "/my-leads",       label: "My Leads",    requires: "view_my_leads" },
+      { href: "/bd-leaderboard", label: "Leaderboard", requires: "view_leaderboard" },
+      { href: "/bd-team",        label: "BD Team",     requires: "view_bd_team" },
+      { href: "/bird-dogs",      label: "Bird Dogs",   requires: "view_bird_dogs_directory" },
+    ],
+  },
+  {
+    label: "Company",
+    items: [
+      { href: "/ops/command", label: "Mission Control", requires: "view_mission_control" },
+      { href: "/dashboard",   label: "Dashboard",       requires: "view_dashboard" },
+      // Park Performance stays gated to roles that explicitly grant
+      // view_revenue (Reza/Marco/Kevin by default; Erica intentionally not).
+      { href: "/admin/revenue",  label: "Park Performance",       requires: "view_revenue" },
+      { href: "/pool",           label: "Pathway to Partnership", requires: "view_pool" },
+      { href: "/hires",          label: "New Hires",              requires: "view_hires" },
+      { href: "/reimbursements", label: "Reimbursements",         requires: "view_reimbursements" },
+      { href: "/trash",          label: "Trash",                  requires: "view_trash" },
+    ],
+  },
 ];
 
 const ADMIN_GROUPS: NavItem[] = [
@@ -117,13 +135,26 @@ export function Nav({
     return true;
   }
 
-  const visibleGroups = GROUPS.filter((g) => allowed(g.requires));
+  const visibleSections = SECTIONS
+    .map((s) => ({ ...s, items: s.items.filter((g) => allowed(g.requires)) }))
+    .filter((s) => s.items.length > 0);
   const visibleAdmin = ADMIN_GROUPS.filter((g) => allowed(g.requires));
 
   return (
     <nav className="space-y-2 text-sm">
-      {visibleGroups.map((g) => (
-        <NavGroup key={g.label} group={g} pathname={pathname} visibleChild={visibleChild} />
+      {visibleSections.map((s, i) => (
+        <div key={s.label ?? `section-${i}`}>
+          {s.label && (
+            <div className={(i > 0 ? "mt-5 " : "") + "mb-1 px-2.5 text-[10px] uppercase tracking-widest text-muted font-medium"}>
+              {s.label}
+            </div>
+          )}
+          <div className="space-y-0.5">
+            {s.items.map((g) => (
+              <NavGroup key={g.label} group={g} pathname={pathname} visibleChild={visibleChild} />
+            ))}
+          </div>
+        </div>
       ))}
 
       {visibleAdmin.length > 0 && (
