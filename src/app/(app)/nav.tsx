@@ -70,6 +70,7 @@ const GROUPS: NavItem[] = [
     ],
   },
   { href: "/bird-dogs",      label: "Bird Dogs",   requires: "view_bird_dogs_directory" },
+  { href: "/bd-team",        label: "BD Team",     requires: "view_bd_team" },
   { href: "/bd-triage",      label: "Lead Work",   requires: "view_lead_work" },
   { href: "/my-leads",       label: "My Leads",    requires: "view_my_leads" },
   { href: "/bd-leaderboard", label: "Leaderboard", requires: "view_leaderboard" },
