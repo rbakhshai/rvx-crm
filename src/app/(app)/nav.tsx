@@ -50,18 +50,16 @@ type NavSection = {
 
 const SECTIONS: NavSection[] = [
   {
-    label: "My Dashboard",
+    label: "Dashboards",
     items: [
-      { href: "/today",  label: "At a Glance",  requires: "view_today" },
-      { href: "/issues", label: "Issues", requires: "view_issues" },
-      { href: "/tasks",  label: "To Dos",  requires: "view_tasks" },
+      { href: "/dashboards/my", label: "My Dashboard", requires: "view_today" },
+      { href: "/dashboards/company", label: "Company Dashboard", requires: "view_today" },
     ],
   },
   {
     label: "Company",
     accentColor: "text-amber-700 dark:text-amber-400",
     items: [
-      { href: "/ops/level10",     label: "RVX OS",      requires: "view_mission_control" },
       {
         href: "/contacts",
         label: "Contacts",
@@ -86,23 +84,32 @@ const SECTIONS: NavSection[] = [
     accentColor: "text-blue-700 dark:text-blue-400",
     visibleToRoles: ["admin", "acquisitions_manager", "bird_dog_manager", "cfo"],
     items: [
+      { href: "/ops/level10",     label: "RVX OS",      requires: "view_mission_control" },
       { href: "/admin/revenue",   label: "Park Performance",  requires: "view_revenue" },
       { href: "/hires",           label: "New Hires",         requires: "view_hires" },
       { href: "/reimbursements",  label: "Reimbursements",    requires: "view_reimbursements" },
     ],
   },
   {
-    label: "Bird Dogs",
-    accentColor: "text-blue-900 dark:text-blue-300",
-    visibleToRoles: ["bd_level_1", "bd_level_2", "bd_level_3"],
+    label: "Acquisitions L1",
+    accentColor: "text-purple-700 dark:text-purple-400",
+    visibleToRoles: ["bd_level_1"],
     items: [
       { href: "/lead-work",      label: "Lead Work",   requires: "view_lead_work" },
       { href: "/my-leads",       label: "My Leads",    requires: "view_my_leads" },
-      { href: "/bd-leaderboard", label: "Leaderboard", requires: "view_leaderboard" },
     ],
   },
   {
-    label: "Closers",
+    label: "Acquisitions L2",
+    accentColor: "text-purple-700 dark:text-purple-400",
+    visibleToRoles: ["bd_level_2"],
+    items: [
+      { href: "/lead-work",      label: "Lead Work",   requires: "view_lead_work" },
+      { href: "/my-leads",       label: "My Leads",    requires: "view_my_leads" },
+    ],
+  },
+  {
+    label: "Closers L3",
     accentColor: "text-green-700 dark:text-green-400",
     visibleToRoles: ["closer"],
     items: [
@@ -127,13 +134,13 @@ const SECTIONS: NavSection[] = [
     ],
   },
   {
-    label: "Underwriters",
+    label: "Underwriting",
     accentColor: "text-yellow-700 dark:text-yellow-400",
     visibleToRoles: ["underwriter"],
     items: [
       {
         href: "/triage",
-        label: "Pipeline",
+        label: "LOI/PSA",
         requires: "view_pipeline",
         children: [
           { href: "/triage",      label: "Triage" },
@@ -144,13 +151,13 @@ const SECTIONS: NavSection[] = [
     ],
   },
   {
-    label: "Due Diligence",
+    label: "DD",
     accentColor: "text-gray-700 dark:text-gray-400",
     visibleToRoles: ["due_diligence"],
     items: [
       {
         href: "/triage",
-        label: "Pipeline",
+        label: "Due Diligence",
         requires: "view_pipeline",
         children: [
           { href: "/triage",      label: "Triage" },
@@ -191,7 +198,14 @@ const SECTIONS: NavSection[] = [
           { href: "/deals/board", label: "Board view" },
         ],
       },
-      { href: "/ops/level10",   label: "Ops Machine",   requires: "view_mission_control" },
+    ],
+  },
+  {
+    label: "Finance",
+    accentColor: "text-emerald-700 dark:text-emerald-400",
+    visibleToRoles: ["cfo"],
+    items: [
+      { href: "/admin/revenue",   label: "Park Performance",  requires: "view_revenue" },
     ],
   },
 ];
