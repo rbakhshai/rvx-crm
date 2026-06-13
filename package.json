@@ -18,6 +18,7 @@
     "migrate:companies": "tsx --env-file=.env.local scripts/migrate/companies.ts",
     "migrate:bird-dogs": "tsx --env-file=.env.local scripts/migrate/bird-dogs.ts",
     "migrate:deals": "tsx --env-file=.env.local scripts/migrate/deals.ts",
+    "migrate:notes": "tsx --env-file=.env.local scripts/migrate/notes.ts",
     "seed:templates": "tsx --env-file=.env.local scripts/seed-templates.ts"
   },
   "dependencies": {
