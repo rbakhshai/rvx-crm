@@ -52,7 +52,7 @@ const SECTIONS: NavSection[] = [
   {
     label: null,
     items: [
-      { href: "/today",  label: "Today",  requires: "view_today" },
+      { href: "/today",  label: "At a Glance",  requires: "view_today" },
       { href: "/tasks",  label: "Tasks",  requires: "view_tasks" },
       { href: "/issues", label: "Issues", requires: "view_issues" },
     ],
