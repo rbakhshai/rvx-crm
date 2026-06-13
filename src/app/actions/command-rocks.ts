@@ -87,3 +87,17 @@ export async function deleteCommandRockAction(rockId: string): Promise<void> {
   await db.delete(commandRocks).where(eq(commandRocks.id, rockId));
   revalidatePath("/mission-control");
 }
+
+/** Reorder rocks — accepts array of {id, position} to bulk update. */
+export async function reorderCommandRocksAction(
+  updates: { id: string; position: number }[],
+): Promise<void> {
+  await requireRockAdmin();
+  for (const { id, position } of updates) {
+    await db
+      .update(commandRocks)
+      .set({ position, updatedAt: new Date() })
+      .where(eq(commandRocks.id, id));
+  }
+  revalidatePath("/mission-control");
+}

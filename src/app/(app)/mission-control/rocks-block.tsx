@@ -9,6 +9,7 @@ import {
   updateCommandRockAction,
   toggleCommandRockAction,
   deleteCommandRockAction,
+  reorderCommandRocksAction,
 } from "@/app/actions/command-rocks";
 
 type Rock = {
@@ -37,6 +38,8 @@ export function RocksBlock({
   const router = useRouter();
   const [draft, setDraft] = useState("");
   const [showAdd, setShowAdd] = useState(false);
+  const [rocks, setRocks] = useState(initialRocks);
+  const [draggedId, setDraggedId] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
 
   function add() {
@@ -54,6 +57,45 @@ export function RocksBlock({
     });
   }
 
+  function handleDragStart(e: React.DragEvent, id: string) {
+    setDraggedId(id);
+    e.dataTransfer.effectAllowed = "move";
+  }
+
+  function handleDragOver(e: React.DragEvent) {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = "move";
+  }
+
+  function handleDrop(e: React.DragEvent, targetId: string) {
+    e.preventDefault();
+    if (!draggedId || draggedId === targetId) {
+      setDraggedId(null);
+      return;
+    }
+
+    const draggedIdx = rocks.findIndex((r) => r.id === draggedId);
+    const targetIdx = rocks.findIndex((r) => r.id === targetId);
+
+    if (draggedIdx === -1 || targetIdx === -1) {
+      setDraggedId(null);
+      return;
+    }
+
+    const newRocks = [...rocks];
+    const [moved] = newRocks.splice(draggedIdx, 1);
+    newRocks.splice(targetIdx, 0, moved);
+
+    setRocks(newRocks);
+    setDraggedId(null);
+
+    startTransition(async () => {
+      await reorderCommandRocksAction(
+        newRocks.map((r, i) => ({ id: r.id, position: i + 1 }))
+      );
+    });
+  }
+
   const periodLabel = period === "quarter" ? "Quarterly" : period === "month" ? "Monthly" : "Weekly";
 
   return (
@@ -65,13 +107,21 @@ export function RocksBlock({
         )}
       </div>
       <ul className="space-y-1">
-        {initialRocks.length === 0 && !showAdd && (
+        {rocks.length === 0 && !showAdd && (
           <li className="text-[11px] text-muted italic">
             {canEdit ? "No rocks yet — click + to add" : "No rocks yet"}
           </li>
         )}
-        {initialRocks.map((r) => (
-          <RockRow key={r.id} rock={r} canEdit={canEdit} />
+        {rocks.map((r) => (
+          <RockRow
+            key={r.id}
+            rock={r}
+            canEdit={canEdit}
+            isDragging={draggedId === r.id}
+            onDragStart={(e) => handleDragStart(e, r.id)}
+            onDragOver={handleDragOver}
+            onDrop={(e) => handleDrop(e, r.id)}
+          />
         ))}
         {!canEdit ? null : showAdd ? (
           <li className="flex items-center gap-1.5">
@@ -120,7 +170,21 @@ export function RocksBlock({
   );
 }
 
-function RockRow({ rock, canEdit }: { rock: Rock; canEdit: boolean }) {
+function RockRow({
+  rock,
+  canEdit,
+  isDragging,
+  onDragStart,
+  onDragOver,
+  onDrop,
+}: {
+  rock: Rock;
+  canEdit: boolean;
+  isDragging: boolean;
+  onDragStart: (e: React.DragEvent) => void;
+  onDragOver: (e: React.DragEvent) => void;
+  onDrop: (e: React.DragEvent) => void;
+}) {
   const router = useRouter();
   const [editing, setEditing] = useState(false);
   const [title, setTitle] = useState(rock.title);
@@ -149,7 +213,6 @@ function RockRow({ rock, canEdit }: { rock: Rock; canEdit: boolean }) {
   }
 
   function del() {
-    if (!confirm("Delete this rock?")) return;
     startTransition(async () => {
       await deleteCommandRockAction(rock.id);
       router.refresh();
@@ -178,7 +241,17 @@ function RockRow({ rock, canEdit }: { rock: Rock; canEdit: boolean }) {
   }
 
   return (
-    <li className={cn("group flex items-start gap-1.5 py-0.5", done && "opacity-60")}>
+    <li
+      draggable={canEdit}
+      onDragStart={onDragStart}
+      onDragOver={onDragOver}
+      onDrop={onDrop}
+      className={cn(
+        "group flex items-start gap-1.5 py-0.5 rounded transition",
+        isDragging && "opacity-50 bg-primary/10",
+        canEdit && "cursor-grab active:cursor-grabbing",
+      )}
+    >
       <button
         type="button"
         onClick={canEdit ? toggle : undefined}
