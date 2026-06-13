@@ -86,9 +86,6 @@ export function LoginForm() {
         {isPending ? "…" : "Sign in"}
       </button>
 
-      <p className="text-center text-[11px] text-muted">
-        Accounts are created by your admin — ask Reza or Erica for access.
-      </p>
     </form>
   );
 }
