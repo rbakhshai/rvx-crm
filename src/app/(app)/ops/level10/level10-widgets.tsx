@@ -6,6 +6,7 @@ import { cn } from "@/lib/cn";
 import {
   saveSegueNotesAction,
   saveHeadlinesNotesAction,
+  saveEmployeeHeadlineNotesAction,
   saveConcludeNotesAction,
   setMeetingRatingAction,
   snapshotScorecardAction,
@@ -36,7 +37,7 @@ export function MeetingTextarea({
   rows = 3,
 }: {
   meetingDate: string;
-  field: "segue" | "headlines" | "conclude";
+  field: "segue" | "headlines" | "employeeHeadline" | "conclude";
   initial: string;
   initialSavedAt?: Date | string | null;
   placeholder?: string;
@@ -60,6 +61,7 @@ export function MeetingTextarea({
       try {
         if (field === "segue") await saveSegueNotesAction(meetingDate, value);
         else if (field === "headlines") await saveHeadlinesNotesAction(meetingDate, value);
+        else if (field === "employeeHeadline") await saveEmployeeHeadlineNotesAction(meetingDate, value);
         else await saveConcludeNotesAction(meetingDate, value);
         lastSaved.current = value;
         setSavedAt(new Date());
