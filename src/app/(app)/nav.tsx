@@ -52,8 +52,8 @@ const SECTIONS: NavSection[] = [
   {
     label: "Dashboards",
     items: [
-      { href: "/dashboards/my", label: "My Dashboard", requires: "view_today" },
       { href: "/dashboards/company", label: "Company Dashboard", requires: "view_today" },
+      { href: "/dashboards/leaderboard", label: "Leaderboard", requires: "view_today" },
     ],
   },
   {
