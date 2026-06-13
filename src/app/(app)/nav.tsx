@@ -39,7 +39,14 @@ type NavItem = {
  * section header only renders when the viewer can see something in it —
  * a BD still gets just Today + the BD Program block.
  */
-type NavSection = { label: string | null; items: NavItem[] };
+type NavSection = {
+  label: string | null;
+  items: NavItem[];
+  /** Roles that can see this section (null = everyone). */
+  visibleToRoles?: string[] | null;
+  /** Tailwind color for section header. */
+  accentColor?: string;
+};
 
 const SECTIONS: NavSection[] = [
   {
@@ -51,7 +58,48 @@ const SECTIONS: NavSection[] = [
     ],
   },
   {
-    label: "Deals",
+    label: "Company",
+    accentColor: "text-amber-700 dark:text-amber-400",
+    items: [
+      { href: "/mission-control", label: "Mission Control", requires: "view_mission_control" },
+      {
+        href: "/contacts",
+        label: "Contacts",
+        requires: "view_contacts",
+        children: [
+          { href: "/contacts",  label: "Buyers" },
+          { href: "/companies", label: "Sellers" },
+        ],
+      },
+      { href: "/pool",   label: "Pathway to Partnership", requires: "view_pool" },
+      { href: "/trash",  label: "Trash",                  requires: "view_trash" },
+    ],
+  },
+  {
+    label: "Leadership",
+    accentColor: "text-blue-700 dark:text-blue-400",
+    visibleToRoles: ["admin", "acquisitions_manager", "bird_dog_manager", "cfo"],
+    items: [
+      { href: "/ops/level10",     label: "Ops Machine",      requires: "view_mission_control" },
+      { href: "/admin/revenue",   label: "Park Performance",  requires: "view_revenue" },
+      { href: "/hires",           label: "New Hires",         requires: "view_hires" },
+      { href: "/reimbursements",  label: "Reimbursements",    requires: "view_reimbursements" },
+    ],
+  },
+  {
+    label: "Bird Dogs",
+    accentColor: "text-blue-900 dark:text-blue-300",
+    visibleToRoles: ["bd_level_1", "bd_level_2", "bd_level_3"],
+    items: [
+      { href: "/lead-work",      label: "Lead Work",   requires: "view_lead_work" },
+      { href: "/my-leads",       label: "My Leads",    requires: "view_my_leads" },
+      { href: "/bd-leaderboard", label: "Leaderboard", requires: "view_leaderboard" },
+    ],
+  },
+  {
+    label: "Closers",
+    accentColor: "text-green-700 dark:text-green-400",
+    visibleToRoles: ["closer"],
     items: [
       {
         href: "/triage",
@@ -65,37 +113,80 @@ const SECTIONS: NavSection[] = [
       },
       {
         href: "/contacts",
-        label: "Contacts",
+        label: "Buyers",
         requires: "view_contacts",
         children: [
-          { href: "/contacts",  label: "Buyers" },
-          { href: "/companies", label: "Sellers" },
+          { href: "/contacts", label: "Active buyers" },
         ],
       },
     ],
   },
   {
-    label: "BD Program",
+    label: "Underwriters",
+    accentColor: "text-yellow-700 dark:text-yellow-400",
+    visibleToRoles: ["underwriter"],
     items: [
-      { href: "/lead-work",      label: "Lead Work",   requires: "view_lead_work" },
-      { href: "/my-leads",       label: "My Leads",    requires: "view_my_leads" },
-      { href: "/bd-leaderboard", label: "Leaderboard", requires: "view_leaderboard" },
-      { href: "/bd-team",        label: "BD Team",     requires: "view_bd_team" },
-      { href: "/bird-dogs",      label: "Bird Dogs",   requires: "view_bird_dogs_directory" },
+      {
+        href: "/triage",
+        label: "Pipeline",
+        requires: "view_pipeline",
+        children: [
+          { href: "/triage",      label: "Triage" },
+          { href: "/deals",       label: "List view" },
+          { href: "/deals/board", label: "Board view" },
+        ],
+      },
     ],
   },
   {
-    label: "Company",
+    label: "Due Diligence",
+    accentColor: "text-gray-700 dark:text-gray-400",
+    visibleToRoles: ["due_diligence"],
     items: [
-      { href: "/mission-control", label: "Mission Control", requires: "view_mission_control" },
-      { href: "/ops/level10",     label: "Ops Machine",     requires: "view_mission_control" },
-      // Park Performance stays gated to roles that explicitly grant
-      // view_revenue (Reza/Marco/Kevin by default; Erica intentionally not).
-      { href: "/admin/revenue",  label: "Park Performance",       requires: "view_revenue" },
-      { href: "/pool",           label: "Pathway to Partnership", requires: "view_pool" },
-      { href: "/hires",          label: "New Hires",              requires: "view_hires" },
-      { href: "/reimbursements", label: "Reimbursements",         requires: "view_reimbursements" },
-      { href: "/trash",          label: "Trash",                  requires: "view_trash" },
+      {
+        href: "/triage",
+        label: "Pipeline",
+        requires: "view_pipeline",
+        children: [
+          { href: "/triage",      label: "Triage" },
+          { href: "/deals",       label: "List view" },
+          { href: "/deals/board", label: "Board view" },
+        ],
+      },
+    ],
+  },
+  {
+    label: "Dispositions",
+    accentColor: "text-lime-700 dark:text-lime-400",
+    visibleToRoles: ["dispo_manager"],
+    items: [
+      {
+        href: "/triage",
+        label: "Pipeline",
+        requires: "view_pipeline",
+        children: [
+          { href: "/triage",      label: "Triage" },
+          { href: "/deals",       label: "List view" },
+        ],
+      },
+    ],
+  },
+  {
+    label: "Operations",
+    accentColor: "text-pink-700 dark:text-pink-400",
+    visibleToRoles: ["park_manager", "transaction_coord", "bird_dog_manager"],
+    items: [
+      {
+        href: "/triage",
+        label: "Pipeline",
+        requires: "view_pipeline",
+        children: [
+          { href: "/triage",      label: "Triage" },
+          { href: "/deals",       label: "List view" },
+          { href: "/deals/board", label: "Board view" },
+        ],
+      },
+      { href: "/ops/level10",   label: "Ops Machine",   requires: "view_mission_control" },
     ],
   },
 ];
@@ -129,6 +220,12 @@ export function Nav({
     return permissions[req] === true;
   }
 
+  function sectionVisible(s: NavSection): boolean {
+    if (s.visibleToRoles === null) return true;
+    if (!s.visibleToRoles) return true;
+    return role ? s.visibleToRoles.includes(role) : false;
+  }
+
   function visibleChild(c: NavChild): boolean {
     if (!allowed(c.requires)) return false;
     if (c.hideForRoles && role && c.hideForRoles.includes(role)) return false;
@@ -136,6 +233,7 @@ export function Nav({
   }
 
   const visibleSections = SECTIONS
+    .filter(sectionVisible)
     .map((s) => ({ ...s, items: s.items.filter((g) => allowed(g.requires)) }))
     .filter((s) => s.items.length > 0);
   const visibleAdmin = ADMIN_GROUPS.filter((g) => allowed(g.requires));
@@ -145,7 +243,7 @@ export function Nav({
       {visibleSections.map((s, i) => (
         <div key={s.label ?? `section-${i}`}>
           {s.label && (
-            <div className={(i > 0 ? "mt-5 " : "") + "mb-1 px-2.5 text-[10px] uppercase tracking-widest text-muted font-medium"}>
+            <div className={(i > 0 ? "mt-5 " : "") + "mb-1 px-2.5 text-[10px] uppercase tracking-widest font-medium " + (s.accentColor ?? "text-muted")}>
               {s.label}
             </div>
           )}
