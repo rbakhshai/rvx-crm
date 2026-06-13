@@ -3,8 +3,9 @@
  *
  * The six numbers Reza asked for up top (leads today / this week / last
  * week, LOIs out, in escrow, parks owned), then the funnel, the map, and
- * the live pulse. The full EOS sheet + per-person rocks live one click
- * away on /mission-control — this page is the fast daily read.
+ * the live pulse. The full RVX OS (operations center) with EOS sheet +
+ * per-person rocks lives one click away on /ops/level10 — this page is
+ * the fast daily read.
  */
 import Link from "next/link";
 import { getMissionTiles } from "@/lib/mission-control";
@@ -41,7 +42,7 @@ export async function CeoDashboard({ userId, userName, role }: { userId: string;
         icon="🛰️"
         accent={ACCENT}
       >
-        <PortalCta href="/mission-control" accent={ACCENT}>Open Mission Control →</PortalCta>
+        <PortalCta href="/ops/level10" accent={ACCENT}>Open RVX OS →</PortalCta>
       </PortalHero>
 
       {tiles && (
