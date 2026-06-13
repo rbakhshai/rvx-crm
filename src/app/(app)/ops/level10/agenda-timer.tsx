@@ -45,8 +45,10 @@ export function AgendaTimer({ sections }: { sections: AgendaSection[] }) {
   const [states, setStates] = useState<SectionState[]>(
     sections.map(() => ({ elapsed: 0, status: "pending" })),
   );
+  const [showFloatingTimer, setShowFloatingTimer] = useState(false);
   const activeIdx = states.findIndex((s) => s.status === "active");
   const tickRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
 
   // One global 1s tick that bumps the active section's elapsed counter.
   useEffect(() => {
@@ -59,6 +61,24 @@ export function AgendaTimer({ sections }: { sections: AgendaSection[] }) {
     return () => {
       if (tickRef.current) clearInterval(tickRef.current);
     };
+  }, [activeIdx]);
+
+  // Show floating timer when the main timer container scrolls out of view.
+  useEffect(() => {
+    if (activeIdx < 0) {
+      setShowFloatingTimer(false);
+      return;
+    }
+
+    function handleScroll() {
+      if (!containerRef.current) return;
+      const rect = containerRef.current.getBoundingClientRect();
+      // Show floating timer when container top is above viewport.
+      setShowFloatingTimer(rect.top < 0);
+    }
+
+    window.addEventListener("scroll", handleScroll, { passive: true });
+    return () => window.removeEventListener("scroll", handleScroll);
   }, [activeIdx]);
 
   function activate(idx: number) {
@@ -81,9 +101,33 @@ export function AgendaTimer({ sections }: { sections: AgendaSection[] }) {
 
   const totalMinutes = sections.reduce((acc, s) => acc + s.minutes, 0);
   const allDoneOrPending = activeIdx < 0;
+  const activeSection = activeIdx >= 0 ? sections[activeIdx] : null;
+  const activeState = activeIdx >= 0 ? states[activeIdx] : null;
+  const activeRemaining = activeSection && activeState ? activeSection.minutes * 60 - activeState.elapsed : 0;
+  const activeOver = activeRemaining < 0;
 
   return (
-    <div className="rounded-2xl border border-border bg-background overflow-hidden mb-8">
+    <>
+      {showFloatingTimer && activeSection && activeState && (
+        <div className="fixed top-0 left-0 right-0 z-40 bg-background/95 backdrop-blur-sm border-b border-border px-4 py-3 flex items-center justify-between gap-4">
+          <div className="flex items-center gap-3">
+            <span className="text-lg" aria-hidden>{activeSection.emoji}</span>
+            <div>
+              <div className="text-sm font-bold">{activeSection.title}</div>
+              <div className="text-[11px] text-muted">Section timer</div>
+            </div>
+          </div>
+          <TimerChip
+            minutes={activeSection.minutes}
+            remaining={activeRemaining}
+            isActive={true}
+            isDone={false}
+            over={activeOver}
+            warning={!activeOver && activeRemaining <= 120}
+          />
+        </div>
+      )}
+      <div className="rounded-2xl border border-border bg-background overflow-hidden mb-8" ref={containerRef}>
       <div className="flex items-center justify-between gap-3 px-4 py-3 border-b border-border bg-foreground/[0.02]">
         <div>
           <h2 className="text-base font-bold tracking-tight">The Level 10 agenda</h2>
@@ -170,7 +214,8 @@ export function AgendaTimer({ sections }: { sections: AgendaSection[] }) {
           );
         })}
       </ol>
-    </div>
+      </div>
+    </>
   );
 }
 

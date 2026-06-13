@@ -178,7 +178,6 @@ export default async function Level10Page({
         title="Level 10"
         right={
           <div className="text-right">
-            <div className="text-xs text-muted">{teammates.map((t) => t.name.split(" ")[0]).join(", ")}</div>
             <div className="text-[11px] text-muted mt-0.5">
               {isCurrentWeek ? "This week · " : ""}
               {meetingDateLabel}
