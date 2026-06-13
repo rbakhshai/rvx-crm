@@ -394,7 +394,11 @@ export async function fetchPipelineFunnel(): Promise<{
   const { inArray } = await import("drizzle-orm");
   const allActive = PIPELINE_STAGES.flatMap((f) => f.statuses);
   const rows = await db
-    .select({ statusCode: deals.statusCode, listPrice: deals.listPrice })
+    .select({
+      statusCode: deals.statusCode,
+      listPrice: deals.listPrice,
+      agreedPurchasePrice: deals.agreedPurchasePrice,
+    })
     .from(deals)
     .where(inArray(deals.statusCode, allActive));
 
@@ -418,7 +422,9 @@ export async function fetchPipelineFunnel(): Promise<{
     if (!key) continue;
     const idx = indexByKey.get(key)!;
     stages[idx].count++;
-    const cents = priceToCents(r.listPrice);
+    // Prefer the agreed-upon price once negotiated; fall back to list
+    // price for early-stage deals that haven't settled on a number yet.
+    const cents = priceToCents(r.agreedPurchasePrice ?? r.listPrice);
     stages[idx].valueCents += cents;
   }
 
