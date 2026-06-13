@@ -69,7 +69,6 @@ const SECTIONS: NavSection[] = [
           { href: "/companies", label: "Sellers" },
         ],
       },
-      { href: "/trash",  label: "Trash",                  requires: "view_trash" },
       { href: "/pool",   label: "Pathway to Partnership", requires: "view_pool" },
     ],
   },
@@ -150,6 +149,7 @@ const ADMIN_GROUPS: NavItem[] = [
       { href: "/settings/feedback", label: "Feedback queue" },
       { href: "/admin/leads",       label: "Lead pool" },
       { href: "/settings/audit",    label: "Audit log" },
+      { href: "/trash",             label: "Trash",                  requires: "view_trash" },
     ],
   },
 ];
