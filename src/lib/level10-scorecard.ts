@@ -52,13 +52,13 @@ export const SCORECARD_DEFINITIONS: Array<{
   target: number;
   format: "n" | "pct";
 }> = [
-  { metric: "Active bird dogs",                       target: 10, format: "n"   },
-  { metric: "New leads submitted (week)",             target: 50, format: "n"   },
-  { metric: "Qualified leads submitted (week)",       target:  5, format: "n"   },
-  { metric: "Closer first-touch SLA hit rate",        target: 80, format: "pct" },
-  { metric: "LOIs submitted (week)",                  target:  3, format: "n"   },
-  { metric: "Close rate",                             target: 25, format: "pct" },
-  { metric: "Signed PSAs (this month)",               target:  3, format: "n"   },
+  { metric: "Active bird dogs",                       target: 16, format: "n"   },
+  { metric: "Total new leads submitted (last week)",  target: 50, format: "n"   },
+  { metric: "Total new leads qualified (last week)",  target: 75, format: "pct" },
+  { metric: "Closer first-touch within 24 hours",     target: 75, format: "pct" },
+  { metric: "LOIs submitted (last week)",             target:  4, format: "n"   },
+  { metric: "PSA submitted (last week)",              target:  1, format: "n"   },
+  { metric: "Signed PSAs (this month)",               target:  2, format: "n"   },
 ];
 
 /** Live actuals, computed from the CRM tables, in SCORECARD_DEFINITIONS order. */
@@ -74,8 +74,7 @@ export async function computeScorecardActuals(): Promise<number[]> {
 
   // For SLA hit rate: pull every qualified-or-beyond deal created in
   // the last 7 days. For each, compare closerLastTouch to createdAt.
-  // Hit = touched within 24h of creation. Imperfect proxy for "first
-  // touch" since we don't log every touch; good enough for V1.
+  // Hit = touched within 24h of creation.
   const slaWindowDeals = await db
     .select({
       createdAt: deals.createdAt,
@@ -101,11 +100,10 @@ export async function computeScorecardActuals(): Promise<number[]> {
   const [
     activeBd,
     newLeadsWeek,
-    qualifiedWeek,
+    qualifiedLeadsWeek,
     loisWeek,
+    psaSubmittedWeek,
     psasMonth,
-    qualifiedTotalForRate,
-    closedRvxTotal,
   ] = await Promise.all([
     // 1. Active bird dogs
     db
@@ -113,11 +111,9 @@ export async function computeScorecardActuals(): Promise<number[]> {
       .from(birdDogs)
       .where(and(isNull(birdDogs.deletedAt), eq(birdDogs.statusCode, "active")))
       .then((r) => r[0]?.c ?? 0),
-    // 2. New leads submitted this week
+    // 2. Total new leads submitted (last week) — all deals created this week
     count(and(isNull(deals.deletedAt), gte(deals.createdAt, weekAgo))),
-    // 3. Qualified leads SUBMITTED this week — deals created this week
-    //    that have already reached qualified-or-beyond status. Catches
-    //    "fast moves" not just total qualified count.
+    // 3. Qualified leads created this week (for percentage calculation)
     count(
       and(
         isNull(deals.deletedAt),
@@ -125,9 +121,7 @@ export async function computeScorecardActuals(): Promise<number[]> {
         gte(deals.createdAt, weekAgo),
       ),
     ),
-    // 5. LOIs submitted this week — deals at LOI-or-beyond status that
-    //    were updated this week. Imperfect (any update counts), but
-    //    without a stage_changes log this is the best proxy.
+    // 4. LOIs submitted (last week) — deals at LOI-or-beyond status updated this week
     count(
       and(
         isNull(deals.deletedAt),
@@ -135,7 +129,15 @@ export async function computeScorecardActuals(): Promise<number[]> {
         gte(deals.updatedAt, weekAgo),
       ),
     ),
-    // 7. Signed PSAs this month
+    // 5. PSA submitted (last week) — deals at psa_accepted or beyond, updated this week
+    count(
+      and(
+        isNull(deals.deletedAt),
+        inArray(deals.statusCode, ["psa_accepted", "dm_dispo_initiated", "tc_dd_in_escrow", "dd_completed_in_escrow", "closed_rvx_acquired", "closed_rvx_network"]),
+        gte(deals.updatedAt, weekAgo),
+      ),
+    ),
+    // 6. Signed PSAs (this month) — deals at psa_accepted status updated this month
     count(
       and(
         isNull(deals.deletedAt),
@@ -143,26 +145,22 @@ export async function computeScorecardActuals(): Promise<number[]> {
         gte(deals.updatedAt, monthStart),
       ),
     ),
-    // Helpers for close rate
-    count(and(isNull(deals.deletedAt), inArray(deals.statusCode, QUALIFIED_OR_BEYOND))),
-    count(and(isNull(deals.deletedAt), inArray(deals.statusCode, CLOSED_RVX))),
   ]);
 
-  // 6. Close rate = closed / (qualified-or-closed). Same formula as
-  //    before — uses all-time qualified pool, not weekly window.
-  const closeRate = qualifiedTotalForRate + closedRvxTotal > 0
-    ? Math.round((closedRvxTotal / (qualifiedTotalForRate + closedRvxTotal)) * 100)
+  // 3. Calculate percentage of new leads that qualified
+  const newLeadsQualifiedPct = newLeadsWeek > 0
+    ? Math.round((qualifiedLeadsWeek / newLeadsWeek) * 100)
     : 0;
 
   // Order MUST match SCORECARD_DEFINITIONS:
-  //   [activeBd, newLeadsWeek, qualifiedWeek, slaPct, loisWeek, closeRate, psasMonth]
+  //   [activeBd, newLeadsWeek, newLeadsQualifiedPct, slaPct, loisWeek, psaSubmittedWeek, psasMonth]
   return [
     activeBd,
     newLeadsWeek,
-    qualifiedWeek,
+    newLeadsQualifiedPct,
     slaPct,
     loisWeek,
-    closeRate,
+    psaSubmittedWeek,
     psasMonth,
   ];
 }
