@@ -52,8 +52,8 @@ const SECTIONS: NavSection[] = [
   {
     label: "Dashboards",
     items: [
-      { href: "/dashboards/company", label: "Company Dashboard", requires: "view_today" },
-      { href: "/dashboards/leaderboard", label: "Leaderboard", requires: "view_today" },
+      { href: "/dashboards/company", label: "Company", requires: "view_today" },
+      { href: "/dashboards/personal", label: "Personal", requires: "view_today" },
     ],
   },
   {
@@ -70,12 +70,6 @@ const SECTIONS: NavSection[] = [
         ],
       },
       { href: "/trash",  label: "Trash",                  requires: "view_trash" },
-    ],
-  },
-  {
-    label: null,
-    accentColor: "text-green-700 dark:text-green-400",
-    items: [
       { href: "/pool",   label: "Pathway to Partnership", requires: "view_pool" },
     ],
   },
@@ -84,120 +78,55 @@ const SECTIONS: NavSection[] = [
     accentColor: "text-blue-700 dark:text-blue-400",
     visibleToRoles: ["admin", "acquisitions_manager", "bird_dog_manager", "cfo"],
     items: [
-      { href: "/ops/level10",     label: "RVX OS",      requires: "view_mission_control" },
-      { href: "/admin/revenue",   label: "Park Performance",  requires: "view_revenue" },
-      { href: "/hires",           label: "New Hires",         requires: "view_hires" },
-      { href: "/reimbursements",  label: "Reimbursements",    requires: "view_reimbursements" },
+      { href: "/leadership/l10",           label: "L10 Meeting",      requires: "view_mission_control" },
+      { href: "/hires",                    label: "New Hires",         requires: "view_hires" },
+      { href: "/reimbursements",           label: "Reimbursements",    requires: "view_reimbursements" },
+      { href: "/leadership/purchase-order", label: "Purchase Order",   requires: "view_mission_control" },
     ],
   },
   {
-    label: "Acquisitions L1",
+    label: "Acquisition",
     accentColor: "text-purple-700 dark:text-purple-400",
-    visibleToRoles: ["bd_level_1"],
-    items: [
-      { href: "/lead-work",      label: "Lead Work",   requires: "view_lead_work" },
-      { href: "/my-leads",       label: "My Leads",    requires: "view_my_leads" },
-    ],
-  },
-  {
-    label: "Acquisitions L2",
-    accentColor: "text-purple-700 dark:text-purple-400",
-    visibleToRoles: ["bd_level_2"],
-    items: [
-      { href: "/lead-work",      label: "Lead Work",   requires: "view_lead_work" },
-      { href: "/my-leads",       label: "My Leads",    requires: "view_my_leads" },
-    ],
-  },
-  {
-    label: "Closers L3",
-    accentColor: "text-green-700 dark:text-green-400",
-    visibleToRoles: ["closer"],
+    visibleToRoles: ["acquisitions_manager", "bd_level_1", "bd_level_2", "bd_level_3"],
     items: [
       {
-        href: "/triage",
-        label: "Pipeline",
-        requires: "view_pipeline",
+        href: "/acquisition/dashboard",
+        label: "Dashboard",
+        requires: "view_mission_control",
         children: [
-          { href: "/triage",      label: "Triage" },
-          { href: "/deals",       label: "List view" },
-          { href: "/deals/board", label: "Board view" },
+          { href: "/acquisition/dashboard",      label: "Leaderboard" },
+          { href: "/acquisition/calling-triage", label: "Calling Leads Triage" },
         ],
       },
-      {
-        href: "/contacts",
-        label: "Buyers",
-        requires: "view_contacts",
-        children: [
-          { href: "/contacts", label: "Active buyers" },
-        ],
-      },
+      { href: "/acquisition/pipeline", label: "Pipeline", requires: "view_pipeline" },
     ],
   },
   {
-    label: "Underwriting",
-    accentColor: "text-yellow-700 dark:text-yellow-400",
-    visibleToRoles: ["underwriter"],
+    label: "Acquisition Lead",
+    accentColor: "text-indigo-700 dark:text-indigo-400",
+    visibleToRoles: ["acquisitions_manager"],
     items: [
-      {
-        href: "/triage",
-        label: "LOI/PSA",
-        requires: "view_pipeline",
-        children: [
-          { href: "/triage",      label: "Triage" },
-          { href: "/deals",       label: "List view" },
-          { href: "/deals/board", label: "Board view" },
-        ],
-      },
+      { href: "/admin/leads",  label: "Lead Pool",  requires: "view_mission_control" },
+      { href: "/hires",        label: "New Hires",  requires: "view_hires" },
     ],
   },
   {
-    label: "DD",
-    accentColor: "text-gray-700 dark:text-gray-400",
-    visibleToRoles: ["due_diligence"],
-    items: [
-      {
-        href: "/triage",
-        label: "Due Diligence",
-        requires: "view_pipeline",
-        children: [
-          { href: "/triage",      label: "Triage" },
-          { href: "/deals",       label: "List view" },
-          { href: "/deals/board", label: "Board view" },
-        ],
-      },
-    ],
-  },
-  {
-    label: "Dispositions",
+    label: "Disposition",
     accentColor: "text-lime-700 dark:text-lime-400",
     visibleToRoles: ["dispo_manager"],
     items: [
-      {
-        href: "/triage",
-        label: "Pipeline",
-        requires: "view_pipeline",
-        children: [
-          { href: "/triage",      label: "Triage" },
-          { href: "/deals",       label: "List view" },
-        ],
-      },
+      { href: "/disposition/due-diligence", label: "Due Diligence", requires: "view_pipeline" },
+      { href: "/disposition/find-buyer",   label: "Find a Buyer",   requires: "view_pipeline" },
     ],
   },
   {
-    label: "Operations",
+    label: "Operation",
     accentColor: "text-pink-700 dark:text-pink-400",
     visibleToRoles: ["park_manager", "transaction_coord", "bird_dog_manager"],
     items: [
-      {
-        href: "/triage",
-        label: "Pipeline",
-        requires: "view_pipeline",
-        children: [
-          { href: "/triage",      label: "Triage" },
-          { href: "/deals",       label: "List view" },
-          { href: "/deals/board", label: "Board view" },
-        ],
-      },
+      { href: "/operation/site-visit", label: "Site Visit",  requires: "view_pipeline" },
+      { href: "/operation/setup",      label: "Set Up",      requires: "view_pipeline" },
+      { href: "/operation/stabilize",  label: "Stabilize",   requires: "view_pipeline" },
     ],
   },
   {
@@ -205,7 +134,7 @@ const SECTIONS: NavSection[] = [
     accentColor: "text-emerald-700 dark:text-emerald-400",
     visibleToRoles: ["cfo"],
     items: [
-      { href: "/admin/revenue",   label: "Park Performance",  requires: "view_revenue" },
+      { href: "/finance/park-performance", label: "Park Performance", requires: "view_revenue" },
     ],
   },
 ];
