@@ -3,9 +3,10 @@
  * don't exist yet (via Better Auth's signup API).
  *
  * Usage:
- *   npx tsx --env-file=.env.local scripts/reset-passwords.ts "<password>"
+ *   npx tsx --env-file=.env.local scripts/reset-passwords.ts "<password>" [email]
  *
- * Edit ACCOUNTS below to change who gets the password.
+ * With an email argument, ONLY that account is reset. Without one, every
+ * account in ACCOUNTS gets the password (original bulk behavior).
  */
 import { and, eq } from "drizzle-orm";
 import { db } from "@/db";
@@ -20,15 +21,24 @@ const ACCOUNTS: { email: string; name: string }[] = [
 
 async function main() {
   const password = process.argv[2];
+  const onlyEmail = process.argv[3]?.trim().toLowerCase();
   if (!password || password.length < 8) {
-    console.error("Usage: tsx scripts/reset-passwords.ts \"<password>\" (min 8 chars)");
+    console.error("Usage: tsx scripts/reset-passwords.ts \"<password>\" [email] (min 8 chars)");
     process.exit(1);
+  }
+
+  const targets = onlyEmail
+    ? ACCOUNTS.filter((a) => a.email.toLowerCase() === onlyEmail)
+    : ACCOUNTS;
+  if (targets.length === 0) {
+    // Email not in the known list — reset it anyway if the user exists.
+    targets.push({ email: onlyEmail!, name: onlyEmail! });
   }
 
   // Better Auth exposes its internal context with the password hasher
   const ctx = await auth.$context;
 
-  for (const a of ACCOUNTS) {
+  for (const a of targets) {
     const [u] = await db.select().from(user).where(eq(user.email, a.email)).limit(1);
 
     if (!u) {
