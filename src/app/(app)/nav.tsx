@@ -69,6 +69,12 @@ const SECTIONS: NavSection[] = [
           { href: "/companies", label: "Sellers" },
         ],
       },
+    ],
+  },
+  {
+    label: null,
+    accentColor: "text-green-700 dark:text-green-400",
+    items: [
       { href: "/pool",   label: "Pathway to Partnership", requires: "view_pool" },
     ],
   },
