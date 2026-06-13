@@ -50,18 +50,18 @@ type NavSection = {
 
 const SECTIONS: NavSection[] = [
   {
-    label: null,
+    label: "My Dashboard",
     items: [
       { href: "/today",  label: "At a Glance",  requires: "view_today" },
-      { href: "/tasks",  label: "Tasks",  requires: "view_tasks" },
       { href: "/issues", label: "Issues", requires: "view_issues" },
+      { href: "/tasks",  label: "To Dos",  requires: "view_tasks" },
     ],
   },
   {
     label: "Company",
     accentColor: "text-amber-700 dark:text-amber-400",
     items: [
-      { href: "/mission-control", label: "Mission Control", requires: "view_mission_control" },
+      { href: "/ops/level10",     label: "RVX OS",      requires: "view_mission_control" },
       {
         href: "/contacts",
         label: "Contacts",
@@ -71,8 +71,14 @@ const SECTIONS: NavSection[] = [
           { href: "/companies", label: "Sellers" },
         ],
       },
-      { href: "/pool",   label: "Pathway to Partnership", requires: "view_pool" },
       { href: "/trash",  label: "Trash",                  requires: "view_trash" },
+    ],
+  },
+  {
+    label: null,
+    accentColor: "text-green-700 dark:text-green-400",
+    items: [
+      { href: "/pool",   label: "Pathway to Partnership", requires: "view_pool" },
     ],
   },
   {
@@ -80,7 +86,6 @@ const SECTIONS: NavSection[] = [
     accentColor: "text-blue-700 dark:text-blue-400",
     visibleToRoles: ["admin", "acquisitions_manager", "bird_dog_manager", "cfo"],
     items: [
-      { href: "/ops/level10",     label: "Ops Machine",      requires: "view_mission_control" },
       { href: "/admin/revenue",   label: "Park Performance",  requires: "view_revenue" },
       { href: "/hires",           label: "New Hires",         requires: "view_hires" },
       { href: "/reimbursements",  label: "Reimbursements",    requires: "view_reimbursements" },
