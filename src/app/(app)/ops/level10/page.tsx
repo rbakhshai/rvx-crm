@@ -58,23 +58,24 @@ const EOS_DEFINITIONS: Record<"rock" | "todo" | "issue", { title: string; points
   issue: {
     title: "What's an Issue?",
     points: [
-      "Any unresolved problem, idea, or opportunity",
-      "Short-term (must be solved this quarter) → goes on this Issues list",
-      "Long-term (not this quarter) → park it on the V/TO parking lot and free up your mind",
-      "IDS the top one: Identify, Discuss, Solve — into a To-Do",
+      "Bring your top 3 issues to this meeting with priority ranked",
+      "Identify, Discuss, Solve the highest priority issue into a To-Do",
+      "If time permits, resolve more issues with the team",
+      "Park long-term items (not this quarter) on your parking lot",
     ],
   },
 };
 
 /** The classic EOS 90-minute agenda — order, budgets, and anchors. */
 const AGENDA: AgendaSection[] = [
-  { key: "segue",      title: "Segue",       minutes: 5,  anchorId: "l10-segue",      emoji: "👥" },
-  { key: "scorecard",  title: "Scorecard",   minutes: 5,  anchorId: "l10-scorecard",  emoji: "📈" },
-  { key: "rocks",      title: "Rock Review", minutes: 5,  anchorId: "l10-rocks",      emoji: "🔺" },
-  { key: "headlines",  title: "Headlines",   minutes: 5,  anchorId: "l10-headlines",  emoji: "📣" },
-  { key: "todos",      title: "To-Do List",  minutes: 5,  anchorId: "l10-todos",      emoji: "📝" },
-  { key: "ids",        title: "IDS",         minutes: 60, anchorId: "l10-ids",        emoji: "💡" },
-  { key: "conclude",   title: "Conclude",    minutes: 5,  anchorId: "l10-conclude",   emoji: "🏁" },
+  { key: "segue",           title: "Segue",                        minutes: 5,  anchorId: "l10-segue",           emoji: "👥" },
+  { key: "headlines",       title: "Headlines",                    minutes: 5,  anchorId: "l10-headlines",       emoji: "📣" },
+  { key: "scorecard",       title: "Scorecard",                    minutes: 5,  anchorId: "l10-scorecard",       emoji: "📈" },
+  { key: "rocks",           title: "Rock Review",                  minutes: 5,  anchorId: "l10-rocks",           emoji: "🔺" },
+  { key: "empl-headline",   title: "Employee/Customer Headline",   minutes: 5,  anchorId: "l10-empl-headline",   emoji: "👤" },
+  { key: "todos",           title: "To-Do List",                   minutes: 5,  anchorId: "l10-todos",           emoji: "📝" },
+  { key: "ids",             title: "IDS",                          minutes: 60, anchorId: "l10-ids",             emoji: "💡" },
+  { key: "conclude",        title: "Conclude",                     minutes: 5,  anchorId: "l10-conclude",        emoji: "🏁" },
 ];
 
 const ROCKS_DEFAULTS = [
@@ -211,6 +212,20 @@ export default async function Level10Page({
         />
       </Section>
 
+      <Section id="l10-headlines" title="Headlines" minutes={5}>
+        <p className="text-sm text-muted mb-2">
+          One-liners only: customer + employee good news and bad news. Anything worth a
+          discussion drops to the IDS list instead.
+        </p>
+        <MeetingTextarea
+          meetingDate={weekMonday}
+          field="headlines"
+          initial={meetingRow?.headlinesNotes ?? ""}
+          initialSavedAt={meetingRow?.updatedAt ?? null}
+          placeholder="• Seller in TX referred a neighbor…&#10;• New BD crushed week one…"
+        />
+      </Section>
+
       <Section id="l10-scorecard" title="Scorecard" minutes={5}>
         {/* Provenance banner — snapshot vs live vs stale */}
         <div className="mb-2 flex items-center justify-between gap-3 flex-wrap">
@@ -321,17 +336,16 @@ export default async function Level10Page({
         </div>
       </Section>
 
-      <Section id="l10-headlines" title="Headlines" minutes={5}>
+      <Section id="l10-empl-headline" title="Employee/Customer Headline" minutes={5}>
         <p className="text-sm text-muted mb-2">
-          One-liners only: customer + employee good news and bad news. Anything worth a
-          discussion drops to the IDS list instead.
+          Employee wins and customer highlights — share the positive stories that matter to the team.
         </p>
         <MeetingTextarea
           meetingDate={weekMonday}
-          field="headlines"
-          initial={meetingRow?.headlinesNotes ?? ""}
+          field="employeeHeadline"
+          initial={meetingRow?.employeeHeadlineNotes ?? ""}
           initialSavedAt={meetingRow?.updatedAt ?? null}
-          placeholder="• Seller in TX referred a neighbor…&#10;• New BD crushed week one…"
+          placeholder="• Employee milestone or recognition…&#10;• Customer success story…"
         />
       </Section>
 
