@@ -15,6 +15,7 @@ import { OpsHeader, StatusPill } from "../ops-primitives";
 import { EditableBlock } from "@/components/editable-block";
 import { MeetingTextarea, MeetingRating, RefreshSnapshotButton, ActionItemsBlock } from "./level10-widgets";
 import { AgendaTimer, type AgendaSection } from "./agenda-timer";
+import { ScorecardActualsButton } from "./scorecard-actuals-modal";
 import { mondayOf } from "@/lib/level10-week";
 import { fmtDate } from "@/lib/date-format";
 import {
@@ -300,7 +301,14 @@ export default async function Level10Page({
                       className="px-3 py-2.5 tabular-nums font-medium"
                       title={scorecardSource === "snapshot" ? "Frozen at meeting time" : "Live from CRM data"}
                     >
-                      {formatScoreVal(actualNum, snap?.format as "n" | "pct" ?? m.format)}
+                      <ScorecardActualsButton
+                        metricIndex={i}
+                        metricName={displayMetric}
+                        actual={actualNum}
+                        format={(snap?.format as "n" | "pct") ?? m.format}
+                      >
+                        {formatScoreVal(actualNum, snap?.format as "n" | "pct" ?? m.format)}
+                      </ScorecardActualsButton>
                     </td>
                     <td className="px-3 py-2.5"><StatusPill tone={tone}>{labelStatus(tone)}</StatusPill></td>
                   </tr>
