@@ -1,491 +1,106 @@
 /**
- * /today — the new default landing.
+ * /today — the role-aware landing page.
  *
- * One page answers "what needs me right now?":
- *   • My open tasks, ordered by due (overdue first)
- *   • Deals I own, sorted by staleness — proactive nudge
- *   • New buyer leads needing first contact
- *   • Team-wide live activity feed
+ * Every position lands on a dashboard built for THEIR job. This file is
+ * just the router: authenticate, resolve the effective role (so the CEO's
+ * "View as" faithfully previews each seat), and render that role's
+ * cockpit. Each dashboard owns its own hero + layout via the portal kit.
  *
- * Replaces the old per-role dashboard as the daily-driver view. The
- * detailed dashboard still exists at /dashboard if anyone wants it.
+ *   admin                → CEO command center
+ *   acquisitions_manager → Growth (BD engine + lead flow)
+ *   bird_dog_manager     → Operations (deals in motion)
+ *   cfo                  → Finance (the money view)
+ *   closer               → Closer cockpit
+ *   underwriter          → Underwriting desk
+ *   due_diligence        → Due Diligence desk
+ *   transaction_coord    → Transaction desk
+ *   dispo_manager        → Disposition desk
+ *   park_manager         → Park operations
+ *   bd_level_1/2/3       → the bird-dog hub (its own greeting shell)
  */
-import Link from "next/link";
 import { headers } from "next/headers";
-import { and, desc, eq, gt, inArray, isNull, sql } from "drizzle-orm";
-import { db } from "@/db";
-import {
-  tasks,
-  deals,
-  contacts,
-  notifications as notificationsTable,
-  dealStatuses,
-} from "@/db/schema";
 import { auth } from "@/lib/auth";
-import { fetchRecentActivity, fetchHotTier1Buyers } from "@/lib/dashboard-queries";
-import { PageShell } from "../page-shell";
-import { ActivityPulse } from "@/components/activity-pulse";
-import { Widget, ListLink, EmptyHint, StatTile, PriorityBadge, StaleBadge } from "../dashboard/widgets";
-import { Badge } from "@/components/badge";
-import { DailyBrief } from "@/components/daily-brief";
-import { getOrCreateDailyBrief } from "@/app/actions/daily-brief";
-import { AtRiskWidget } from "@/components/at-risk-widget";
-import { detectAtRiskForUser } from "@/lib/at-risk";
-import { DoNextStack } from "@/components/do-next-stack";
-import { getDoNextItems } from "@/lib/do-next";
-import { fmtDate, fmtDateWithWeekday, fmtRelative } from "@/lib/date-format";
-import { getFollowUpsDueForUser, followUpBand } from "@/lib/my-leads";
-import { getOpsBlocks } from "@/lib/ops-content";
-import { TeamMeetingWidget } from "@/components/team-meeting-widget";
-import { getLeadershipQueueForUser } from "@/lib/leadership-queue";
 import { getEffectiveRole } from "@/lib/view-as";
+import { PageShell } from "../page-shell";
 import { LocalGreeting } from "@/components/local-greeting";
+import { fmtDateWithWeekday } from "@/lib/date-format";
 import { BdToday } from "./bd-today";
-
-const DAY_MS = 24 * 60 * 60 * 1000;
-
-const ACTIVE_DEAL_STAGES = [
-  "closer_first_contact_attempted",
-  "closer_first_contact_made",
-  "closer_under_negotiation",
-  "closer_gathering_docs",
-  "uw_ready_phase_2",
-  "uw_under_phase_2",
-  "loi_ready",
-  "loi_submitted",
-  "loi_in_negotiation",
-  "loi_signed_by_seller",
-  "loi_accepted_both_sides",
-  "tc_writing_psa",
-  "tc_psa_submitted",
-  "psa_accepted",
-  "tc_dd_in_escrow",
-];
-
-// Greeting moved to <LocalGreeting> (client) — the server is UTC, so a
-// server-computed "Good morning" was wrong for everyone in the US.
-
-function dueLabel(d: Date | null): { label: string; tone: "danger" | "warning" | "muted" } {
-  if (!d) return { label: "no due", tone: "muted" };
-  const diff = d.getTime() - Date.now();
-  if (diff < 0) {
-    const days = Math.ceil(-diff / DAY_MS);
-    return { label: days === 0 ? "due today" : `${days}d overdue`, tone: "danger" };
-  }
-  if (diff < DAY_MS) return { label: "due today", tone: "warning" };
-  if (diff < 7 * DAY_MS) return { label: `${Math.ceil(diff / DAY_MS)}d`, tone: "muted" };
-  return { label: fmtDate(d), tone: "muted" };
-}
+import { CeoDashboard } from "./dashboards/ceo-dashboard";
+import { GrowthDashboard } from "./dashboards/growth-dashboard";
+import { OperationsDashboard } from "./dashboards/operations-dashboard";
+import { FinanceDashboard } from "./dashboards/finance-dashboard";
+import { CloserDashboard } from "./dashboards/closer-dashboard";
+import { OpsDeskDashboard } from "./dashboards/ops-desk-dashboard";
+import { DueDiligenceDashboard } from "./dashboards/dd-dashboard";
+import { ParkManagerDashboard } from "./dashboards/park-dashboard";
+import { PortalHero } from "./portal-kit";
+import { portalFor } from "@/lib/role-portal";
+import { PortalFooter } from "./dashboards/portal-common";
 
 export default async function TodayPage() {
   const session = await auth.api.getSession({ headers: await headers() });
   if (!session) return null;
   const me = session.user.id;
+  const name = session.user.name;
+  const role = (await getEffectiveRole((session.user as { role?: string }).role)) ?? "";
 
-  // Bird dogs get their own hub — goal ring, streak, callbacks, mini
-  // leaderboard. Branch BEFORE the closer-oriented queries below so a
-  // BD page-load doesn't pay for pipeline/tasks/notifications fetches
-  // it never renders. Effective role so the CEO's "View as BD" shows
-  // the real BD hub (with the CEO's own — likely zero — stats).
-  const role = await getEffectiveRole((session.user as { role?: string }).role);
+  // Bird dogs keep their dedicated motivational hub (goal ring, streak,
+  // callbacks, leaderboard) — it carries its own greeting shell.
   if (role === "bd_level_1" || role === "bd_level_2" || role === "bd_level_3") {
     return (
-      <PageShell title={<LocalGreeting name={session.user.name} />} subtitle={fmtDateWithWeekday(new Date())} width="default">
-        <BdToday userId={me} userName={session.user.name} role={role} />
+      <PageShell title={<LocalGreeting name={name} />} subtitle={fmtDateWithWeekday(new Date())} width="default">
+        <BdToday userId={me} userName={name} role={role} />
       </PageShell>
     );
   }
 
-  const today = new Date(); today.setHours(0, 0, 0, 0);
-  const tomorrow = new Date(today.getTime() + DAY_MS);
-
-  const [
-    myOpenTasks,
-    myDeals,
-    newLeads,
-    unreadNotifs,
-    statusRows,
-    weeklyDealRows,
-    pipelineValueRows,
-    activity,
-    brief,
-    atRisk,
-    doNext,
-    followUpsDue,
-    meetingBlocks,
-    leadershipItems,
-  ] = await Promise.all([
-    // 1) My open tasks (top 12, soonest due first, NULLs last)
-    db
-      .select()
-      .from(tasks)
-      .where(and(eq(tasks.assigneeId, me), isNull(tasks.completedAt)))
-      .orderBy(sql`${tasks.dueAt} ASC NULLS LAST`)
-      .limit(12),
-
-    // 2) Deals I own — in active stages, sorted by staleness (oldest first)
-    db
-      .select({
-        id: deals.id,
-        name: deals.name,
-        parkAddress: deals.parkAddress,
-        parkCity: deals.parkCity,
-        parkState: deals.parkState,
-        statusCode: deals.statusCode,
-        dealPriority: deals.dealPriority,
-        listPrice: deals.listPrice,
-        closerLastTouch: deals.closerLastTouch,
-        updatedAt: deals.updatedAt,
-      })
-      .from(deals)
-      .where(and(eq(deals.ownerId, me), inArray(deals.statusCode, ACTIVE_DEAL_STAGES), isNull(deals.deletedAt)))
-      .orderBy(sql`COALESCE(${deals.closerLastTouch}, ${deals.updatedAt}) ASC`)
-      .limit(8),
-
-    // 3) New buyer leads — closer's queue
-    db
-      .select({ id: contacts.id, firstName: contacts.firstName, lastName: contacts.lastName, email: contacts.email, createdAt: contacts.createdAt })
-      .from(contacts)
-      .where(and(eq(contacts.status, "new_waiting_to_connect"), isNull(contacts.deletedAt)))
-      .orderBy(desc(contacts.createdAt))
-      .limit(6),
-
-    // 4) Recent notifications (any 'pending' / 'failed' that need attention)
-    db
-      .select({ id: notificationsTable.id, kind: notificationsTable.kind, subject: notificationsTable.subject, status: notificationsTable.status, createdAt: notificationsTable.createdAt })
-      .from(notificationsTable)
-      .where(inArray(notificationsTable.status, ["pending", "failed"]))
-      .orderBy(desc(notificationsTable.createdAt))
-      .limit(5),
-
-    db.select({ code: dealStatuses.code, label: dealStatuses.label }).from(dealStatuses),
-
-    // 5a) New deals this week
-    db.select({ count: sql<number>`count(*)::int` })
-      .from(deals)
-      .where(and(gt(deals.createdAt, new Date(Date.now() - 7 * DAY_MS)), isNull(deals.deletedAt))),
-
-    // 5b) Pipeline value across all active stages
-    db.select({ total: sql<number>`COALESCE(SUM(${deals.listPrice}::numeric), 0)::bigint` })
-      .from(deals)
-      .where(and(inArray(deals.statusCode, ACTIVE_DEAL_STAGES), isNull(deals.deletedAt))),
-
-    fetchRecentActivity(20),
-    getOrCreateDailyBrief(me),
-    detectAtRiskForUser(me).catch((e) => { console.error("[at-risk] failed:", e); return []; }),
-    getDoNextItems(me, 5).catch((e) => { console.error("[do-next] failed:", e); return []; }),
-    getFollowUpsDueForUser(me, 12).catch((e) => { console.error("[follow-ups-due] failed:", e); return []; }),
-    getOpsBlocks("today.meeting.").catch((e) => { console.error("[meeting-blocks] failed:", e); return new Map<string, string>(); }),
-    getLeadershipQueueForUser(me, role).catch((e) => { console.error("[leadership-queue] failed:", e); return []; }),
-  ]);
-
-  // Closers inherit the one widget worth saving from the retired
-  // /dashboard: hot tier-1 buyers, for outreach inspiration.
-  const hotBuyers = role === "closer"
-    ? await fetchHotTier1Buyers(6).catch(() => [])
-    : [];
-
-  const statusLabel = new Map(statusRows.map((s) => [s.code, s.label]));
-
-  const overdueCount = myOpenTasks.filter((t) => t.dueAt && t.dueAt < today).length;
-  const dueTodayCount = myOpenTasks.filter((t) => t.dueAt && t.dueAt >= today && t.dueAt < tomorrow).length;
-
-  const newDealsThisWeek = Number(weeklyDealRows[0]?.count ?? 0);
-
-  // Meeting widget — admins (and Erica's Sales & Marketing role) can
-  // edit the strings inline; everyone else just sees them.
-  const meetingTitle = meetingBlocks.get("today.meeting.title") ?? "";
-  const meetingUrl   = meetingBlocks.get("today.meeting.url")   ?? "";
-  const meetingNotes = meetingBlocks.get("today.meeting.notes") ?? "";
-  const canEditMeeting = role === "admin" || role === "acquisitions_manager";
-  const showMeeting =
-    canEditMeeting || meetingTitle.trim().length > 0 || meetingUrl.trim().length > 0;
-  const pipelineValue = Number(pipelineValueRows[0]?.total ?? 0);
-
   return (
-    <PageShell title={<LocalGreeting name={session.user.name} />} subtitle={fmtDateWithWeekday(new Date())} width="wide">
-      {/* ===== AI morning brief ===== */}
-      {brief && <DailyBrief contentMd={brief.contentMd} createdAt={brief.createdAt} />}
+    <div className="max-w-screen-2xl mx-auto px-4 sm:px-8 py-6 sm:py-8">
+      <RoleDashboard userId={me} userName={name} role={role} />
+    </div>
+  );
+}
 
-      {/* ===== Hero stats ===== */}
-      <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-3 mb-6">
-        <StatTile
-          label="My open tasks"
-          value={myOpenTasks.length}
-          hint={overdueCount > 0 ? `${overdueCount} overdue` : dueTodayCount > 0 ? `${dueTodayCount} due today` : "on track"}
-        />
-        <StatTile
-          label="Deals I own"
-          value={myDeals.length}
-          hint="active stages"
-        />
-        <StatTile
-          label="New leads"
-          value={newLeads.length}
-          hint="waiting to connect"
-        />
-        <StatTile
-          label="Pipeline value"
-          value={pipelineValue ? `$${(pipelineValue / 1_000_000).toFixed(1)}M` : "—"}
-          hint={`${newDealsThisWeek} new this week`}
-        />
-      </div>
+function RoleDashboard({ userId, userName, role }: { userId: string; userName: string; role: string }) {
+  switch (role) {
+    case "admin":
+      return <CeoDashboard userId={userId} userName={userName} role={role} />;
+    case "acquisitions_manager":
+      return <GrowthDashboard userId={userId} userName={userName} />;
+    case "bird_dog_manager":
+      return <OperationsDashboard userId={userId} userName={userName} />;
+    case "cfo":
+      return <FinanceDashboard userId={userId} userName={userName} role={role} />;
+    case "closer":
+      return <CloserDashboard userId={userId} userName={userName} />;
+    case "underwriter":
+    case "dispo_manager":
+    case "transaction_coord":
+      return <OpsDeskDashboard userId={userId} userName={userName} role={role} />;
+    case "due_diligence":
+      return <DueDiligenceDashboard userId={userId} userName={userName} />;
+    case "park_manager":
+      return <ParkManagerDashboard userId={userId} userName={userName} />;
+    default:
+      return <GenericDashboard userId={userId} userName={userName} role={role} />;
+  }
+}
 
-      {/* ===== Main 3-column grid ===== */}
-      <div className="grid lg:grid-cols-12 gap-4">
-        {/* Left col: Do Next stack + at-risk + my tasks — primary */}
-        <div className="lg:col-span-5 space-y-4">
-          {leadershipItems.length > 0 && (
-            <Widget
-              title="On your desk"
-              hint="Leadership queue — items waiting for you"
-              count={leadershipItems.length}
-            >
-              <ul className="divide-y divide-border -mx-1">
-                {leadershipItems.map((item) => {
-                  const tones: Record<string, string> = {
-                    blue:    "bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-500/10 dark:text-blue-300 dark:border-blue-500/30",
-                    violet:  "bg-violet-50 text-violet-700 border-violet-200 dark:bg-violet-500/10 dark:text-violet-300 dark:border-violet-500/30",
-                    amber:   "bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-500/10 dark:text-amber-300 dark:border-amber-500/30",
-                    emerald: "bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-500/10 dark:text-emerald-300 dark:border-emerald-500/30",
-                    rose:    "bg-rose-50 text-rose-700 border-rose-200 dark:bg-rose-500/10 dark:text-rose-300 dark:border-rose-500/30",
-                  };
-                  return (
-                    <li key={`${item.kind}-${item.id}`}>
-                      <Link
-                        href={item.href as never}
-                        className="flex items-start justify-between gap-3 py-2.5 px-1 -mx-1 rounded hover:bg-foreground/[0.03]"
-                      >
-                        <div className="min-w-0 flex-1">
-                          <div className="text-sm font-medium truncate">
-                            <span className="mr-1.5 text-[11px] text-muted uppercase tracking-widest">
-                              {item.kind === "hire" ? "Hire" : "Reimb"}
-                            </span>
-                            {item.title}
-                          </div>
-                        </div>
-                        <span className={`shrink-0 inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-semibold tracking-wider border ${tones[item.tone]}`}>
-                          {item.statusLabel}
-                        </span>
-                      </Link>
-                    </li>
-                  );
-                })}
-              </ul>
-            </Widget>
-          )}
-
-          <DoNextStack items={doNext} />
-          <AtRiskWidget risks={atRisk} />
-
-          {/* Follow-ups due (BD-only — empty unless this user has
-              leads on a connected_* schedule whose date has hit). */}
-          {followUpsDue.length > 0 && (
-            <Widget
-              title="Follow-ups due"
-              hint="Leads where you scheduled a callback and the date is up"
-              count={followUpsDue.length}
-              href="/my-leads"
-            >
-              <div className="space-y-0.5">
-                {followUpsDue.map((f) => {
-                  const band = followUpBand(f.nextFollowUpAt);
-                  const label = band === "overdue" ? "Overdue" : "Today";
-                  const tone = band === "overdue" ? "danger" : "warning";
-                  return (
-                    <ListLink
-                      key={f.leadId}
-                      href="/my-leads"
-                      primary={f.parkName ?? f.ownerName ?? "(unnamed lead)"}
-                      secondary={[
-                        [f.city, f.state].filter(Boolean).join(", "),
-                        f.cadenceDays ? `${f.cadenceDays}d cadence` : null,
-                        fmtRelative(f.nextFollowUpAt),
-                      ].filter(Boolean).join(" · ")}
-                      trailing={<Badge tone={tone}>{label}</Badge>}
-                    />
-                  );
-                })}
-              </div>
-            </Widget>
-          )}
-
-          <Widget
-            title="My tasks"
-            hint="Sorted by due date. Click through to act."
-            count={myOpenTasks.length > 0 ? `${myOpenTasks.length} open` : undefined}
-            href="/tasks"
-          >
-            {myOpenTasks.length === 0 ? (
-              <EmptyHint>Inbox zero. Nice. 🎉</EmptyHint>
-            ) : (
-              <ul className="divide-y divide-border -mx-1">
-                {myOpenTasks.map((t) => {
-                  const due = dueLabel(t.dueAt);
-                  const parentHref =
-                    t.parentTable === "deals" ? `/deals/${t.parentId}`
-                    : t.parentTable === "contacts" ? `/contacts/${t.parentId}`
-                    : t.parentTable === "companies" ? `/companies/${t.parentId}`
-                    : t.parentTable === "bird_dogs" ? `/bird-dogs/${t.parentId}`
-                    : "/tasks";
-                  return (
-                    <li key={t.id}>
-                      <Link
-                        href={parentHref as never}
-                        className="flex items-start justify-between gap-3 py-2.5 px-1 -mx-1 rounded hover:bg-foreground/[0.03]"
-                      >
-                        <div className="min-w-0 flex-1">
-                          <div className="text-sm font-medium truncate">{t.subject}</div>
-                          {t.body && (
-                            <div className="text-[11px] text-muted truncate mt-0.5">{t.body}</div>
-                          )}
-                        </div>
-                        <Badge tone={due.tone}>{due.label}</Badge>
-                      </Link>
-                    </li>
-                  );
-                })}
-              </ul>
-            )}
-          </Widget>
-
-          <Widget
-            title="New leads"
-            hint="Buyer inquiries waiting on first contact"
-            count={newLeads.length}
-            href="/contacts?status=new_waiting_to_connect"
-          >
-            {newLeads.length === 0 ? (
-              <EmptyHint>Triage clear.</EmptyHint>
-            ) : (
-              <div className="space-y-0.5">
-                {newLeads.map((l) => (
-                  <ListLink
-                    key={l.id}
-                    href={`/contacts/${l.id}`}
-                    primary={[l.firstName, l.lastName].filter(Boolean).join(" ") || "(unnamed)"}
-                    secondary={l.email ?? undefined}
-                    trailing={<StaleBadge since={l.createdAt} />}
-                  />
-                ))}
-              </div>
-            )}
-          </Widget>
-        </div>
-
-        {/* Middle col: deals + alerts */}
-        <div className="lg:col-span-4 space-y-4">
-          {showMeeting && (
-            <TeamMeetingWidget
-              canEdit={canEditMeeting}
-              title={meetingTitle}
-              url={meetingUrl}
-              notes={meetingNotes}
-            />
-          )}
-          {hotBuyers.length > 0 && (
-            <Widget
-              title="Hot tier-1 buyers"
-              hint="Active 🔥, top-shelf book — outreach inspiration"
-              href="/contacts?status=active_looking_hot&tier=tier_1_experienced_rvp_network"
-              count={hotBuyers.length}
-            >
-              <div className="space-y-0.5">
-                {hotBuyers.map((b) => (
-                  <ListLink
-                    key={b.id}
-                    href={`/contacts/${b.id}`}
-                    primary={[b.firstName, b.lastName].filter(Boolean).join(" ") || b.email || "(unnamed)"}
-                    secondary={b.pofAmount ? `POF ${Number(b.pofAmount).toLocaleString("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 0 })}` : undefined}
-                  />
-                ))}
-              </div>
-            </Widget>
-          )}
-          <Widget
-            title="Deals waiting on you"
-            hint="Your active pipeline, stalest first"
-            count={myDeals.length}
-            href="/deals"
-          >
-            {myDeals.length === 0 ? (
-              <EmptyHint>No active deals assigned to you.</EmptyHint>
-            ) : (
-              <div className="space-y-0.5">
-                {myDeals.map((d) => {
-                  const title = d.name || d.parkAddress || "(unnamed deal)";
-                  const loc = [d.parkCity, d.parkState].filter(Boolean).join(", ");
-                  const stage = d.statusCode ? statusLabel.get(d.statusCode) ?? d.statusCode : null;
-                  return (
-                    <ListLink
-                      key={d.id}
-                      href={`/deals/${d.id}`}
-                      primary={
-                        <span className="flex items-center gap-1.5">
-                          <PriorityBadge priority={d.dealPriority} />
-                          <span className="truncate">{title}</span>
-                        </span>
-                      }
-                      secondary={[loc, stage].filter(Boolean).join(" · ")}
-                      trailing={<StaleBadge since={d.closerLastTouch ?? d.updatedAt} />}
-                    />
-                  );
-                })}
-              </div>
-            )}
-          </Widget>
-
-          <Widget
-            title="Needs attention"
-            hint="Failed or queued notifications"
-            count={unreadNotifs.length || undefined}
-            href="/notifications"
-          >
-            {unreadNotifs.length === 0 ? (
-              <EmptyHint>All clear.</EmptyHint>
-            ) : (
-              <div className="space-y-0.5">
-                {unreadNotifs.map((n) => (
-                  <ListLink
-                    key={n.id}
-                    href="/notifications"
-                    primary={n.subject}
-                    secondary={n.kind.replace(/_/g, " ")}
-                    trailing={
-                      <Badge tone={n.status === "failed" ? "danger" : "warning"}>
-                        {n.status === "failed" ? "failed" : "queued"}
-                      </Badge>
-                    }
-                  />
-                ))}
-              </div>
-            )}
-          </Widget>
-
-          <Widget title="Jump to" hint="Common destinations">
-            <div className="grid grid-cols-2 gap-2 text-xs">
-              <Link href="/deals/board" className="rounded-md border border-border px-3 py-2 hover:bg-foreground/[0.04] transition">
-                📋 Pipeline board
-              </Link>
-              <Link href="/triage" className="rounded-md border border-border px-3 py-2 hover:bg-foreground/[0.04] transition">
-                🎯 Triage cockpit
-              </Link>
-              <Link href={"/deals/new" as never} className="rounded-md border border-border px-3 py-2 hover:bg-foreground/[0.04] transition">
-                + New deal
-              </Link>
-              <Link href={"/contacts/new" as never} className="rounded-md border border-border px-3 py-2 hover:bg-foreground/[0.04] transition">
-                + New buyer
-              </Link>
-            </div>
-          </Widget>
-        </div>
-
-        {/* Right col: activity */}
-        <div className="lg:col-span-3">
-          <ActivityPulse events={activity} />
-        </div>
-      </div>
-
-    </PageShell>
+/** Fallback for any role without a bespoke cockpit — hero + the basics. */
+function GenericDashboard({ userId, userName, role }: { userId: string; userName: string; role: string }) {
+  const identity = portalFor(role);
+  return (
+    <>
+      <PortalHero
+        greeting={<LocalGreeting name={userName} />}
+        date={fmtDateWithWeekday(new Date())}
+        roleLabel={identity.roleLabel}
+        title={identity.title}
+        tagline={identity.tagline}
+        icon={identity.icon}
+        accent={identity.accent}
+      />
+      <PortalFooter userId={userId} />
+    </>
   );
 }

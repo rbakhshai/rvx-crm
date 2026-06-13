@@ -19,6 +19,8 @@ export type MissionTiles = {
   dialsToday: number;
   leadsToday: number;
   leadsWeek: number;
+  /** Qualified submissions in the 7–14 day window — for week-over-week. */
+  leadsLastWeek: number;
   closerQualifiedWeek: number;
   loisOut: number;
   inEscrow: number;
@@ -50,6 +52,10 @@ export async function getMissionTiles(targetParks = 10): Promise<MissionTiles> {
       (SELECT COUNT(*)::int FROM raw_lead_dispositions
         WHERE outcome = 'qualified'
           AND created_at >= NOW() - INTERVAL '7 days')                           AS leads_week,
+      (SELECT COUNT(*)::int FROM raw_lead_dispositions
+        WHERE outcome = 'qualified'
+          AND created_at >= NOW() - INTERVAL '14 days'
+          AND created_at <  NOW() - INTERVAL '7 days')                           AS leads_last_week,
       (SELECT COUNT(*)::int FROM deals
         WHERE deleted_at IS NULL
           AND status_code = ANY(${sql.raw(lit(CLOSER_ENGAGED))})
@@ -70,6 +76,7 @@ export async function getMissionTiles(targetParks = 10): Promise<MissionTiles> {
     dialsToday: Number(r.dials_today) || 0,
     leadsToday: Number(r.leads_today) || 0,
     leadsWeek: Number(r.leads_week) || 0,
+    leadsLastWeek: Number(r.leads_last_week) || 0,
     closerQualifiedWeek: Number(r.closer_qualified_week) || 0,
     loisOut: Number(r.lois_out) || 0,
     inEscrow: Number(r.in_escrow) || 0,
