@@ -60,16 +60,9 @@ const SECTIONS: NavSection[] = [
     label: "Company",
     accentColor: "text-amber-700 dark:text-amber-400",
     items: [
-      {
-        href: "/contacts",
-        label: "Contacts",
-        requires: "view_contacts",
-        children: [
-          { href: "/contacts",  label: "Buyers" },
-          { href: "/companies", label: "Sellers" },
-          { href: "/deals",     label: "Deals" },
-        ],
-      },
+      { href: "/contacts",  label: "Buyers",  requires: "view_contacts" },
+      { href: "/companies", label: "Sellers", requires: "view_contacts" },
+      { href: "/deals",     label: "Deals",   requires: "view_contacts" },
     ],
   },
   {
