@@ -100,8 +100,9 @@ const SECTIONS: NavSection[] = [
     accentColor: "text-indigo-700 dark:text-indigo-400",
     visibleToRoles: ["acquisitions_manager"],
     items: [
-      { href: "/admin/leads",          label: "Lead Pool",  requires: "view_mission_control" },
-      { href: "/acquisition/new-hires", label: "New Hires",  requires: "view_mission_control" },
+      { href: "/acquisition/lead-dashboard", label: "Dashboard", requires: "view_mission_control" },
+      { href: "/admin/leads",                label: "Lead Pool",  requires: "view_mission_control" },
+      { href: "/acquisition/new-hires",     label: "New Hires",  requires: "view_mission_control" },
     ],
   },
   {
