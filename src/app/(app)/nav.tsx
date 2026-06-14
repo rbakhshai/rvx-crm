@@ -170,6 +170,8 @@ export function Nav({
   }
 
   function sectionVisible(s: NavSection): boolean {
+    // The CEO sees every section — the role gates below scope the rest.
+    if (role === "admin") return true;
     if (s.visibleToRoles === null) return true;
     if (!s.visibleToRoles) return true;
     return role ? s.visibleToRoles.includes(role) : false;
