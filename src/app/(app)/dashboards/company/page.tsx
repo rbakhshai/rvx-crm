@@ -38,7 +38,8 @@ export default async function CompanyDashboardPage() {
         <PortalStat accent="amber" value={tiles?.loisOut ?? 0} label="LOIs Out" />
         <PortalStat accent="amber" value={tiles?.inEscrow ?? 0} label="In Escrow" />
         <PortalStat accent="emerald" value={tiles?.parksOwned ?? 0} label="Parks Owned" emphasize />
-        <PortalStat accent="amber" value={tiles?.bdAppsPending ?? 0} label="BD Apps" />
+        <PortalStat accent="amber" value={tiles?.activeBds ?? 0} label="Active BDs" />
+        <PortalStat accent="amber" value={tiles?.bdAppsPending ?? 0} label="Apps to Review" />
       </StatStrip>
 
       {funnel && (

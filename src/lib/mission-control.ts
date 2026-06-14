@@ -27,6 +27,8 @@ export type MissionTiles = {
   parksOwned: number;
   targetParks: number;
   bdAppsPending: number;
+  /** Bird dogs actively working — full-time + half-time. */
+  activeBds: number;
 };
 
 /** Closer connected + seller open to selling (and everything past it). */
@@ -67,7 +69,9 @@ export async function getMissionTiles(targetParks = 10): Promise<MissionTiles> {
       (SELECT COUNT(*)::int FROM deals
         WHERE deleted_at IS NULL AND status_code = 'closed_rvx_acquired')        AS parks_owned,
       (SELECT COUNT(*)::int FROM bird_dogs
-        WHERE status_code = 'hold_see_notes')                                    AS bd_apps
+        WHERE status_code = 'hold_see_notes')                                    AS bd_apps,
+      (SELECT COUNT(*)::int FROM bird_dogs
+        WHERE status_code = ANY(ARRAY['active','active_half_time']))             AS active_bds
   `);
   const rows = ((result as unknown as { rows?: Array<Record<string, unknown>> }).rows
     ?? (result as unknown as Array<Record<string, unknown>>)) ?? [];
@@ -83,5 +87,6 @@ export async function getMissionTiles(targetParks = 10): Promise<MissionTiles> {
     parksOwned: Number(r.parks_owned) || 0,
     targetParks,
     bdAppsPending: Number(r.bd_apps) || 0,
+    activeBds: Number(r.active_bds) || 0,
   };
 }
