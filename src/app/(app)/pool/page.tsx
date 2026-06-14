@@ -97,7 +97,13 @@ export default async function PoolPage() {
         </div>
 
         {isPoolAdmin && (
-          <div className="mt-4 pt-3 border-t border-border grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
+          <div className="mt-4 pt-3 border-t border-border grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs">
+            <AssumptionField
+              label="Parks goal"
+              scope="pool.target_parks"
+              initial={String(pool.targetParks)}
+              placeholder="20"
+            />
             <AssumptionField
               label="Pool % of cash flow"
               scope="pool.pool_pct"
