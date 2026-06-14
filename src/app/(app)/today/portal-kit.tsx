@@ -48,9 +48,9 @@ export function PortalHero({
             </span>
             <span className="text-[11px] text-muted">{date}</span>
           </div>
-          <h1 className="text-2xl sm:text-3xl font-bold leading-tight">{greeting}</h1>
-          <p className={cn("text-sm font-medium mt-1", a.text)}>{title}</p>
-          <p className="text-[13px] text-muted mt-0.5 max-w-xl">{tagline}</p>
+          <h1 className="text-2xl sm:text-3xl font-bold leading-tight text-foreground">{greeting}</h1>
+          <p className={cn("text-sm font-semibold mt-1", a.text)}>{title}</p>
+          <p className="text-[13px] text-foreground/70 mt-0.5 max-w-xl">{tagline}</p>
         </div>
         {children && <div className="shrink-0">{children}</div>}
       </div>
