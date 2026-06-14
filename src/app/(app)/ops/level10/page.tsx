@@ -69,14 +69,14 @@ const EOS_DEFINITIONS: Record<"rock" | "todo" | "issue", { title: string; points
 
 /** The classic EOS 90-minute agenda — order, budgets, and anchors. */
 const AGENDA: AgendaSection[] = [
-  { key: "segue",           title: "Segue",                        minutes: 5,  anchorId: "l10-segue",           emoji: "👥" },
-  { key: "headlines",       title: "Headlines",                    minutes: 5,  anchorId: "l10-headlines",       emoji: "📣" },
-  { key: "scorecard",       title: "Scorecard",                    minutes: 5,  anchorId: "l10-scorecard",       emoji: "📈" },
-  { key: "rocks",           title: "Rock Review",                  minutes: 5,  anchorId: "l10-rocks",           emoji: "🔺" },
-  { key: "empl-headline",   title: "Employee/Customer Headline",   minutes: 5,  anchorId: "l10-empl-headline",   emoji: "👤" },
-  { key: "todos",           title: "To-Do List",                   minutes: 5,  anchorId: "l10-todos",           emoji: "📝" },
-  { key: "ids",             title: "IDS",                          minutes: 60, anchorId: "l10-ids",             emoji: "💡" },
-  { key: "conclude",        title: "Conclude",                     minutes: 5,  anchorId: "l10-conclude",        emoji: "🏁" },
+  { key: "segue",           title: "Segue",                        minutes: 5,   anchorId: "l10-segue",           emoji: "👥" },
+  { key: "headlines",       title: "Headlines",                    minutes: 2.5, anchorId: "l10-headlines",       emoji: "📣" },
+  { key: "scorecard",       title: "Scorecard",                    minutes: 5,   anchorId: "l10-scorecard",       emoji: "📈" },
+  { key: "rocks",           title: "Rock Review",                  minutes: 5,   anchorId: "l10-rocks",           emoji: "🔺" },
+  { key: "empl-headline",   title: "Employee/Customer Headline",   minutes: 2.5, anchorId: "l10-empl-headline",   emoji: "👤" },
+  { key: "todos",           title: "To-Do List",                   minutes: 5,   anchorId: "l10-todos",           emoji: "📝" },
+  { key: "ids",             title: "IDS",                          minutes: 60,  anchorId: "l10-ids",             emoji: "💡" },
+  { key: "conclude",        title: "Conclude",                     minutes: 5,   anchorId: "l10-conclude",        emoji: "🏁" },
 ];
 
 const ROCKS_DEFAULTS = [

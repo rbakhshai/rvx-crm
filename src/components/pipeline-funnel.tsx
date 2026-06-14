@@ -55,7 +55,7 @@ export function PipelineFunnel({
           <div className="text-[11px] uppercase tracking-widest text-muted font-medium">
             Closed-deal value
           </div>
-          <div className="mt-1 text-xl font-semibold tabular-nums text-green-700 dark:text-green-400">
+          <div className="mt-1 text-xl font-semibold tabular-nums text-emerald-700 dark:text-emerald-400">
             {fmtMoneyShort(closedValueCents)}
           </div>
           <div className="text-xs text-muted">

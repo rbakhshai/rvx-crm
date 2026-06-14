@@ -37,12 +37,12 @@ export default async function CompanyDashboardPage() {
         <PortalStat accent="amber" value={tiles?.leadsWeek ?? 0} label="Leads · 7d" />
         <PortalStat accent="amber" value={tiles?.loisOut ?? 0} label="LOIs Out" />
         <PortalStat accent="amber" value={tiles?.inEscrow ?? 0} label="In Escrow" />
-        <PortalStat accent="green" value={tiles?.parksOwned ?? 0} label="Parks Owned" emphasize />
+        <PortalStat accent="emerald" value={tiles?.parksOwned ?? 0} label="Parks Owned" emphasize />
         <PortalStat accent="amber" value={tiles?.bdAppsPending ?? 0} label="BD Apps" />
       </StatStrip>
 
       {funnel && (
-        <PortalSection title="Pipeline Funnel" accent="amber">
+        <PortalSection title="Pipeline Funnel" accent="gray">
           <PortalCard lift accent="amber">
             <PipelineFunnel
               stages={funnel.stages}
