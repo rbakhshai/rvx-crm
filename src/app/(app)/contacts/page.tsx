@@ -16,6 +16,9 @@ import { StaleDot } from "@/components/stale-dot";
 import { SavedViewsBar } from "@/components/saved-views";
 import { listSavedViews } from "@/app/actions/saved-views";
 import { headers } from "next/headers";
+import { loadColumnPreferences } from "@/app/actions/list-preferences";
+import { ContactColumnButton } from "./column-button";
+import type { ColumnConfig } from "@/components/column-editor";
 import { auth } from "@/lib/auth";
 import {
   BUYER_STATUS_OPTIONS,
@@ -136,6 +139,32 @@ export default async function ContactsListPage({ searchParams }: { searchParams:
   const pathname = "/contacts";
   const ownerOptions = users.map((u) => ({ value: u.id, label: u.name }));
 
+  // Load column preferences and build display columns
+  const prefs = await loadColumnPreferences("contacts");
+  const allColumnConfigs: ColumnConfig[] = columns.map((col, i) => ({
+    key: col.key,
+    label: col.header || col.key,
+    visible: true,
+    order: i,
+  }));
+
+  let displayColumns = columns;
+  let selectedColumnConfigs = allColumnConfigs;
+
+  if (prefs?.columns) {
+    // Filter to visible columns and reorder
+    const visibleKeys = prefs.columns.filter((c) => c.visible).sort((a, b) => a.order - b.order).map((c) => c.key);
+    displayColumns = visibleKeys
+      .map((key) => columns.find((col) => col.key === key))
+      .filter((col) => col !== undefined) as Column<Row>[];
+
+    // Rebuild selectedColumnConfigs with labels from allColumnConfigs
+    selectedColumnConfigs = prefs.columns.map((pref) => ({
+      ...pref,
+      label: allColumnConfigs.find((c) => c.key === pref.key)?.label || pref.key,
+    }));
+  }
+
   // Grouped view buckets — by status or by owner.
   const contactGroups = isGroup
     ? groupBy === "owner"
@@ -161,6 +190,7 @@ export default async function ContactsListPage({ searchParams }: { searchParams:
       width="wide"
       action={
         <div className="flex gap-2 items-center">
+          <ContactColumnButton allColumns={allColumnConfigs} selectedColumns={selectedColumnConfigs} />
           <ViewToggle current={params.view} pathname={pathname} searchParams={params} />
           <LinkButton href="/contacts/new" size="sm">+ New buyer</LinkButton>
         </div>
@@ -193,14 +223,14 @@ export default async function ContactsListPage({ searchParams }: { searchParams:
       {isGroup ? (
         <GroupedTables
           groups={contactGroups}
-          columns={columns}
+          columns={displayColumns}
           rowHref={(r) => `/contacts/${r.id}`}
           emptyLabel="No buyers match"
         />
       ) : (
         <DataTable
           rows={rows}
-          columns={columns}
+          columns={displayColumns}
           rowHref={(r) => `/contacts/${r.id}`}
           sort={{ current: sortKey, dir: sortDir, hrefFor: buildSortHref }}
           empty={

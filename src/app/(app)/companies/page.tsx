@@ -13,6 +13,9 @@ import { StaleDot } from "@/components/stale-dot";
 import { SavedViewsBar } from "@/components/saved-views";
 import { listSavedViews } from "@/app/actions/saved-views";
 import { headers } from "next/headers";
+import { loadColumnPreferences } from "@/app/actions/list-preferences";
+import { CompanyColumnButton } from "./column-button";
+import type { ColumnConfig } from "@/components/column-editor";
 import { auth } from "@/lib/auth";
 import { COMPANY_RELATIONSHIP_OPTIONS, US_STATES } from "@/lib/options";
 import { fmtDate } from "@/lib/date-format";
@@ -111,6 +114,32 @@ export default async function CompaniesListPage({ searchParams }: { searchParams
   const pathname = "/companies";
   const ownerOptions = users.map((u) => ({ value: u.id, label: u.name }));
 
+  // Load column preferences and build display columns
+  const prefs = await loadColumnPreferences("companies");
+  const allColumnConfigs: ColumnConfig[] = columns.map((col, i) => ({
+    key: col.key,
+    label: col.header || col.key,
+    visible: true,
+    order: i,
+  }));
+
+  let displayColumns = columns;
+  let selectedColumnConfigs = allColumnConfigs;
+
+  if (prefs?.columns) {
+    // Filter to visible columns and reorder
+    const visibleKeys = prefs.columns.filter((c) => c.visible).sort((a, b) => a.order - b.order).map((c) => c.key);
+    displayColumns = visibleKeys
+      .map((key) => columns.find((col) => col.key === key))
+      .filter((col) => col !== undefined) as Column<Row>[];
+
+    // Rebuild selectedColumnConfigs with labels from allColumnConfigs
+    selectedColumnConfigs = prefs.columns.map((pref) => ({
+      ...pref,
+      label: allColumnConfigs.find((c) => c.key === pref.key)?.label || pref.key,
+    }));
+  }
+
   function buildSortHref(key: string, nextDir: "asc" | "desc"): string {
     const qs = new URLSearchParams();
     for (const [k, v] of Object.entries(params)) {
@@ -127,7 +156,12 @@ export default async function CompaniesListPage({ searchParams }: { searchParams
       title="Sellers"
       subtitle={`${count} seller${count === 1 ? "" : "s"}${q || relationship || state || owner ? " (filtered)" : ""}`}
       width="wide"
-      action={<LinkButton href="/companies/new" size="sm">+ New seller</LinkButton>}
+      action={
+        <div className="flex gap-2 items-center">
+          <CompanyColumnButton allColumns={allColumnConfigs} selectedColumns={selectedColumnConfigs} />
+          <LinkButton href="/companies/new" size="sm">+ New seller</LinkButton>
+        </div>
+      }
     >
       <div className="space-y-3 mb-5">
         <SavedViewsBar scope="companies" views={savedViews} />
@@ -141,7 +175,7 @@ export default async function CompaniesListPage({ searchParams }: { searchParams
 
       <DataTable
         rows={rows}
-        columns={columns}
+        columns={displayColumns}
         rowHref={(r) => `/companies/${r.id}`}
         sort={{ current: sortKey, dir: sortDir, hrefFor: buildSortHref }}
         empty={
