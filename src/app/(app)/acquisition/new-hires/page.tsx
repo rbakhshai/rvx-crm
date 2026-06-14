@@ -6,26 +6,30 @@ import { PageShell } from "@/app/(app)/page-shell";
 import { PortalHero, PortalSection, PortalCard, PortalEmpty } from "@/app/(app)/today/portal-kit";
 import { fmtDateWithWeekday } from "@/lib/date-format";
 
+/**
+ * /acquisition/new-hires — onboarding new BDs / acquisition team members.
+ * Distinct from /hires (the leadership New Hire Request approval workflow).
+ */
 export default async function Page() {
   const session = await auth.api.getSession({ headers: await headers() });
   if (!session) notFound();
   if (!(await hasPermission(session.user, "view_mission_control"))) notFound();
 
   return (
-    <PageShell title="Setup" width="wide">
+    <PageShell title="New Hires" width="wide">
       <PortalHero
-        greeting="Setup"
+        greeting="New Hires"
         date={fmtDateWithWeekday(new Date())}
-        roleLabel="WORKFLOW"
-        title="Setup"
-        tagline="Scaffolding - details coming soon."
-        icon="⚙️"
-        accent="blue"
+        roleLabel="ACQUISITION"
+        title="New Hires"
+        tagline="Onboarding new BDs and acquisition team members — scaffolding, details coming soon."
+        icon="🧑‍🎓"
+        accent="indigo"
       />
 
-      <PortalSection title="Content" accent="blue">
+      <PortalSection title="Content" accent="indigo">
         <PortalCard>
-          <PortalEmpty>Workflow details and checklists will be configured here.</PortalEmpty>
+          <PortalEmpty>BD onboarding steps and checklists will be configured here.</PortalEmpty>
         </PortalCard>
       </PortalSection>
     </PageShell>

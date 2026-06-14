@@ -106,8 +106,8 @@ const SECTIONS: NavSection[] = [
     accentColor: "text-indigo-700 dark:text-indigo-400",
     visibleToRoles: ["acquisitions_manager"],
     items: [
-      { href: "/admin/leads",  label: "Lead Pool",  requires: "view_mission_control" },
-      { href: "/hires",        label: "New Hires",  requires: "view_hires" },
+      { href: "/admin/leads",          label: "Lead Pool",  requires: "view_mission_control" },
+      { href: "/acquisition/new-hires", label: "New Hires",  requires: "view_mission_control" },
     ],
   },
   {
@@ -125,7 +125,8 @@ const SECTIONS: NavSection[] = [
     visibleToRoles: ["park_manager", "transaction_coord", "bird_dog_manager"],
     items: [
       { href: "/operation/site-visit", label: "Site Visit",  requires: "view_pipeline" },
-      { href: "/operation/setup",      label: "Set Up",      requires: "view_pipeline" },
+      { href: "/operation/pre-setup",  label: "Pre-setup",   requires: "view_pipeline" },
+      { href: "/operation/setup",      label: "Setup",       requires: "view_pipeline" },
       { href: "/operation/stabilize",  label: "Stabilize",   requires: "view_pipeline" },
     ],
   },
@@ -148,7 +149,6 @@ const ADMIN_GROUPS: NavItem[] = [
       { href: "/settings/users",    label: "Team & roles" },
       { href: "/settings/roles",    label: "Role permissions", requires: "manage_roles" },
       { href: "/settings/feedback", label: "Feedback queue" },
-      { href: "/admin/leads",       label: "Lead pool" },
       { href: "/settings/audit",    label: "Audit log" },
       { href: "/trash",             label: "Trash",                  requires: "view_trash" },
     ],

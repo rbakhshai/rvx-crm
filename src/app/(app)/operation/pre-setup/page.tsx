@@ -12,14 +12,14 @@ export default async function Page() {
   if (!(await hasPermission(session.user, "view_mission_control"))) notFound();
 
   return (
-    <PageShell title="Setup" width="wide">
+    <PageShell title="Pre-setup" width="wide">
       <PortalHero
-        greeting="Setup"
+        greeting="Pre-setup"
         date={fmtDateWithWeekday(new Date())}
         roleLabel="WORKFLOW"
-        title="Setup"
+        title="Pre-setup"
         tagline="Scaffolding - details coming soon."
-        icon="⚙️"
+        icon="🧰"
         accent="blue"
       />
 
