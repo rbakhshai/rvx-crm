@@ -14,6 +14,7 @@ export function FilterChips({
   pathname,
   searchParams,
   options,
+  includeAll = true,
 }: {
   label: string;
   paramKey: string;
@@ -21,6 +22,9 @@ export function FilterChips({
   pathname: string;
   searchParams: Record<string, string | undefined>;
   options: ChipOption[];
+  /** Show the leading "All" chip that clears the param. Off for mode
+   *  selectors (e.g. Group by) where there's always an active choice. */
+  includeAll?: boolean;
 }) {
   function hrefFor(value: string | null): string {
     const next: Record<string, string> = { ...Object.fromEntries(Object.entries(searchParams).filter(([, v]) => v != null)) } as Record<string, string>;
@@ -33,17 +37,19 @@ export function FilterChips({
   return (
     <div className="flex flex-wrap items-center gap-1.5 text-xs">
       <span className="text-muted mr-1">{label}:</span>
-      <Link
-        href={hrefFor(null) as never}
-        className={cn(
-          "rounded-full px-2 py-0.5 border transition",
-          !current
-            ? "bg-foreground/[0.06] border-foreground/20 text-foreground"
-            : "border-border text-muted hover:bg-foreground/[0.03]",
-        )}
-      >
-        All
-      </Link>
+      {includeAll && (
+        <Link
+          href={hrefFor(null) as never}
+          className={cn(
+            "rounded-full px-2 py-0.5 border transition",
+            !current
+              ? "bg-foreground/[0.06] border-foreground/20 text-foreground"
+              : "border-border text-muted hover:bg-foreground/[0.03]",
+          )}
+        >
+          All
+        </Link>
+      )}
       {options.map((o) => {
         const active = current === o.value;
         return (

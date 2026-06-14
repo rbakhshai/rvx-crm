@@ -5,6 +5,8 @@ import { contacts, user } from "@/db/schema";
 import { PageShell } from "../page-shell";
 import { LinkButton } from "@/components/button";
 import { DataTable, type Column } from "@/components/data-table";
+import { GroupedTables, buildGroups } from "@/components/grouped-table";
+import { ViewToggle } from "@/components/view-toggle";
 import { EmptyState } from "@/components/empty-state";
 import { Badge } from "@/components/badge";
 import { SearchInput } from "@/components/search-input";
@@ -88,11 +90,13 @@ const SORT_COLUMNS: Record<string, SQLWrapper> = {
   state: contacts.state,
 };
 
-type SearchParams = Promise<{ q?: string; status?: string; tier?: string; state?: string; owner?: string; sort?: string; dir?: string }>;
+type SearchParams = Promise<{ q?: string; status?: string; tier?: string; state?: string; owner?: string; sort?: string; dir?: string; view?: string; groupBy?: string }>;
 
 export default async function ContactsListPage({ searchParams }: { searchParams: SearchParams }) {
   const params = await searchParams;
   const { q, status, tier, state, owner } = params;
+  const isGroup = params.view === "group";
+  const groupBy = params.groupBy === "owner" ? "owner" : "status";
 
   const filters: SQL[] = [isNull(contacts.deletedAt)];
   if (q) {
@@ -132,6 +136,13 @@ export default async function ContactsListPage({ searchParams }: { searchParams:
   const pathname = "/contacts";
   const ownerOptions = users.map((u) => ({ value: u.id, label: u.name }));
 
+  // Grouped view buckets — by status or by owner.
+  const contactGroups = isGroup
+    ? groupBy === "owner"
+      ? buildGroups(rows, (r) => r.ownerId ?? null, (id) => userMap.get(id) ?? "Unknown", users.map((u) => u.id), "Unassigned")
+      : buildGroups(rows, (r) => r.status ?? null, (s) => statusLabel.get(s) ?? s, BUYER_STATUS_OPTIONS.map((o) => o.value), "No status")
+    : [];
+
   function buildSortHref(key: string, nextDir: "asc" | "desc"): string {
     const qs = new URLSearchParams();
     for (const [k, v] of Object.entries(params)) {
@@ -148,7 +159,12 @@ export default async function ContactsListPage({ searchParams }: { searchParams:
       title="Buyers"
       subtitle={`${count} buyer${count === 1 ? "" : "s"}${q || status || tier || state || owner ? " (filtered)" : ""}`}
       width="wide"
-      action={<LinkButton href="/contacts/new" size="sm">+ New buyer</LinkButton>}
+      action={
+        <div className="flex gap-2 items-center">
+          <ViewToggle current={params.view} pathname={pathname} searchParams={params} />
+          <LinkButton href="/contacts/new" size="sm">+ New buyer</LinkButton>
+        </div>
+      }
     >
       <div className="space-y-3 mb-5">
         <SavedViewsBar scope="contacts" views={savedViews} />
@@ -161,23 +177,43 @@ export default async function ContactsListPage({ searchParams }: { searchParams:
         {users.length > 1 && (
           <FilterChips label="Owner" paramKey="owner" current={owner} pathname={pathname} searchParams={params} options={ownerOptions} />
         )}
+        {isGroup && (
+          <FilterChips
+            label="Group by"
+            paramKey="groupBy"
+            current={groupBy}
+            pathname={pathname}
+            searchParams={params}
+            includeAll={false}
+            options={[{ value: "status", label: "Status" }, { value: "owner", label: "Owner" }]}
+          />
+        )}
       </div>
 
-      <DataTable
-        rows={rows}
-        columns={columns}
-        rowHref={(r) => `/contacts/${r.id}`}
-        sort={{ current: sortKey, dir: sortDir, hrefFor: buildSortHref }}
-        empty={
-          <EmptyState
-            icon="👤"
-            title="No buyers match"
-            description="Try clearing filters or adding a buyer."
-            ctaLabel="+ New buyer"
-            ctaHref="/contacts/new"
-          />
-        }
-      />
+      {isGroup ? (
+        <GroupedTables
+          groups={contactGroups}
+          columns={columns}
+          rowHref={(r) => `/contacts/${r.id}`}
+          emptyLabel="No buyers match"
+        />
+      ) : (
+        <DataTable
+          rows={rows}
+          columns={columns}
+          rowHref={(r) => `/contacts/${r.id}`}
+          sort={{ current: sortKey, dir: sortDir, hrefFor: buildSortHref }}
+          empty={
+            <EmptyState
+              icon="👤"
+              title="No buyers match"
+              description="Try clearing filters or adding a buyer."
+              ctaLabel="+ New buyer"
+              ctaHref="/contacts/new"
+            />
+          }
+        />
+      )}
     </PageShell>
   );
 }

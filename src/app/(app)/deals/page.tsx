@@ -6,6 +6,8 @@ import { deals, dealStatuses, user } from "@/db/schema";
 import { PageShell } from "../page-shell";
 import { LinkButton } from "@/components/button";
 import { DataTable, type Column } from "@/components/data-table";
+import { GroupedTables, buildGroups } from "@/components/grouped-table";
+import { ViewToggle } from "@/components/view-toggle";
 import { EmptyState } from "@/components/empty-state";
 import { Badge } from "@/components/badge";
 import { SearchInput } from "@/components/search-input";
@@ -80,12 +82,14 @@ const SORT_COLUMNS: Record<string, SQLWrapper> = {
   status: deals.statusCode,
 };
 
-type SearchParams = Promise<{ q?: string; status?: string; phase?: string; priority?: string; state?: string; owner?: string; stage?: string; bird_dog?: string; sort?: string; dir?: string }>;
+type SearchParams = Promise<{ q?: string; status?: string; phase?: string; priority?: string; state?: string; owner?: string; stage?: string; bird_dog?: string; sort?: string; dir?: string; view?: string; groupBy?: string }>;
 
 export default async function DealsListPage({ searchParams }: { searchParams: SearchParams }) {
   const params = await searchParams;
   const { q, status, priority, state, owner, stage, phase } = params;
   const birdDogId = params.bird_dog;
+  const isGroup = params.view === "group";
+  const groupBy = params.groupBy === "owner" ? "owner" : "status";
 
   const stageKey = isPipelineStageKey(stage) ? stage : null;
   const phaseKey = isDealPhaseRole(phase) ? phase : null;
@@ -166,6 +170,14 @@ export default async function DealsListPage({ searchParams }: { searchParams: Se
     .filter((p) => p.n > 0)
     .map((p) => ({ value: p.value, label: `${p.label} · ${p.n}` }));
 
+  // Grouped view buckets — by workflow stage or by owner.
+  const statusMap = new Map(statuses.map((s) => [s.code, s.label]));
+  const dealGroups = isGroup
+    ? groupBy === "owner"
+      ? buildGroups(rows, (r) => r.ownerId ?? null, (id) => userMap.get(id) ?? "Unknown", users.map((u) => u.id), "Unassigned")
+      : buildGroups(rows, (r) => r.statusCode ?? null, (code) => statusMap.get(code) ?? code, statuses.map((s) => s.code), "No stage")
+    : [];
+
   return (
     <PageShell
       title="Deals"
@@ -173,6 +185,7 @@ export default async function DealsListPage({ searchParams }: { searchParams: Se
       width="wide"
       action={
         <div className="flex gap-2 items-center">
+          <ViewToggle current={params.view} pathname={pathname} searchParams={params} />
           <LinkButton href="/deals/board" variant="secondary" size="sm">Board view</LinkButton>
           <LinkButton href="/deals/new" size="sm">+ New deal</LinkButton>
         </div>
@@ -208,27 +221,47 @@ export default async function DealsListPage({ searchParams }: { searchParams: Se
             <FilterChips label="Stage" paramKey="status" current={status} pathname={pathname} searchParams={params} options={statusOptions} />
           </div>
         </details>
+        {isGroup && (
+          <FilterChips
+            label="Group by"
+            paramKey="groupBy"
+            current={groupBy}
+            pathname={pathname}
+            searchParams={params}
+            includeAll={false}
+            options={[{ value: "status", label: "Stage" }, { value: "owner", label: "Owner" }]}
+          />
+        )}
       </div>
 
-      <DataTable
-        rows={rows}
-        columns={columns}
-        rowHref={(r) => `/deals/${r.id}`}
-        sort={{
-          current: sortKey,
-          dir: sortDir,
-          hrefFor: buildSortHref,
-        }}
-        empty={
-          <EmptyState
-            icon="🏞"
-            title="No deals match"
-            description="Try clearing filters or adding a deal."
-            ctaLabel="+ New deal"
-            ctaHref="/deals/new"
-          />
-        }
-      />
+      {isGroup ? (
+        <GroupedTables
+          groups={dealGroups}
+          columns={columns}
+          rowHref={(r) => `/deals/${r.id}`}
+          emptyLabel="No deals match"
+        />
+      ) : (
+        <DataTable
+          rows={rows}
+          columns={columns}
+          rowHref={(r) => `/deals/${r.id}`}
+          sort={{
+            current: sortKey,
+            dir: sortDir,
+            hrefFor: buildSortHref,
+          }}
+          empty={
+            <EmptyState
+              icon="🏞"
+              title="No deals match"
+              description="Try clearing filters or adding a deal."
+              ctaLabel="+ New deal"
+              ctaHref="/deals/new"
+            />
+          }
+        />
+      )}
     </PageShell>
   );
 }
