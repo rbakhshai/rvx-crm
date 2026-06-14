@@ -29,6 +29,7 @@ export default async function CompanyDashboardPage() {
         tagline="Pipeline value, sourcing activity, parks owned, and team throughput."
         icon="📊"
         accent="amber"
+        neutralChip
       />
 
       <StatStrip>
@@ -36,7 +37,7 @@ export default async function CompanyDashboardPage() {
         <PortalStat accent="amber" value={tiles?.leadsWeek ?? 0} label="Leads · 7d" />
         <PortalStat accent="amber" value={tiles?.loisOut ?? 0} label="LOIs Out" />
         <PortalStat accent="amber" value={tiles?.inEscrow ?? 0} label="In Escrow" />
-        <PortalStat accent="amber" value={tiles?.parksOwned ?? 0} label="Parks Owned" emphasize />
+        <PortalStat accent="green" value={tiles?.parksOwned ?? 0} label="Parks Owned" emphasize />
         <PortalStat accent="amber" value={tiles?.bdAppsPending ?? 0} label="BD Apps" />
       </StatStrip>
 

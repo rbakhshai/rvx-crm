@@ -34,7 +34,7 @@ export type AccentClasses = {
 
 export const ACCENTS: Record<AccentName, AccentClasses> = {
   amber: {
-    text: "text-amber-700 dark:text-amber-300",
+    text: "text-amber-800 dark:text-amber-300",
     softBg: "bg-amber-50/60 dark:bg-amber-500/[0.07]",
     border: "border-amber-300/60 dark:border-amber-500/30",
     chip: "bg-amber-600 text-white dark:bg-amber-500",

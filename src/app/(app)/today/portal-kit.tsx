@@ -18,6 +18,7 @@ export function PortalHero({
   tagline,
   icon,
   accent,
+  neutralChip,
   children,
 }: {
   greeting: React.ReactNode;
@@ -27,10 +28,15 @@ export function PortalHero({
   tagline: string;
   icon: string;
   accent: AccentName;
+  /** Render the role-label pill in neutral grey instead of the accent color. */
+  neutralChip?: boolean;
   /** Optional right-aligned content (e.g. a primary CTA). */
   children?: React.ReactNode;
 }) {
   const a = ACCENTS[accent];
+  const chipClass = neutralChip
+    ? "bg-gray-200 text-gray-700 dark:bg-gray-700 dark:text-gray-200"
+    : a.chip;
   return (
     <section
       className={cn(
@@ -42,7 +48,7 @@ export function PortalHero({
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div className="min-w-0">
           <div className="flex items-center gap-2 mb-2">
-            <span className={cn("inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-[11px] font-bold uppercase tracking-wider", a.chip)}>
+            <span className={cn("inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-[11px] font-bold uppercase tracking-wider", chipClass)}>
               <span className="text-sm leading-none">{icon}</span>
               {roleLabel}
             </span>
