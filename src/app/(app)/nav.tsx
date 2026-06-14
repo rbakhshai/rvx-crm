@@ -101,6 +101,7 @@ const SECTIONS: NavSection[] = [
     visibleToRoles: ["acquisitions_manager"],
     items: [
       { href: "/acquisition/lead-dashboard", label: "Dashboard", requires: "view_mission_control" },
+      { href: "/bird-dogs",                  label: "Bird Dogs",  requires: "view_mission_control" },
       { href: "/admin/leads",                label: "Lead Pool",  requires: "view_mission_control" },
       { href: "/acquisition/new-hires",     label: "New Hires",  requires: "view_mission_control" },
     ],
