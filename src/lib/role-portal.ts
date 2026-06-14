@@ -70,13 +70,13 @@ export const ACCENTS: Record<AccentName, AccentClasses> = {
     statText: "text-green-700 dark:text-green-300",
   },
   emerald: {
-    text: "text-emerald-700 dark:text-emerald-300",
+    text: "text-emerald-800 dark:text-emerald-300",
     softBg: "bg-emerald-50/60 dark:bg-emerald-500/[0.07]",
     border: "border-emerald-300/60 dark:border-emerald-500/30",
     chip: "bg-emerald-600 text-white dark:bg-emerald-500",
     heroGradient: "from-emerald-100/80 via-emerald-50/40 to-transparent dark:from-emerald-500/[0.12] dark:via-emerald-500/[0.04] dark:to-transparent",
     ring: "ring-emerald-200/60 dark:ring-emerald-500/20",
-    statText: "text-emerald-700 dark:text-emerald-300",
+    statText: "text-emerald-800 dark:text-emerald-300",
   },
   yellow: {
     text: "text-yellow-700 dark:text-yellow-300",

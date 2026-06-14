@@ -75,7 +75,7 @@ const SECTIONS: NavSection[] = [
       { href: "/leadership/l10",    label: "L10 Meeting",            requires: "view_mission_control" },
       { href: "/hires",             label: "New Hires",              requires: "view_hires" },
       { href: "/reimbursements",    label: "Reimbursements",         requires: "view_reimbursements" },
-      { href: "/pool",              label: "Pathway to Partnership", requires: "view_pool", accent: "text-emerald-700 dark:text-emerald-400" },
+      { href: "/pool",              label: "Pathway to Partnership", requires: "view_pool", accent: "text-emerald-800 dark:text-emerald-400" },
     ],
   },
   {
@@ -109,8 +109,8 @@ const SECTIONS: NavSection[] = [
     accentColor: "text-lime-700 dark:text-lime-400",
     visibleToRoles: ["dispo_manager"],
     items: [
-      { href: "/disposition/due-diligence", label: "Due Diligence", requires: "view_pipeline", accent: "text-emerald-700 dark:text-emerald-400" },
-      { href: "/disposition/find-buyer",   label: "Find a Buyer",   requires: "view_pipeline", accent: "text-emerald-700 dark:text-emerald-400" },
+      { href: "/disposition/due-diligence", label: "Due Diligence", requires: "view_pipeline", accent: "text-emerald-800 dark:text-emerald-400" },
+      { href: "/disposition/find-buyer",   label: "Find a Buyer",   requires: "view_pipeline", accent: "text-emerald-800 dark:text-emerald-400" },
     ],
   },
   {
@@ -127,10 +127,10 @@ const SECTIONS: NavSection[] = [
   },
   {
     label: "Finance",
-    accentColor: "text-emerald-700 dark:text-emerald-400",
+    accentColor: "text-emerald-800 dark:text-emerald-400",
     visibleToRoles: ["cfo"],
     items: [
-      { href: "/finance/park-performance", label: "Park Performance", requires: "view_revenue", accent: "text-emerald-700 dark:text-emerald-400" },
+      { href: "/finance/park-performance", label: "Park Performance", requires: "view_revenue", accent: "text-emerald-800 dark:text-emerald-400" },
     ],
   },
 ];
