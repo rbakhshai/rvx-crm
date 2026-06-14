@@ -1,5 +1,8 @@
 /**
- * /reimbursements — leadership-only "buy this for the park" queue.
+ * /reimbursements — "buy this for the park" queue.
+ *
+ * Visibility: each person sees only their own requests; the CEO (admin)
+ * and Finance (cfo) see the whole team's.
  *
  * Flow: pending → approved → purchased → fulfilled. Decline at any
  * point with a reason. Per Reza's spec: park / requested / needed-by /
@@ -13,6 +16,7 @@ import { db } from "@/db";
 import { reimbursementRequests, user as userTable } from "@/db/schema";
 import { auth } from "@/lib/auth";
 import { hasPermission } from "@/lib/has-permission";
+import { getEffectiveRole } from "@/lib/view-as";
 import { PageShell } from "../page-shell";
 import { fmtDate } from "@/lib/date-format";
 import { cn } from "@/lib/cn";
@@ -56,6 +60,12 @@ export default async function ReimbursementsPage({
   }
   const canManage = await hasPermission(session.user, "manage_reimbursements");
 
+  // Visibility: everyone sees only their own requests; the CEO (admin)
+  // and Finance (cfo) see the whole team's.
+  const role = await getEffectiveRole(session.user.role);
+  const canSeeAll = role === "admin" || role === "cfo";
+  const ownOnly = canSeeAll ? undefined : eq(reimbursementRequests.requestedById, session.user.id);
+
   const params = await searchParams;
   const filter: Filter = isFilter(params.s) ? params.s : "active";
 
@@ -75,6 +85,7 @@ export default async function ReimbursementsPage({
     .where(
       and(
         isNull(reimbursementRequests.deletedAt),
+        ownOnly,
         filter === "active" || filter === "all"
           ? undefined
           : eq(reimbursementRequests.status, filter),
@@ -86,11 +97,11 @@ export default async function ReimbursementsPage({
     ? rows.filter((r) => (ACTIVE_STATUSES as readonly string[]).includes(r.status))
     : rows;
 
-  // Status counts (across all non-deleted) for the chip badges.
+  // Status counts (scoped the same way as the list) for the chip badges.
   const all = await db
     .select({ status: reimbursementRequests.status })
     .from(reimbursementRequests)
-    .where(isNull(reimbursementRequests.deletedAt));
+    .where(and(isNull(reimbursementRequests.deletedAt), ownOnly));
   const countByStatus = new Map<string, number>();
   for (const r of all) countByStatus.set(r.status, (countByStatus.get(r.status) ?? 0) + 1);
   const activeCount = (ACTIVE_STATUSES as readonly string[]).reduce(
@@ -100,7 +111,11 @@ export default async function ReimbursementsPage({
   return (
     <PageShell
       title="Reimbursements"
-      subtitle="Leadership-only queue for company purchases. Submit, approve, mark purchased, mark fulfilled."
+      subtitle={
+        canSeeAll
+          ? "Every team member's purchase requests. Approve, mark purchased, mark fulfilled."
+          : "Your purchase requests. Submit and track status — only you, the CEO, and Finance see them."
+      }
       action={
         canManage ? (
           <Link

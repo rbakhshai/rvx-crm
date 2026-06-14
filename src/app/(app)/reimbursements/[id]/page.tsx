@@ -12,6 +12,7 @@ import { db } from "@/db";
 import { reimbursementRequests, user as userTable } from "@/db/schema";
 import { auth } from "@/lib/auth";
 import { hasPermission } from "@/lib/has-permission";
+import { getEffectiveRole } from "@/lib/view-as";
 import { PageShell } from "../../page-shell";
 import { fmtDateTime } from "@/lib/date-format";
 import { ReimbursementDetailClient } from "./client";
@@ -51,6 +52,12 @@ export default async function ReimbursementDetailPage({
     .limit(1);
 
   if (!row) notFound();
+
+  // Each person can only open their own request; the CEO (admin) and
+  // Finance (cfo) can open anyone's.
+  const role = await getEffectiveRole(session.user.role);
+  const canSeeAll = role === "admin" || role === "cfo";
+  if (!canSeeAll && row.requestedById !== session.user.id) notFound();
 
   const canManage = await hasPermission(session.user, "manage_reimbursements");
 

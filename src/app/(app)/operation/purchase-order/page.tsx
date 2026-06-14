@@ -18,14 +18,14 @@ export default async function Page() {
         date={fmtDateWithWeekday(new Date())}
         roleLabel="WORKFLOW"
         title="Purchase Order"
-        tagline="Scaffolding - details coming soon."
+        tagline="Each person sees their own; Reza & Kevin see all. Scaffolding — details coming soon."
         icon="📋"
         accent="blue"
       />
 
       <PortalSection title="Content" accent="blue">
         <PortalCard>
-          <PortalEmpty>Workflow details and checklists will be configured here.</PortalEmpty>
+          <PortalEmpty>Workflow details and checklists will be configured here. Per-person scoping (own only, except CEO/Finance) gets wired in when this feature is built.</PortalEmpty>
         </PortalCard>
       </PortalSection>
     </PageShell>

@@ -68,20 +68,14 @@ const SECTIONS: NavSection[] = [
     ],
   },
   {
-    label: null,
-    items: [
-      { href: "/pool", label: "Pathway to Partnership", requires: "view_pool", accent: "text-green-700 dark:text-green-400" },
-    ],
-  },
-  {
     label: "Leadership",
     accentColor: "text-blue-700 dark:text-blue-400",
     visibleToRoles: ["admin", "acquisitions_manager", "bird_dog_manager", "cfo"],
     items: [
-      { href: "/leadership/l10",           label: "L10 Meeting",      requires: "view_mission_control" },
-      { href: "/hires",                    label: "New Hires",         requires: "view_hires" },
-      { href: "/reimbursements",           label: "Reimbursements",    requires: "view_reimbursements" },
-      { href: "/leadership/purchase-order", label: "Purchase Order",   requires: "view_mission_control" },
+      { href: "/leadership/l10",    label: "L10 Meeting",            requires: "view_mission_control" },
+      { href: "/hires",             label: "New Hires",              requires: "view_hires" },
+      { href: "/reimbursements",    label: "Reimbursements",         requires: "view_reimbursements" },
+      { href: "/pool",              label: "Pathway to Partnership", requires: "view_pool", accent: "text-green-700 dark:text-green-400" },
     ],
   },
   {
@@ -124,10 +118,11 @@ const SECTIONS: NavSection[] = [
     accentColor: "text-pink-700 dark:text-pink-400",
     visibleToRoles: ["park_manager", "transaction_coord", "bird_dog_manager"],
     items: [
-      { href: "/operation/site-visit", label: "Site Visit",  requires: "view_pipeline" },
-      { href: "/operation/pre-setup",  label: "Pre-setup",   requires: "view_pipeline" },
-      { href: "/operation/setup",      label: "Setup",       requires: "view_pipeline" },
-      { href: "/operation/stabilize",  label: "Stabilize",   requires: "view_pipeline" },
+      { href: "/operation/site-visit",     label: "Site Visit",     requires: "view_pipeline" },
+      { href: "/operation/pre-setup",      label: "Pre-setup",      requires: "view_pipeline" },
+      { href: "/operation/setup",          label: "Setup",          requires: "view_pipeline" },
+      { href: "/operation/stabilize",      label: "Stabilize",      requires: "view_pipeline" },
+      { href: "/operation/purchase-order", label: "Purchase Order", requires: "view_mission_control" },
     ],
   },
   {
