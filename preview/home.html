@@ -1,0 +1,237 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>RV Park Exchange — You built it. We'll keep it standing.</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,500;0,9..144,600;1,9..144,400&family=Inter:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --gold:#dbbe67; --gold-deep:#8a773d; --gold-bright:#ebc75b;
+    --ink:#0a0a0a; --ink-2:#111; --ink-3:#16140d; --line:#2e2718;
+    --cream:#f5f5f5; --muted:#9a958a;
+    --serif:'Fraunces',Georgia,serif; --sans:'Inter',system-ui,sans-serif;
+  }
+  *{margin:0;padding:0;box-sizing:border-box;}
+  html{scroll-behavior:smooth;}
+  body{font-family:var(--sans);background:var(--ink);color:var(--cream);font-size:19px;line-height:1.7;-webkit-font-smoothing:antialiased;}
+  a{color:inherit;text-decoration:none;}
+  .wrap{max-width:1180px;margin:0 auto;padding:0 28px;}
+  .btn-gold{background:var(--gold);color:var(--ink);font-weight:500;font-size:17px;padding:15px 30px;border:none;border-radius:6px;cursor:pointer;transition:transform .15s,background .15s;}
+  .btn-gold:hover{background:var(--gold-bright);transform:translateY(-1px);}
+  .btn-ghost{border:1px solid var(--gold-deep);color:var(--gold);font-size:17px;padding:14px 28px;border-radius:6px;background:transparent;cursor:pointer;transition:background .15s;}
+  .btn-ghost:hover{background:rgba(219,190,103,0.08);}
+  .eyebrow{color:var(--gold-deep);font-size:14px;letter-spacing:3px;text-transform:uppercase;font-weight:500;}
+
+  /* NAV */
+  nav{position:fixed;top:0;left:0;right:0;z-index:50;transition:background .3s,backdrop-filter .3s,border-color .3s;border-bottom:1px solid transparent;}
+  nav.scrolled{background:rgba(10,10,10,0.92);backdrop-filter:blur(10px);border-bottom:1px solid var(--line);}
+  .nav-inner{display:flex;justify-content:space-between;align-items:center;padding:18px 0;}
+  .brand{display:flex;align-items:center;gap:12px;}
+  .logo{font-family:var(--serif);color:var(--gold);font-size:22px;letter-spacing:2px;}
+  .nav-links{display:flex;gap:30px;align-items:center;}
+  .nav-links a{font-size:17px;color:#cfcabd;transition:color .15s;}
+  .nav-links a:hover{color:var(--gold);}
+  .nav-links a.btn-gold{color:var(--ink);font-weight:500;}
+  .nav-links a.btn-gold:hover{color:var(--ink);}
+
+  /* HERO */
+  .hero{position:relative;min-height:100vh;display:flex;flex-direction:column;justify-content:center;overflow:hidden;padding:120px 0 60px;
+    background:#0a0a0a url('hero.jpg') center/cover no-repeat;}
+  .hero .scrim{position:absolute;inset:0;background:
+    linear-gradient(90deg,rgba(8,9,6,0.9) 0%,rgba(8,9,6,0.62) 40%,rgba(8,9,6,0.22) 100%),
+    linear-gradient(180deg,rgba(8,9,6,0.55) 0%,rgba(8,9,6,0) 26%,rgba(8,9,6,0.5) 100%);}
+  .hero-grid{position:relative;z-index:5;display:grid;grid-template-columns:1.05fr 0.95fr;gap:48px;align-items:center;}
+  .hero h1{font-family:var(--serif);font-weight:500;font-size:clamp(44px,5.6vw,72px);line-height:1.06;letter-spacing:-0.5px;text-shadow:0 2px 30px rgba(0,0,0,0.55);}
+  .hero h1 .gold{color:var(--gold);font-style:italic;font-weight:400;}
+  .hero .sub{margin-top:22px;max-width:470px;font-size:21px;color:#e9e3d3;text-shadow:0 1px 16px rgba(0,0,0,0.7);}
+  .hero .cta-row{margin-top:30px;display:flex;gap:14px;flex-wrap:wrap;}
+
+  /* ESTIMATOR */
+  .est{background:rgba(10,10,10,0.82);backdrop-filter:blur(8px);border:1px solid var(--line);border-radius:16px;padding:26px;box-shadow:0 24px 60px rgba(0,0,0,0.45);}
+  .est .row{display:flex;align-items:center;gap:14px;margin-bottom:18px;}
+  .est label{flex:0 0 104px;font-size:16px;color:#b6b1a4;}
+  .est input[type=range]{flex:1;accent-color:var(--gold);height:5px;}
+  .est .val{min-width:52px;text-align:right;color:var(--gold);font-size:17px;font-weight:500;}
+  .est .result{border-top:1px solid var(--line);padding-top:18px;display:flex;justify-content:space-between;align-items:flex-end;gap:14px;}
+  .est .result .lbl{font-size:12px;letter-spacing:2px;color:var(--muted);text-transform:uppercase;}
+  .est .range{font-family:var(--serif);color:var(--gold);font-size:38px;font-weight:500;margin-top:6px;}
+  .est .rev{font-size:15px;color:var(--muted);margin-top:8px;}
+  .est .disc{font-size:13px;color:#5f5b50;margin-top:16px;}
+
+  /* SECTION shells */
+  section{padding:96px 0;}
+  .sec-head{max-width:560px;}
+  .sec-head h2{font-family:var(--serif);font-weight:500;font-size:clamp(32px,4.2vw,48px);line-height:1.15;margin-top:10px;}
+  .sec-head p{color:var(--muted);margin-top:14px;font-size:20px;}
+
+  /* PATH */
+  .path{background:#080808;border-top:1px solid var(--line);}
+  .progress{height:4px;background:#1c1c1c;border-radius:2px;overflow:hidden;margin:30px 0 22px;}
+  .progress > div{height:100%;width:33.34%;background:var(--gold);transition:width .45s cubic-bezier(.4,0,.2,1);}
+  .steps{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;}
+  .step{cursor:pointer;padding:20px;border-radius:12px;background:#0f0f0f;border:1px solid #222;transition:background .2s,border-color .2s,transform .2s;}
+  .step:hover{transform:translateY(-3px);}
+  .step.active{background:var(--ink-3);border-color:#3a3320;}
+  .step .num{display:inline-flex;width:36px;height:36px;border-radius:50%;align-items:center;justify-content:center;font-size:16px;margin-bottom:12px;border:1px solid var(--gold-deep);color:var(--gold);transition:all .2s;}
+  .step.done .num{background:var(--gold);color:var(--ink);border-color:transparent;}
+  .step h3{font-size:20px;font-weight:500;color:#888;transition:color .2s;}
+  .step.active h3{color:var(--cream);}
+  .panel{margin-top:22px;background:var(--ink-2);border:1px solid var(--line);border-radius:14px;padding:28px;}
+  .panel h4{font-size:23px;color:var(--gold);font-weight:500;}
+  .panel p{margin-top:10px;font-size:19px;color:#bdb8ab;max-width:640px;}
+
+  /* PROMISES */
+  .promises{background:var(--ink);border-top:1px solid var(--line);}
+  .promise-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:18px;margin-top:36px;}
+  .promise{border:1px solid var(--line);border-radius:14px;padding:24px;background:#0d0c08;}
+  .promise .mark{color:var(--gold-deep);font-family:var(--serif);font-size:38px;line-height:1;}
+  .promise p{margin-top:10px;font-size:18px;color:#d8d2c4;}
+
+  /* FINAL CTA */
+  .final{background:linear-gradient(180deg,#0a0a0a,#16130a);border-top:1px solid var(--line);text-align:center;}
+  .final h2{font-family:var(--serif);font-weight:500;font-size:clamp(34px,4.6vw,52px);}
+  .final p{color:var(--muted);margin:16px auto 30px;max-width:520px;font-size:20px;}
+
+  footer{border-top:1px solid var(--line);padding:34px 0;color:#7a756a;font-size:16px;}
+  .foot-inner{display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:14px;}
+
+  @media(max-width:860px){
+    .hero-grid{grid-template-columns:1fr;gap:32px;}
+    .hero .scrim{background:linear-gradient(180deg,rgba(8,9,6,0.62),rgba(8,9,6,0.9));}
+    .steps,.promise-grid{grid-template-columns:1fr;}
+    .nav-links a:not(.btn-gold){display:none;}
+    section{padding:64px 0;}
+  }
+</style>
+</head>
+<body>
+
+<nav id="nav">
+  <div class="wrap nav-inner">
+    <a href="#" class="brand"><span class="logo">RV PARK EXCHANGE</span></a>
+    <div class="nav-links">
+      <a href="#how">How it works</a>
+      <a href="#promises">Our promises</a>
+      <a href="#start" class="btn-gold">Sell your park</a>
+    </div>
+  </div>
+</nav>
+
+<header class="hero">
+  <div class="scrim"></div>
+  <div class="wrap hero-grid">
+    <div>
+      <h1>You built it.<br><span class="gold">We'll keep it standing.</span></h1>
+      <p class="sub">We buy and run RV parks the way the best owners did — with more hands, better systems, and the capital to do it right. Curious what yours is worth? See a range right now — no call, no email.</p>
+      <div class="cta-row">
+        <a href="#start"><button class="btn-gold">Start the conversation</button></a>
+        <a href="#how"><button class="btn-ghost">See how it works</button></a>
+      </div>
+    </div>
+
+    <div class="est" id="estimator">
+      <div class="eyebrow" style="margin-bottom:18px;">Instant estimate · no email yet</div>
+      <div class="row"><label>RV sites</label><input type="range" id="sites" min="20" max="300" value="120" step="5"><span class="val" id="sitesV">120</span></div>
+      <div class="row"><label>Avg occupancy</label><input type="range" id="occ" min="30" max="100" value="75" step="1"><span class="val" id="occV">75%</span></div>
+      <div class="row"><label>Nightly rate</label><input type="range" id="rate" min="25" max="120" value="55" step="1"><span class="val" id="rateV">$55</span></div>
+      <div class="result">
+        <div>
+          <div class="lbl">Estimated range</div>
+          <div class="range" id="range">$2.1M – $2.6M</div>
+          <div class="rev" id="rev">Est. annual revenue ~$1.8M</div>
+        </div>
+        <a href="#start"><button class="btn-gold" style="white-space:nowrap;padding:11px 18px;">Get my real number</button></a>
+      </div>
+      <p class="disc">Illustrative only — a real estimate weighs region, amenities, and lease vs. own.</p>
+    </div>
+  </div>
+</header>
+
+<section class="path" id="how">
+  <div class="wrap">
+    <div class="sec-head">
+      <span class="eyebrow">Selling, made clear</span>
+      <h2>Three steps. No pressure.</h2>
+      <p>You always know exactly where you are — and what comes next. Click through to see how it goes.</p>
+    </div>
+    <div class="progress"><div id="bar"></div></div>
+    <div class="steps">
+      <div class="step active done" data-i="0"><span class="num">1</span><h3>Share your details</h3></div>
+      <div class="step" data-i="1"><span class="num">2</span><h3>We review the fit</h3></div>
+      <div class="step" data-i="2"><span class="num">3</span><h3>Close on your timeline</h3></div>
+    </div>
+    <div class="panel">
+      <h4 id="pTitle">Share your park details</h4>
+      <p id="pBody">The basics — sites, occupancy, location. No financials yet, and no commitment. A 5-minute form or a phone call, whichever you prefer.</p>
+    </div>
+  </div>
+</section>
+
+<section class="promises" id="promises">
+  <div class="wrap">
+    <div class="sec-head">
+      <span class="eyebrow">What we promise</span>
+      <h2>The things owners worry about — answered up front.</h2>
+    </div>
+    <div class="promise-grid">
+      <div class="promise"><div class="mark">&ldquo;</div><p>We won't gut your staff in month one. The people who made your park work stay.</p></div>
+      <div class="promise"><div class="mark">&ldquo;</div><p>We'll call your longtime guests by name. The regulars keep their spot.</p></div>
+      <div class="promise"><div class="mark">&ldquo;</div><p>You'll know our timeline before you share a single number. No surprises.</p></div>
+    </div>
+  </div>
+</section>
+
+<section class="final" id="start">
+  <div class="wrap">
+    <h2>Your park's next chapter starts with a conversation.</h2>
+    <p>No obligation. Private and confidential. We respond within one business day.</p>
+    <a href="#"><button class="btn-gold" style="padding:17px 38px;font-size:19px;">I'm a seller — start the conversation</button></a>
+  </div>
+</section>
+
+<footer>
+  <div class="wrap foot-inner">
+    <img src="logo.png" alt="RV Park Exchange" style="height:88px;width:auto;display:block;mix-blend-mode:screen;">
+    <span>Honoring legacies. Growing communities.</span>
+    <span>&copy; 2026 RV Park Exchange</span>
+  </div>
+</footer>
+
+<script>
+  // sticky nav
+  var nav=document.getElementById('nav');
+  window.addEventListener('scroll',function(){nav.classList.toggle('scrolled',window.scrollY>40);});
+
+  // estimator
+  var sites=document.getElementById('sites'),occ=document.getElementById('occ'),rate=document.getElementById('rate');
+  var sitesV=document.getElementById('sitesV'),occV=document.getElementById('occV'),rateV=document.getElementById('rateV');
+  var range=document.getElementById('range'),rev=document.getElementById('rev');
+  function fmt(n){return '$'+(n/1e6).toFixed(1)+'M';}
+  function calc(){
+    var s=+sites.value,o=+occ.value/100,r=+rate.value;
+    sitesV.textContent=s;occV.textContent=(+occ.value)+'%';rateV.textContent='$'+r;
+    var revenue=s*o*r*365, noi=revenue*0.45;
+    range.textContent=fmt(noi/0.10)+' – '+fmt(noi/0.085);
+    rev.textContent='Est. annual revenue ~'+fmt(revenue);
+  }
+  [sites,occ,rate].forEach(function(e){e.addEventListener('input',calc);});calc();
+
+  // path stepper
+  var data=[
+    ['Share your park details','The basics — sites, occupancy, location. No financials yet, and no commitment. A 5-minute form or a phone call, whichever you prefer.'],
+    ['We review the fit together','We look at whether your park fits how we operate — and you see our timeline and approach before you ever share a single number.'],
+    ['Close on a clear timeline','Fair terms, a date you can plan around, and a transition that keeps your staff, your name, and your regulars firmly in place.']
+  ];
+  var steps=document.querySelectorAll('.step'),bar=document.getElementById('bar'),pT=document.getElementById('pTitle'),pB=document.getElementById('pBody');
+  steps.forEach(function(st){st.addEventListener('click',function(){
+    var i=+st.dataset.i;
+    bar.style.width=((i+1)*33.34)+'%';
+    pT.textContent=data[i][0];pB.textContent=data[i][1];
+    steps.forEach(function(x,j){x.classList.toggle('active',j===i);x.classList.toggle('done',j<=i);});
+  });});
+</script>
+</body>
+</html>
