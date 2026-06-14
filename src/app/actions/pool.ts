@@ -16,12 +16,12 @@ async function requireUser() {
   return session.user;
 }
 
-/** Pool administration = CEO or Finance (Kevin). Money, not content. */
+/** Pool administration = CEO (Reza) only. Nobody else can adjust it. */
 async function requirePoolAdmin(user: { role?: string | null }) {
   await requirePermission(user, "view_pool");
   const role = await getEffectiveRole(user.role);
-  if (role !== "admin" && role !== "cfo") {
-    throw new Error("Only the CEO or Finance can manage the pool.");
+  if (role !== "admin") {
+    throw new Error("Only the CEO can adjust the pool.");
   }
 }
 
@@ -61,6 +61,22 @@ export async function setPoolMemberAction(
   if (typeof patch.active === "boolean") set.active = patch.active;
   if (Object.keys(set).length === 0) return { ok: true };
   await db.update(poolMembers).set(set).where(eq(poolMembers.id, memberId));
+  revalidatePath("/pool");
+  return { ok: true };
+}
+
+/** Remove a seat from the table entirely. Past distributions keep their
+ *  frozen split, so deleting a member never rewrites payout history. */
+export async function removePoolMemberAction(
+  memberId: string,
+): Promise<{ ok: boolean; error?: string }> {
+  const user = await requireUser();
+  try {
+    await requirePoolAdmin(user);
+  } catch (e) {
+    return { ok: false, error: e instanceof Error ? e.message : "Not allowed" };
+  }
+  await db.delete(poolMembers).where(eq(poolMembers.id, memberId));
   revalidatePath("/pool");
   return { ok: true };
 }

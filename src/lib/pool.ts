@@ -13,11 +13,10 @@
  *   points             = floor(years of service)  (year 7 → 7 points)
  *   member share       = pool × points / total vested points
  *
- * Assumptions live in ops_content under "pool." so Reza/Kevin can tune
- * them inline without a deploy:
- *   pool.target_parks            default 10
+ * Assumptions live in ops_content under "pool." so Reza can tune them
+ * inline without a deploy:
+ *   pool.target_parks            default 20  (5 parks/yr × 4 yrs)
  *   pool.pool_pct                default 10
- *   pool.cashflow_margin_pct     default 50
  *   pool.quarterly_cashflow_usd  optional manual override
  */
 import { and, desc, eq, isNull, sql } from "drizzle-orm";
@@ -48,7 +47,6 @@ export type PoolData = {
   parksOwned: number;
   targetParks: number;
   poolPct: number;
-  marginPct: number;
   /** True when the cash-flow number is a manual override, not Stripe-derived. */
   manualCashFlow: boolean;
   stripeConfigured: boolean;
@@ -84,9 +82,8 @@ export async function getPoolData(): Promise<PoolData> {
       .where(and(eq(deals.statusCode, "closed_rvx_acquired"), isNull(deals.deletedAt))),
   ]);
 
-  const targetParks = num(blocks.get("pool.target_parks"), 10);
+  const targetParks = num(blocks.get("pool.target_parks"), 20);
   const poolPct = num(blocks.get("pool.pool_pct"), 10);
-  const marginPct = num(blocks.get("pool.cashflow_margin_pct"), 50);
   const overrideUsd = parseFloat(blocks.get("pool.quarterly_cashflow_usd") ?? "");
   const manualCashFlow = Number.isFinite(overrideUsd) && overrideUsd > 0;
 
@@ -132,7 +129,6 @@ export async function getPoolData(): Promise<PoolData> {
     parksOwned: Number(parksResult[0]?.c ?? 0),
     targetParks,
     poolPct,
-    marginPct,
     manualCashFlow,
     stripeConfigured: false,
     quarterlyCashFlowCents,

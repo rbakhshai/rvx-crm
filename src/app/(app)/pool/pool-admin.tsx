@@ -1,9 +1,9 @@
 "use client";
 
 /**
- * Pool administration — CEO/Finance only (server actions re-enforce).
- * Add members with a seat-start date, adjust dates, pause membership,
- * and record quarterly distributions.
+ * Pool administration — CEO (Reza) only (server actions re-enforce).
+ * Add members with a seat-start date, adjust dates, pause or remove a
+ * seat, and record quarterly distributions.
  */
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
@@ -11,6 +11,7 @@ import { toast } from "sonner";
 import {
   addPoolMemberAction,
   setPoolMemberAction,
+  removePoolMemberAction,
   recordDistributionAction,
 } from "@/app/actions/pool";
 
@@ -36,6 +37,9 @@ export function PoolAdmin({
   const [totalUsd, setTotalUsd] = useState("");
   const [notes, setNotes] = useState("");
 
+  // Inline two-step confirm for removing a seat (no browser popup).
+  const [confirmRemoveId, setConfirmRemoveId] = useState<string | null>(null);
+
   function run(fn: () => Promise<{ ok: boolean; error?: string }>, okMsg: string) {
     startTransition(async () => {
       const r = await fn();
@@ -51,7 +55,7 @@ export function PoolAdmin({
   return (
     <section className="rounded-xl border border-border bg-background p-4 space-y-5">
       <div className="text-[10px] uppercase tracking-widest text-muted font-semibold">
-        ⚙️ Manage the pool — CEO / Finance
+        ⚙️ Manage the pool — CEO only
       </div>
 
       {/* Add member */}
@@ -120,6 +124,38 @@ export function PoolAdmin({
                 >
                   {m.active ? "Pause membership" : "Reactivate"}
                 </button>
+                {confirmRemoveId === m.memberId ? (
+                  <span className="inline-flex items-center gap-1.5 text-[11px]">
+                    <span className="text-muted">Remove {m.name}?</span>
+                    <button
+                      type="button"
+                      disabled={isPending}
+                      onClick={() => {
+                        run(() => removePoolMemberAction(m.memberId), "Seat removed");
+                        setConfirmRemoveId(null);
+                      }}
+                      className="font-semibold text-rose-600 hover:text-rose-700 underline-offset-2 hover:underline"
+                    >
+                      Confirm
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setConfirmRemoveId(null)}
+                      className="text-muted hover:text-foreground"
+                    >
+                      Cancel
+                    </button>
+                  </span>
+                ) : (
+                  <button
+                    type="button"
+                    disabled={isPending}
+                    onClick={() => setConfirmRemoveId(m.memberId)}
+                    className="text-[11px] text-rose-600/80 hover:text-rose-600 underline-offset-2 hover:underline"
+                  >
+                    Remove
+                  </button>
+                )}
               </li>
             ))}
           </ul>

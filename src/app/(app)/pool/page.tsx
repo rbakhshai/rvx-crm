@@ -1,7 +1,7 @@
 /**
- * /pool — The Pool: Reza's 10-10-10 leadership profit share.
+ * /pool — The Pool: Reza's leadership profit share.
  *
- *   Own 10 parks in 10 years. 10% of the portfolio's distributable
+ *   5 parks a year for 4 years. 10% of the portfolio's distributable
  *   cash flow goes into a pool, paid quarterly to leadership members
  *   past their 4-year cliff. Split by years-of-service points.
  *
@@ -9,7 +9,7 @@
  * progress, a live pool estimate from real revenue, each member's
  * countdown to their seat at the table, and the payout ledger.
  *
- * Visible to leadership (view_pool); managed by CEO + Finance.
+ * Visible to leadership (view_pool); only the CEO (Reza) can adjust it.
  */
 import { notFound } from "next/navigation";
 import { headers } from "next/headers";
@@ -33,7 +33,8 @@ export default async function PoolPage() {
   if (!(await hasPermission(session.user, "view_pool"))) notFound();
 
   const role = await getEffectiveRole(session.user.role);
-  const isPoolAdmin = role === "admin" || role === "cfo";
+  // Only the CEO (admin) can adjust the pool — not Finance, not anyone else.
+  const isPoolAdmin = role === "admin";
 
   const [pool, distributions, eligible] = await Promise.all([
     getPoolData(),
@@ -47,7 +48,7 @@ export default async function PoolPage() {
   return (
     <PageShell
       title="Pathway to Partnership"
-      subtitle={`${pool.targetParks} parks · 10 years · ${pool.poolPct}% of portfolio cash flow, shared quarterly with leadership past the 4-year cliff.`}
+      subtitle={`5 parks a year · 4 years · ${pool.poolPct}% of my portfolio cashflow, shared quarterly with leadership past the 4-year cliff.`}
       width="default"
     >
       {/* Parks progress hero */}
@@ -96,13 +97,7 @@ export default async function PoolPage() {
         </div>
 
         {isPoolAdmin && (
-          <div className="mt-4 pt-3 border-t border-border grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs">
-            <AssumptionField
-              label="Cash-flow margin % (vs revenue)"
-              scope="pool.cashflow_margin_pct"
-              initial={String(pool.marginPct)}
-              placeholder="50"
-            />
+          <div className="mt-4 pt-3 border-t border-border grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
             <AssumptionField
               label="Pool % of cash flow"
               scope="pool.pool_pct"

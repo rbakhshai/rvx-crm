@@ -23,6 +23,8 @@ type NavItem = {
   children?: NavChild[];
   /** Hide the whole group unless the user has this permission. */
   requires?: PermissionKey;
+  /** Optional Tailwind text-color classes to tint this item's link. */
+  accent?: string;
 };
 
 /**
@@ -67,9 +69,8 @@ const SECTIONS: NavSection[] = [
   },
   {
     label: null,
-    accentColor: "text-green-700 dark:text-green-400",
     items: [
-      { href: "/pool",   label: "Pathway to Partnership", requires: "view_pool" },
+      { href: "/pool", label: "Pathway to Partnership", requires: "view_pool", accent: "text-green-700 dark:text-green-400" },
     ],
   },
   {
@@ -239,8 +240,9 @@ function NavGroup({
         className={
           "flex items-center justify-between rounded-md px-2.5 py-1.5 transition " +
           (groupActive && !hasChildren
-            ? "bg-foreground/5 font-medium text-foreground"
-            : "font-semibold text-foreground hover:bg-foreground/5")
+            ? "bg-foreground/5 font-medium "
+            : "font-semibold hover:bg-foreground/5 ") +
+          (group.accent ?? "text-foreground")
         }
       >
         <span>{group.label}</span>
