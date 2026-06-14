@@ -67,6 +67,7 @@ const SECTIONS: NavSection[] = [
         children: [
           { href: "/contacts",  label: "Buyers" },
           { href: "/companies", label: "Sellers" },
+          { href: "/deals",     label: "Deals" },
         ],
       },
     ],
