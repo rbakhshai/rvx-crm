@@ -30,8 +30,22 @@ type Status =
   | "requester_review"
   | "finalized"
   | "withdrawn";
+type Category = "leadership" | "acquisition";
 
 const TYPES: ReadonlyArray<Type> = ["employee", "contractor_1099", "vendor"];
+const CATEGORIES: ReadonlyArray<Category> = ["leadership", "acquisition"];
+
+/**
+ * Both desks share this engine, so a transition can affect either
+ * queue. Revalidating both list + detail paths is cheap and avoids an
+ * extra category lookup in every action.
+ */
+function revalidateHire(id: string) {
+  revalidatePath("/hires");
+  revalidatePath(`/hires/${id}`);
+  revalidatePath("/acquisition/new-hires");
+  revalidatePath(`/acquisition/new-hires/${id}`);
+}
 
 /** Legal forward / backward transitions for the hire workflow. */
 const NEXT_STATUS: Record<Status, Status | null> = {
@@ -73,6 +87,9 @@ export async function createHireRequestAction(formData: FormData): Promise<{
   const typeRaw = String(formData.get("type") ?? "contractor_1099");
   const type: Type = (TYPES as readonly string[]).includes(typeRaw) ? (typeRaw as Type) : "contractor_1099";
 
+  const categoryRaw = String(formData.get("category") ?? "leadership");
+  const category: Category = (CATEGORIES as readonly string[]).includes(categoryRaw) ? (categoryRaw as Category) : "leadership";
+
   const candidateEmail = String(formData.get("candidateEmail") ?? "").trim() || null;
   const candidatePhone = String(formData.get("candidatePhone") ?? "").trim() || null;
   const forUnit        = String(formData.get("forUnit") ?? "").trim() || null;
@@ -86,6 +103,7 @@ export async function createHireRequestAction(formData: FormData): Promise<{
       candidateEmail,
       candidatePhone,
       type,
+      category,
       forUnit,
       roleTitle,
       rolesAndDuties,
@@ -93,7 +111,7 @@ export async function createHireRequestAction(formData: FormData): Promise<{
     })
     .returning({ id: hireRequests.id });
 
-  revalidatePath("/hires");
+  revalidateHire(row?.id ?? "");
   return { ok: true, id: row?.id };
 }
 
@@ -146,8 +164,7 @@ export async function updateHireRequestAction(
   }
 
   await db.update(hireRequests).set(next).where(eq(hireRequests.id, id));
-  revalidatePath("/hires");
-  revalidatePath(`/hires/${id}`);
+  revalidateHire(id);
   return { ok: true };
 }
 
@@ -170,8 +187,7 @@ export async function advanceHireStatusAction(id: string): Promise<{ ok: boolean
       updatedAt: new Date(),
     })
     .where(eq(hireRequests.id, id));
-  revalidatePath("/hires");
-  revalidatePath(`/hires/${id}`);
+  revalidateHire(id);
   return { ok: true };
 }
 
@@ -190,8 +206,7 @@ export async function reverseHireStatusAction(id: string): Promise<{ ok: boolean
       updatedAt: new Date(),
     })
     .where(eq(hireRequests.id, id));
-  revalidatePath("/hires");
-  revalidatePath(`/hires/${id}`);
+  revalidateHire(id);
   return { ok: true };
 }
 
@@ -207,8 +222,7 @@ export async function withdrawHireAction(id: string, reason: string): Promise<{ 
       updatedAt: new Date(),
     })
     .where(eq(hireRequests.id, id));
-  revalidatePath("/hires");
-  revalidatePath(`/hires/${id}`);
+  revalidateHire(id);
   return { ok: true };
 }
 
@@ -219,6 +233,6 @@ export async function deleteHireAction(id: string): Promise<{ ok: boolean }> {
     .update(hireRequests)
     .set({ deletedAt: new Date(), deletedById: user.id, updatedAt: new Date() })
     .where(and(eq(hireRequests.id, id), isNull(hireRequests.deletedAt)));
-  revalidatePath("/hires");
+  revalidateHire(id);
   return { ok: true };
 }

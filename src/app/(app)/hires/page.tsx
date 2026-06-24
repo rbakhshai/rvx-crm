@@ -93,6 +93,7 @@ export default async function HiresPage({
     .where(
       and(
         isNull(hireRequests.deletedAt),
+        eq(hireRequests.category, "leadership"),
         filter === "all"
           ? undefined
           : filter === "active"
@@ -112,7 +113,7 @@ export default async function HiresPage({
   const all = await db
     .select({ status: hireRequests.status })
     .from(hireRequests)
-    .where(isNull(hireRequests.deletedAt));
+    .where(and(isNull(hireRequests.deletedAt), eq(hireRequests.category, "leadership")));
   const countByStatus = new Map<string, number>();
   for (const r of all) {
     countByStatus.set(r.status, (countByStatus.get(r.status) ?? 0) + 1);

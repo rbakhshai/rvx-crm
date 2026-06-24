@@ -36,6 +36,18 @@ export const hireStatus = pgEnum("hire_status", [
   "withdrawn",
 ]);
 
+/**
+ * Which hiring queue a request belongs to. Same workflow engine, two
+ * separate desks: leadership hires (Marco / park mgrs → Kevin → Reza)
+ * live at /hires; acquisition hires (new BDs / acquisition reps, run by
+ * the Acquisition Lead) live at /acquisition/new-hires. Existing rows
+ * default to leadership.
+ */
+export const hireCategory = pgEnum("hire_category", [
+  "leadership",
+  "acquisition",
+]);
+
 export const hireRequests = pgTable(
   "hire_requests",
   {
@@ -49,6 +61,8 @@ export const hireRequests = pgTable(
     // === Classification ===
     type: hireType("type").notNull().default("contractor_1099"),
     status: hireStatus("status").notNull().default("draft"),
+    /** Which desk owns this request — leadership vs acquisition. */
+    category: hireCategory("category").notNull().default("leadership"),
 
     // === Context ===
     /** Which park / business unit is this hire for? Free-text so we
@@ -89,6 +103,8 @@ export const hireRequests = pgTable(
     // Default list query: newest first, filterable by status.
     statusIdx: index("hire_requests_status_idx").on(t.status, t.createdAt),
     requesterIdx: index("hire_requests_requester_idx").on(t.requestedById),
+    // Each desk lists only its own queue.
+    categoryIdx: index("hire_requests_category_idx").on(t.category, t.status),
   }),
 );
 

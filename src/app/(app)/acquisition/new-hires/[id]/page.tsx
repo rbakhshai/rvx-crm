@@ -1,9 +1,9 @@
 /**
- * /hires/[id] — request detail + workflow controls.
+ * /acquisition/new-hires/[id] — acquisition hire detail + workflow.
  *
- * Big stepper across the top shows where the request sits. Each field
- * is inline-editable. Footer has Advance / Send back / Withdraw / Reopen
- * buttons gated to whoever currently has the ball.
+ * Reuses the exact workflow UI from the leadership desk
+ * (HireDetailClient) and the shared hire actions. Scoped to
+ * category='acquisition' so leadership requests can't be opened here.
  */
 import { notFound } from "next/navigation";
 import { headers } from "next/headers";
@@ -13,11 +13,11 @@ import { db } from "@/db";
 import { hireRequests, user as userTable } from "@/db/schema";
 import { auth } from "@/lib/auth";
 import { hasPermission } from "@/lib/has-permission";
-import { PageShell } from "../../page-shell";
+import { PageShell } from "../../../page-shell";
 import { fmtDateTime } from "@/lib/date-format";
-import { HireDetailClient } from "./client";
+import { HireDetailClient } from "@/app/(app)/hires/[id]/client";
 
-export default async function HireDetailPage({
+export default async function AcquisitionHireDetailPage({
   params,
 }: {
   params: Promise<{ id: string }>;
@@ -55,8 +55,8 @@ export default async function HireDetailPage({
     .where(eq(hireRequests.id, id))
     .limit(1);
 
-  // Leadership desk only — acquisition hires live at /acquisition/new-hires.
-  if (!row || row.category !== "leadership") notFound();
+  // Acquisition desk only — leadership hires live at /hires.
+  if (!row || row.category !== "acquisition") notFound();
 
   const canManage = await hasPermission(session.user, "manage_hires");
 
@@ -65,7 +65,7 @@ export default async function HireDetailPage({
       title={row.candidateName}
       subtitle={`${row.roleTitle ?? "(no role title)"} · ${row.forUnit ?? "(no unit)"} · opened ${fmtDateTime(row.createdAt)}${row.requesterName ? " by " + row.requesterName : ""}`}
       action={
-        <Link href="/hires" className="text-xs text-muted hover:text-foreground">
+        <Link href="/acquisition/new-hires" className="text-xs text-muted hover:text-foreground">
           ← Back to list
         </Link>
       }
