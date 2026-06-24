@@ -83,16 +83,16 @@ const SECTIONS: NavSection[] = [
     accentColor: "text-purple-700 dark:text-purple-400",
     visibleToRoles: ["acquisitions_manager", "bd_level_1", "bd_level_2", "bd_level_3"],
     items: [
-      {
-        href: "/acquisition/dashboard",
-        label: "Dashboard",
-        requires: "view_mission_control",
-        children: [
-          { href: "/acquisition/dashboard",      label: "Leaderboard" },
-          { href: "/acquisition/calling-triage", label: "Calling Leads Triage" },
-        ],
-      },
-      { href: "/acquisition/pipeline", label: "Pipeline", requires: "view_pipeline" },
+      // Dashboard + Pipeline are manager-only (BDs lack mission-control /
+      // pipeline perms). Calling Leads Triage + My Leads are the BD's
+      // actual workspace — gated on the perms BDs DO have so their
+      // section isn't empty. Calling Leads Triage points at the real
+      // /lead-work dialer; the old /acquisition/calling-triage scaffold
+      // was an empty placeholder.
+      { href: "/acquisition/dashboard", label: "Dashboard",            requires: "view_mission_control" },
+      { href: "/lead-work",             label: "Calling Leads Triage", requires: "view_lead_work" },
+      { href: "/my-leads",              label: "My Leads",             requires: "view_my_leads" },
+      { href: "/acquisition/pipeline",  label: "Pipeline",             requires: "view_pipeline" },
     ],
   },
   {
