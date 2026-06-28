@@ -16,9 +16,8 @@ import { StaleDot } from "@/components/stale-dot";
 import { SavedViewsBar } from "@/components/saved-views";
 import { listSavedViews } from "@/app/actions/saved-views";
 import { headers } from "next/headers";
-import { loadColumnPreferences } from "@/app/actions/list-preferences";
-import { ContactColumnButton } from "./column-button";
-import type { ColumnConfig } from "@/components/column-editor";
+import { buildColumnPreferences, buildSortHref } from "@/lib/list-prefs";
+import { ColumnButton } from "@/components/column-button";
 import { auth } from "@/lib/auth";
 import {
   BUYER_STATUS_OPTIONS,
@@ -139,31 +138,8 @@ export default async function ContactsListPage({ searchParams }: { searchParams:
   const pathname = "/contacts";
   const ownerOptions = users.map((u) => ({ value: u.id, label: u.name }));
 
-  // Load column preferences and build display columns
-  const prefs = await loadColumnPreferences("contacts");
-  const allColumnConfigs: ColumnConfig[] = columns.map((col, i) => ({
-    key: col.key,
-    label: col.header || col.key,
-    visible: true,
-    order: i,
-  }));
-
-  let displayColumns = columns;
-  let selectedColumnConfigs = allColumnConfigs;
-
-  if (prefs?.columns) {
-    // Filter to visible columns and reorder
-    const visibleKeys = prefs.columns.filter((c) => c.visible).sort((a, b) => a.order - b.order).map((c) => c.key);
-    displayColumns = visibleKeys
-      .map((key) => columns.find((col) => col.key === key))
-      .filter((col) => col !== undefined) as Column<Row>[];
-
-    // Rebuild selectedColumnConfigs with labels from allColumnConfigs
-    selectedColumnConfigs = prefs.columns.map((pref) => ({
-      ...pref,
-      label: allColumnConfigs.find((c) => c.key === pref.key)?.label || pref.key,
-    }));
-  }
+  // Load the user's saved column layout (falls back to all columns).
+  const { displayColumns, allColumnConfigs, selectedColumnConfigs } = await buildColumnPreferences("contacts", columns);
 
   // Grouped view buckets — by status or by owner.
   const contactGroups = isGroup
@@ -172,17 +148,6 @@ export default async function ContactsListPage({ searchParams }: { searchParams:
       : buildGroups(rows, (r) => r.status ?? null, (s) => statusLabel.get(s) ?? s, BUYER_STATUS_OPTIONS.map((o) => o.value), "No status")
     : [];
 
-  function buildSortHref(key: string, nextDir: "asc" | "desc"): string {
-    const qs = new URLSearchParams();
-    for (const [k, v] of Object.entries(params)) {
-      if (k === "sort" || k === "dir") continue;
-      if (typeof v === "string" && v.length > 0) qs.set(k, v);
-    }
-    qs.set("sort", key);
-    qs.set("dir", nextDir);
-    return `${pathname}?${qs.toString()}`;
-  }
-
   return (
     <PageShell
       title="Buyers"
@@ -190,7 +155,7 @@ export default async function ContactsListPage({ searchParams }: { searchParams:
       width="wide"
       action={
         <div className="flex gap-2 items-center">
-          <ContactColumnButton allColumns={allColumnConfigs} selectedColumns={selectedColumnConfigs} />
+          <ColumnButton scope="contacts" allColumns={allColumnConfigs} selectedColumns={selectedColumnConfigs} />
           <ViewToggle current={params.view} pathname={pathname} searchParams={params} />
           <LinkButton href="/contacts/new" size="sm">+ New buyer</LinkButton>
         </div>
@@ -232,7 +197,7 @@ export default async function ContactsListPage({ searchParams }: { searchParams:
           rows={rows}
           columns={displayColumns}
           rowHref={(r) => `/contacts/${r.id}`}
-          sort={{ current: sortKey, dir: sortDir, hrefFor: buildSortHref }}
+          sort={{ current: sortKey, dir: sortDir, hrefFor: (key, dir) => buildSortHref(pathname, params, key, dir) }}
           empty={
             <EmptyState
               icon="👤"

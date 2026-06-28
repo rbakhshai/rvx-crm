@@ -20,9 +20,8 @@ import { headers } from "next/headers";
 import { auth } from "@/lib/auth";
 import { DEAL_PRIORITY_OPTIONS, US_STATES } from "@/lib/options";
 import { DEAL_PHASE_ROLES, isDealPhaseRole, isPipelineStageKey, labelForStage, statusesForStage } from "@/lib/pipeline-stages";
-import { loadColumnPreferences } from "@/app/actions/list-preferences";
-import { DealColumnButton } from "./column-button";
-import type { ColumnConfig } from "@/components/column-editor";
+import { buildColumnPreferences, buildSortHref } from "@/lib/list-prefs";
+import { ColumnButton } from "@/components/column-button";
 
 type Row = typeof deals.$inferSelect & { ownerName?: string | null };
 
@@ -94,31 +93,8 @@ export default async function DealsListPage({ searchParams }: { searchParams: Se
   const isGroup = params.view === "group";
   const groupBy = params.groupBy === "owner" ? "owner" : "status";
 
-  // Load column preferences and build display columns
-  const prefs = await loadColumnPreferences("deals");
-  const allColumnConfigs: ColumnConfig[] = columns.map((col, i) => ({
-    key: col.key,
-    label: col.header || col.key,
-    visible: true,
-    order: i,
-  }));
-
-  let displayColumns = columns;
-  let selectedColumnConfigs = allColumnConfigs;
-
-  if (prefs?.columns) {
-    // Filter to visible columns and reorder
-    const visibleKeys = prefs.columns.filter((c) => c.visible).sort((a, b) => a.order - b.order).map((c) => c.key);
-    displayColumns = visibleKeys
-      .map((key) => columns.find((col) => col.key === key))
-      .filter((col) => col !== undefined) as Column<Row>[];
-
-    // Rebuild selectedColumnConfigs with labels from allColumnConfigs
-    selectedColumnConfigs = prefs.columns.map((pref) => ({
-      ...pref,
-      label: allColumnConfigs.find((c) => c.key === pref.key)?.label || pref.key,
-    }));
-  }
+  // Load the user's saved column layout (falls back to all columns).
+  const { displayColumns, allColumnConfigs, selectedColumnConfigs } = await buildColumnPreferences("deals", columns);
 
   const stageKey = isPipelineStageKey(stage) ? stage : null;
   const phaseKey = isDealPhaseRole(phase) ? phase : null;
@@ -180,17 +156,6 @@ export default async function DealsListPage({ searchParams }: { searchParams: Se
 
   const pathname = "/deals";
 
-  function buildSortHref(key: string, nextDir: "asc" | "desc"): string {
-    const qs = new URLSearchParams();
-    // Preserve all other params (q, status, priority, state, owner, stage, bird_dog)
-    for (const [k, v] of Object.entries(params)) {
-      if (k === "sort" || k === "dir") continue;
-      if (typeof v === "string" && v.length > 0) qs.set(k, v);
-    }
-    qs.set("sort", key);
-    qs.set("dir", nextDir);
-    return `${pathname}?${qs.toString()}`;
-  }
   const statusOptions = statuses.map((s) => ({ value: s.code, label: s.label }));
   const ownerOptions = users.map((u) => ({ value: u.id, label: u.name }));
   // Phase chips with counts: skip empty phases ("Misc · 0" is just noise).
@@ -214,7 +179,7 @@ export default async function DealsListPage({ searchParams }: { searchParams: Se
       width="wide"
       action={
         <div className="flex gap-2 items-center">
-          <DealColumnButton allColumns={allColumnConfigs} selectedColumns={selectedColumnConfigs} />
+          <ColumnButton scope="deals" allColumns={allColumnConfigs} selectedColumns={selectedColumnConfigs} />
           <ViewToggle current={params.view} pathname={pathname} searchParams={params} />
           <LinkButton href="/deals/board" variant="secondary" size="sm">Board view</LinkButton>
           <LinkButton href="/deals/new" size="sm">+ New deal</LinkButton>
@@ -279,7 +244,7 @@ export default async function DealsListPage({ searchParams }: { searchParams: Se
           sort={{
             current: sortKey,
             dir: sortDir,
-            hrefFor: buildSortHref,
+            hrefFor: (key, dir) => buildSortHref(pathname, params, key, dir),
           }}
           empty={
             <EmptyState

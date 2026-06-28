@@ -7,7 +7,7 @@ import { db } from "@/db";
 import { userListPreferences, type UserListPreferences } from "@/db/schema";
 import { auth } from "@/lib/auth";
 
-type Scope = "contacts" | "companies" | "deals";
+export type Scope = "contacts" | "companies" | "deals";
 
 export async function loadColumnPreferences(scope: Scope): Promise<UserListPreferences | null> {
   const session = await auth.api.getSession({ headers: await headers() });

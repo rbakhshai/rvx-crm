@@ -1,13 +1,20 @@
 "use client";
 
+/**
+ * One column-customization button for every list page. Replaces the
+ * per-scope ContactColumnButton / CompanyColumnButton / DealColumnButton
+ * wrappers, which were identical except for the scope string.
+ */
 import { useState } from "react";
 import { ColumnEditor, type ColumnConfig } from "@/components/column-editor";
-import { saveColumnPreferences } from "@/app/actions/list-preferences";
+import { saveColumnPreferences, type Scope } from "@/app/actions/list-preferences";
 
-export function ContactColumnButton({
+export function ColumnButton({
+  scope,
   allColumns,
   selectedColumns,
 }: {
+  scope: Scope;
   allColumns: ColumnConfig[];
   selectedColumns: ColumnConfig[];
 }) {
@@ -25,10 +32,10 @@ export function ContactColumnButton({
 
       {isOpen && (
         <ColumnEditor
-          scope="contacts"
+          scope={scope}
           allColumns={allColumns}
           selectedColumns={selectedColumns}
-          onSave={(cols) => saveColumnPreferences("contacts", cols)}
+          onSave={(cols) => saveColumnPreferences(scope, cols)}
           onClose={() => setIsOpen(false)}
         />
       )}
