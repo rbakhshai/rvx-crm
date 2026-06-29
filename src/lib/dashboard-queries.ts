@@ -39,21 +39,21 @@ export async function fetchAdminDashboard() {
     db
       .select({ id: contacts.id, firstName: contacts.firstName, lastName: contacts.lastName, email: contacts.email, createdAt: contacts.createdAt })
       .from(contacts)
-      .where(eq(contacts.status, "new_waiting_to_connect"))
+      .where(and(isNull(contacts.deletedAt), eq(contacts.status, "new_waiting_to_connect")))
       .orderBy(desc(contacts.createdAt))
       .limit(8),
 
     db
       .select({ id: deals.id, name: deals.name, parkAddress: deals.parkAddress, parkState: deals.parkState, listPrice: deals.listPrice, statusCode: deals.statusCode })
       .from(deals)
-      .where(eq(deals.dealPriority, HOT_PRIORITY))
+      .where(and(isNull(deals.deletedAt), eq(deals.dealPriority, HOT_PRIORITY)))
       .orderBy(desc(deals.updatedAt))
       .limit(6),
 
     db
       .select({ id: birdDogs.id, firstName: birdDogs.firstName, lastName: birdDogs.lastName, email: birdDogs.email, createdAt: birdDogs.createdAt })
       .from(birdDogs)
-      .where(eq(birdDogs.statusCode, "hold_see_notes"))
+      .where(and(isNull(birdDogs.deletedAt), eq(birdDogs.statusCode, "hold_see_notes")))
       .orderBy(desc(birdDogs.createdAt))
       .limit(6),
 
@@ -62,6 +62,7 @@ export async function fetchAdminDashboard() {
       .from(deals)
       .where(
         and(
+          isNull(deals.deletedAt),
           or(isNull(deals.closerLastTouch), lt(deals.closerLastTouch, daysAgo(STALE_DAYS))),
           inArray(deals.statusCode, [
             "closer_first_contact_attempted",
@@ -76,9 +77,9 @@ export async function fetchAdminDashboard() {
       .orderBy(asc(deals.closerLastTouch))
       .limit(8),
 
-    db.select({ count: sql<number>`count(*)::int` }).from(deals).where(gt(deals.createdAt, daysAgo(7))),
-    db.select({ count: sql<number>`count(*)::int` }).from(contacts).where(gt(contacts.createdAt, daysAgo(7))),
-    db.select({ total: sql<number>`coalesce(sum(${contacts.pofAmount}), 0)::numeric` }).from(contacts),
+    db.select({ count: sql<number>`count(*)::int` }).from(deals).where(and(isNull(deals.deletedAt), gt(deals.createdAt, daysAgo(7)))),
+    db.select({ count: sql<number>`count(*)::int` }).from(contacts).where(and(isNull(contacts.deletedAt), gt(contacts.createdAt, daysAgo(7)))),
+    db.select({ total: sql<number>`coalesce(sum(${contacts.pofAmount}), 0)::numeric` }).from(contacts).where(isNull(contacts.deletedAt)),
   ]);
 
   return {
@@ -108,13 +109,14 @@ export async function fetchCloserDashboard(userId: string) {
     db
       .select({ count: sql<number>`count(*)::int` })
       .from(deals)
-      .where(and(or(eq(deals.opsOwnerId, userId), eq(deals.ownerId, userId)), inArray(deals.statusCode, closerStages))),
+      .where(and(isNull(deals.deletedAt), or(eq(deals.opsOwnerId, userId), eq(deals.ownerId, userId)), inArray(deals.statusCode, closerStages))),
 
     db
       .select({ id: deals.id, name: deals.name, parkAddress: deals.parkAddress, parkState: deals.parkState, closerLastTouch: deals.closerLastTouch, dealPriority: deals.dealPriority })
       .from(deals)
       .where(
         and(
+          isNull(deals.deletedAt),
           or(eq(deals.opsOwnerId, userId), eq(deals.ownerId, userId)),
           inArray(deals.statusCode, closerStages),
           or(isNull(deals.closerLastTouch), lt(deals.closerLastTouch, daysAgo(STALE_DAYS))),
@@ -126,7 +128,7 @@ export async function fetchCloserDashboard(userId: string) {
     db
       .select({ statusCode: deals.statusCode, n: sql<number>`count(*)::int` })
       .from(deals)
-      .where(and(or(eq(deals.opsOwnerId, userId), eq(deals.ownerId, userId)), isNotNull(deals.statusCode)))
+      .where(and(isNull(deals.deletedAt), or(eq(deals.opsOwnerId, userId), eq(deals.ownerId, userId)), isNotNull(deals.statusCode)))
       .groupBy(deals.statusCode),
 
     db
@@ -134,6 +136,7 @@ export async function fetchCloserDashboard(userId: string) {
       .from(contacts)
       .where(
         and(
+          isNull(contacts.deletedAt),
           eq(contacts.status, "active_looking_hot"),
           eq(contacts.qualificationTier, "tier_1_experienced_rvp_network"),
         ),
@@ -165,14 +168,14 @@ export async function fetchBdManagerDashboard() {
     db
       .select({ id: birdDogs.id, firstName: birdDogs.firstName, lastName: birdDogs.lastName, email: birdDogs.email, createdAt: birdDogs.createdAt })
       .from(birdDogs)
-      .where(eq(birdDogs.statusCode, "hold_see_notes"))
+      .where(and(isNull(birdDogs.deletedAt), eq(birdDogs.statusCode, "hold_see_notes")))
       .orderBy(desc(birdDogs.createdAt))
       .limit(8),
 
     db
       .select({ statusCode: birdDogs.statusCode, n: sql<number>`count(*)::int` })
       .from(birdDogs)
-      .where(isNotNull(birdDogs.statusCode))
+      .where(and(isNull(birdDogs.deletedAt), isNotNull(birdDogs.statusCode)))
       .groupBy(birdDogs.statusCode),
 
     db.select({ code: birdDogStatuses.code, label: birdDogStatuses.label, group: birdDogStatuses.group, sortOrder: birdDogStatuses.sortOrder }).from(birdDogStatuses),
@@ -180,11 +183,11 @@ export async function fetchBdManagerDashboard() {
     db
       .select({ id: birdDogs.id, firstName: birdDogs.firstName, lastName: birdDogs.lastName, email: birdDogs.email, lastActivityAt: birdDogs.lastActivityAt })
       .from(birdDogs)
-      .where(inArray(birdDogs.statusCode, ["active", "active_half_time"]))
+      .where(and(isNull(birdDogs.deletedAt), inArray(birdDogs.statusCode, ["active", "active_half_time"])))
       .orderBy(asc(birdDogs.lastActivityAt))
       .limit(8),
 
-    db.select({ count: sql<number>`count(*)::int` }).from(birdDogs),
+    db.select({ count: sql<number>`count(*)::int` }).from(birdDogs).where(isNull(birdDogs.deletedAt)),
   ]);
 
   return {
@@ -206,21 +209,21 @@ export async function fetchCfoDashboard() {
     db
       .select({ id: deals.id, name: deals.name, parkAddress: deals.parkAddress, agreedPurchasePrice: deals.agreedPurchasePrice, psaCoeDate: deals.psaCoeDate })
       .from(deals)
-      .where(inArray(deals.statusCode, escrowStages))
+      .where(and(isNull(deals.deletedAt), inArray(deals.statusCode, escrowStages)))
       .orderBy(asc(deals.psaCoeDate))
       .limit(10),
 
-    db.select({ total: sql<number>`coalesce(sum(${contacts.pofAmount}), 0)::numeric` }).from(contacts),
+    db.select({ total: sql<number>`coalesce(sum(${contacts.pofAmount}), 0)::numeric` }).from(contacts).where(isNull(contacts.deletedAt)),
 
     db
       .select({ total: sql<number>`coalesce(sum(${deals.agreedPurchasePrice}), 0)::numeric` })
       .from(deals)
-      .where(isNotNull(deals.agreedPurchasePrice)),
+      .where(and(isNull(deals.deletedAt), isNotNull(deals.agreedPurchasePrice))),
 
     db
       .select({ count: sql<number>`count(*)::int`, total: sql<number>`coalesce(sum(${deals.agreedPurchasePrice}), 0)::numeric` })
       .from(deals)
-      .where(and(inArray(deals.statusCode, closedStages), gt(deals.updatedAt, daysAgo(30)))),
+      .where(and(isNull(deals.deletedAt), inArray(deals.statusCode, closedStages), gt(deals.updatedAt, daysAgo(30)))),
   ]);
 
   return {
@@ -244,21 +247,21 @@ export async function fetchDueDiligenceDashboard() {
     db
       .select({ id: deals.id, name: deals.name, parkAddress: deals.parkAddress, escrowOpened: deals.escrowOpened, inspectionPeriodEnd: deals.inspectionPeriodEnd, psaCoeDate: deals.psaCoeDate })
       .from(deals)
-      .where(inArray(deals.statusCode, ddStages))
+      .where(and(isNull(deals.deletedAt), inArray(deals.statusCode, ddStages)))
       .orderBy(asc(deals.inspectionPeriodEnd))
       .limit(10),
 
     db
       .select({ id: deals.id, name: deals.name, parkAddress: deals.parkAddress, escrowOpened: deals.escrowOpened })
       .from(deals)
-      .where(and(isNotNull(deals.escrowOpened), gt(deals.escrowOpened, daysAgo(14).toISOString().slice(0, 10))))
+      .where(and(isNull(deals.deletedAt), isNotNull(deals.escrowOpened), gt(deals.escrowOpened, daysAgo(14).toISOString().slice(0, 10))))
       .orderBy(desc(deals.escrowOpened))
       .limit(5),
 
     db
       .select({ id: deals.id, name: deals.name, parkAddress: deals.parkAddress, statusCode: deals.statusCode })
       .from(deals)
-      .where(inArray(deals.statusCode, preDdStages))
+      .where(and(isNull(deals.deletedAt), inArray(deals.statusCode, preDdStages)))
       .orderBy(desc(deals.updatedAt))
       .limit(5),
   ]);
@@ -296,10 +299,10 @@ export async function fetchRecentNotifications(limit = 5) {
 
 export async function fetchDefaultDashboard() {
   const [c, d, co, bd] = await Promise.all([
-    db.select({ count: sql<number>`count(*)::int` }).from(contacts),
-    db.select({ count: sql<number>`count(*)::int` }).from(deals),
-    db.select({ count: sql<number>`count(*)::int`, totalPof: sql<number>`coalesce(sum(${contacts.pofAmount}), 0)::numeric` }).from(contacts),
-    db.select({ count: sql<number>`count(*)::int` }).from(birdDogs),
+    db.select({ count: sql<number>`count(*)::int` }).from(contacts).where(isNull(contacts.deletedAt)),
+    db.select({ count: sql<number>`count(*)::int` }).from(deals).where(isNull(deals.deletedAt)),
+    db.select({ count: sql<number>`count(*)::int`, totalPof: sql<number>`coalesce(sum(${contacts.pofAmount}), 0)::numeric` }).from(contacts).where(isNull(contacts.deletedAt)),
+    db.select({ count: sql<number>`count(*)::int` }).from(birdDogs).where(isNull(birdDogs.deletedAt)),
   ]);
   return {
     contactsCount: c[0]?.count ?? 0,
@@ -350,6 +353,7 @@ export async function fetchActiveDealsForMap() {
     .from(deals)
     .where(
       and(
+        isNull(deals.deletedAt),
         isNotNull(deals.latitude),
         isNotNull(deals.longitude),
         inArray(deals.statusCode, MAP_ACTIVE_STATUS_CODES),
@@ -400,7 +404,7 @@ export async function fetchPipelineFunnel(): Promise<{
       agreedPurchasePrice: deals.agreedPurchasePrice,
     })
     .from(deals)
-    .where(inArray(deals.statusCode, allActive));
+    .where(and(isNull(deals.deletedAt), inArray(deals.statusCode, allActive)));
 
   // Bucket each deal into a funnel stage
   const statusToKey = new Map<string, FunnelStage["key"]>();
@@ -497,7 +501,7 @@ export async function fetchRecentActivity(limit = 25): Promise<ActivityEvent[]> 
       createdAt: deals.createdAt,
     })
     .from(deals)
-    .where(gtFn(deals.createdAt, twoWeeksAgo))
+    .where(and(isNull(deals.deletedAt), gtFn(deals.createdAt, twoWeeksAgo)))
     .orderBy(descFn(deals.createdAt))
     .limit(limit);
 
@@ -588,6 +592,7 @@ export async function fetchHotTier1Buyers(limit = 6) {
     .from(contacts)
     .where(
       and(
+        isNull(contacts.deletedAt),
         eq(contacts.status, "active_looking_hot"),
         eq(contacts.qualificationTier, "tier_1_experienced_rvp_network"),
       ),
