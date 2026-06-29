@@ -651,38 +651,46 @@ export async function dispositionLeadAction(input: DispositionInput): Promise<Di
   // Build the deal record from the lead. We deliberately keep the deal's
   // own owner blank — the closer assignment happens in triage.
   const fullAddress = [lead.street, lead.city, lead.state, lead.zipCode].filter(Boolean).join(", ");
-  const [newDeal] = await db
-    .insert(deals)
-    .values({
-      name: lead.parkName ?? lead.street ?? "Lead from BD",
-      parkAddress: fullAddress || null,
-      parkCity: lead.city,
-      parkState: lead.state,
-      padsCount: lead.pads,
-      // First-stage closer status. This puts it in the triage cockpit
-      // queue so a closer picks it up next.
-      statusCode: "new_lead_received",
-      // Capture the BD identity for credit / leaderboard later.
-      birdDogFirstName: lead.ownerName ?? null,
-      // Note: leaving birdDogId unset for now; we'll link bird_dogs in
-      // a later phase once BD selection on intake exists.
-    })
-    .returning({ id: deals.id });
+  // Atomic: create the deal AND mark the lead converted in one transaction.
+  // Previously these were two separate writes — a mid-way failure could
+  // leave a "converted" lead with no deal (or a deal with the lead still
+  // in the pool, re-claimable into a duplicate deal).
+  const newDeal = await db.transaction(async (tx) => {
+    const [deal] = await tx
+      .insert(deals)
+      .values({
+        name: lead.parkName ?? lead.street ?? "Lead from BD",
+        parkAddress: fullAddress || null,
+        parkCity: lead.city,
+        parkState: lead.state,
+        padsCount: lead.pads,
+        // First-stage closer status. This puts it in the triage cockpit
+        // queue so a closer picks it up next.
+        statusCode: "new_lead_received",
+        // Capture the BD identity for credit / leaderboard later.
+        birdDogFirstName: lead.ownerName ?? null,
+        // Note: leaving birdDogId unset for now; we'll link bird_dogs in
+        // a later phase once BD selection on intake exists.
+      })
+      .returning({ id: deals.id });
 
-  await db
-    .update(rawLeads)
-    .set({
-      ...baseUpdate,
-      status: "converted",
-      convertedDealId: newDeal?.id ?? null,
-      convertedAt: now,
-      claimedById: null,
-      claimedAt: null,
-      // The deal pipeline owns follow-up from here — clear the BD's
-      // callback schedule so /today stops nagging about a won lead.
-      nextFollowUpAt: null,
-    })
-    .where(eq(rawLeads.id, leadId));
+    await tx
+      .update(rawLeads)
+      .set({
+        ...baseUpdate,
+        status: "converted",
+        convertedDealId: deal?.id ?? null,
+        convertedAt: now,
+        claimedById: null,
+        claimedAt: null,
+        // The deal pipeline owns follow-up from here — clear the BD's
+        // callback schedule so /today stops nagging about a won lead.
+        nextFollowUpAt: null,
+      })
+      .where(eq(rawLeads.id, leadId));
+
+    return deal;
+  });
 
   revalidatePath("/lead-work");
   revalidatePath("/triage");
