@@ -19,9 +19,8 @@ npm-debug.log*
 .idea/
 .DS_Store
 
-# drizzle
-drizzle/
-!drizzle/meta/
+# drizzle — generated migrations are versioned source of truth (run on deploy).
+# (Previously ignored when we were push-only; now tracked.)
 
 # vercel
 .vercel
