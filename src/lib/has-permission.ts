@@ -10,7 +10,8 @@
  * In a Server Component / Server Action just await one of these; in a
  * Client Component, pass the boolean down as a prop.
  */
-import { and, eq } from "drizzle-orm";
+import { cache } from "react";
+import { eq } from "drizzle-orm";
 import { db } from "@/db";
 import { rolePermissions } from "@/db/schema";
 import { DEFAULT_PERMISSIONS, type PermissionKey, type Role } from "./permissions";
@@ -24,27 +25,23 @@ function asRole(role: string | null | undefined): Role | null {
   return null;
 }
 
+/**
+ * Per-request memoized full permission map, keyed by the raw role
+ * string. React's cache() dedupes repeat calls within a single render
+ * or server action, so a page that checks 5 permissions makes ONE
+ * role_permissions query instead of 5 (and resolves "view as" once).
+ */
+const cachedPermissionsFor = cache(getPermissionsFor);
+
 export async function hasPermission(
   user: UserLike | null | undefined,
   key: PermissionKey,
 ): Promise<boolean> {
-  // "View as" resolves here so EVERY gate in the app — pages, nav,
-  // server actions — reflects the previewed role with no per-page
-  // wiring. Non-admins pass through unchanged.
-  const role = asRole(await getEffectiveRole(user?.role ?? null));
-  if (!role) return false;
-
-  // Try the DB first (live overrides set by an admin).
-  const [row] = await db
-    .select({ enabled: rolePermissions.enabled })
-    .from(rolePermissions)
-    .where(and(eq(rolePermissions.role, role), eq(rolePermissions.permissionKey, key)))
-    .limit(1);
-
-  if (row) return row.enabled;
-
-  // Otherwise the code default.
-  return DEFAULT_PERMISSIONS[role]?.[key] ?? false;
+  // Route through the cached bulk map — "view as" + the DB lookup happen
+  // once per request no matter how many keys are checked. Non-admins
+  // pass through unchanged.
+  const map = await cachedPermissionsFor(user?.role ?? null);
+  return map[key] ?? false;
 }
 
 export async function requirePermission(
