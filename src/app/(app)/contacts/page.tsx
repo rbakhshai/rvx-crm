@@ -6,6 +6,7 @@ import { PageShell } from "../page-shell";
 import { LinkButton } from "@/components/button";
 import { DataTable, type Column } from "@/components/data-table";
 import { GroupedTables, buildGroups } from "@/components/grouped-table";
+import { Pagination, parsePage, DEFAULT_PAGE_SIZE } from "@/components/pagination";
 import { ViewToggle } from "@/components/view-toggle";
 import { EmptyState } from "@/components/empty-state";
 import { Badge } from "@/components/badge";
@@ -92,13 +93,18 @@ const SORT_COLUMNS: Record<string, SQLWrapper> = {
   state: contacts.state,
 };
 
-type SearchParams = Promise<{ q?: string; status?: string; tier?: string; state?: string; owner?: string; sort?: string; dir?: string; view?: string; groupBy?: string }>;
+type SearchParams = Promise<{ q?: string; status?: string; tier?: string; state?: string; owner?: string; sort?: string; dir?: string; view?: string; groupBy?: string; page?: string }>;
 
 export default async function ContactsListPage({ searchParams }: { searchParams: SearchParams }) {
   const params = await searchParams;
   const { q, status, tier, state, owner } = params;
   const isGroup = params.view === "group";
   const groupBy = params.groupBy === "owner" ? "owner" : "status";
+
+  // Flat view paginates; grouped view loads a (capped) set to bucket.
+  const page = parsePage(params.page);
+  const queryLimit = isGroup ? 100 : DEFAULT_PAGE_SIZE;
+  const queryOffset = isGroup ? 0 : (page - 1) * DEFAULT_PAGE_SIZE;
 
   const filters: SQL[] = [isNull(contacts.deletedAt)];
   if (q) {
@@ -123,7 +129,7 @@ export default async function ContactsListPage({ searchParams }: { searchParams:
 
   const session = await auth.api.getSession({ headers: await headers() });
   const [rawRows, [{ count }], users, savedViews] = await Promise.all([
-    db.select().from(contacts).where(where).orderBy(orderBy).limit(100),
+    db.select().from(contacts).where(where).orderBy(orderBy).limit(queryLimit).offset(queryOffset),
     db.select({ count: sql<number>`count(*)::int` }).from(contacts).where(where),
     db.select({ id: user.id, name: user.name }).from(user).orderBy(asc(user.name)),
     session ? listSavedViews("contacts", session.user.id) : Promise.resolve([]),
@@ -208,6 +214,10 @@ export default async function ContactsListPage({ searchParams }: { searchParams:
             />
           }
         />
+      )}
+
+      {!isGroup && (
+        <Pagination pathname={pathname} params={params} page={page} pageSize={DEFAULT_PAGE_SIZE} total={count} />
       )}
     </PageShell>
   );

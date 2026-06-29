@@ -4,6 +4,7 @@ import { companies, user } from "@/db/schema";
 import { PageShell } from "../page-shell";
 import { LinkButton } from "@/components/button";
 import { DataTable, type Column } from "@/components/data-table";
+import { Pagination, parsePage, DEFAULT_PAGE_SIZE } from "@/components/pagination";
 import { EmptyState } from "@/components/empty-state";
 import { Badge } from "@/components/badge";
 import { SearchInput } from "@/components/search-input";
@@ -70,11 +71,13 @@ const SORT_COLUMNS: Record<string, SQLWrapper> = {
   state: companies.state,
 };
 
-type SearchParams = Promise<{ q?: string; relationship?: string; state?: string; owner?: string; sort?: string; dir?: string }>;
+type SearchParams = Promise<{ q?: string; relationship?: string; state?: string; owner?: string; sort?: string; dir?: string; page?: string }>;
 
 export default async function CompaniesListPage({ searchParams }: { searchParams: SearchParams }) {
   const params = await searchParams;
   const { q, relationship, state, owner } = params;
+  const page = parsePage(params.page);
+  const offset = (page - 1) * DEFAULT_PAGE_SIZE;
 
   const filters: SQL[] = [isNull(companies.deletedAt)];
   if (q) {
@@ -98,7 +101,7 @@ export default async function CompaniesListPage({ searchParams }: { searchParams
 
   const session = await auth.api.getSession({ headers: await headers() });
   const [rawRows, [{ count }], users, savedViews] = await Promise.all([
-    db.select().from(companies).where(where).orderBy(orderBy).limit(100),
+    db.select().from(companies).where(where).orderBy(orderBy).limit(DEFAULT_PAGE_SIZE).offset(offset),
     db.select({ count: sql<number>`count(*)::int` }).from(companies).where(where),
     db.select({ id: user.id, name: user.name }).from(user).orderBy(asc(user.name)),
     session ? listSavedViews("companies", session.user.id) : Promise.resolve([]),
@@ -153,6 +156,8 @@ export default async function CompaniesListPage({ searchParams }: { searchParams
           />
         }
       />
+
+      <Pagination pathname={pathname} params={params} page={page} pageSize={DEFAULT_PAGE_SIZE} total={count} />
     </PageShell>
   );
 }
