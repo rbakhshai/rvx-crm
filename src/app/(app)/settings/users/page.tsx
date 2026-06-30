@@ -1,8 +1,8 @@
 import { notFound } from "next/navigation";
 import { headers } from "next/headers";
-import { asc, isNotNull, isNull } from "drizzle-orm";
+import { asc, isNotNull, isNull, sql } from "drizzle-orm";
 import { db } from "@/db";
-import { user as userTable } from "@/db/schema";
+import { user as userTable, session as sessionTable } from "@/db/schema";
 import { auth } from "@/lib/auth";
 import { hasPermission } from "@/lib/has-permission";
 import { ROLES } from "@/lib/permissions";
@@ -49,12 +49,21 @@ export default async function UsersSettingsPage({
     );
   }
 
-  const users = await db
-    .select()
-    .from(userTable)
-    .where(showDeleted ? isNotNull(userTable.deletedAt) : isNull(userTable.deletedAt))
-    .orderBy(asc(userTable.name));
+  const [users, lastLogins] = await Promise.all([
+    db
+      .select()
+      .from(userTable)
+      .where(showDeleted ? isNotNull(userTable.deletedAt) : isNull(userTable.deletedAt))
+      .orderBy(asc(userTable.name)),
+    // Most recent session per user = last login. (Sessions cascade-delete
+    // with the user, so this only covers current accounts.)
+    db
+      .select({ userId: sessionTable.userId, last: sql<string | null>`max(${sessionTable.createdAt})` })
+      .from(sessionTable)
+      .groupBy(sessionTable.userId),
+  ]);
 
+  const lastLoginMap = new Map(lastLogins.map((r) => [r.userId, r.last ? new Date(r.last) : null]));
   const roleLabel = new Map(ROLES.map((r) => [r.value, r.label]));
 
   return (
@@ -95,13 +104,14 @@ export default async function UsersSettingsPage({
               <th className="px-4 py-2.5 text-xs font-medium text-muted">Email</th>
               <th className="px-4 py-2.5 text-xs font-medium text-muted">Role</th>
               <th className="px-4 py-2.5 text-xs font-medium text-muted">Status</th>
+              <th className="px-4 py-2.5 text-xs font-medium text-muted">Last login</th>
               <th className="px-4 py-2.5 text-xs font-medium text-muted w-72 text-right">Actions</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-border">
             {users.length === 0 && (
               <tr>
-                <td colSpan={5} className="px-4 py-10 text-center text-sm text-muted">
+                <td colSpan={6} className="px-4 py-10 text-center text-sm text-muted">
                   {showDeleted ? "No deleted users." : "No team members yet — invite someone above."}
                 </td>
               </tr>
@@ -110,6 +120,7 @@ export default async function UsersSettingsPage({
               const isSelf = u.id === session.user.id;
               const isSuspended = !!u.suspendedAt;
               const isDeleted = !!u.deletedAt;
+              const lastLogin = lastLoginMap.get(u.id) ?? null;
 
               return (
                 <tr key={u.id} className={isDeleted ? "opacity-60" : ""}>
@@ -131,6 +142,13 @@ export default async function UsersSettingsPage({
                     )}
                     {!isDeleted && !isSuspended && (
                       <Badge tone="success">Active</Badge>
+                    )}
+                  </td>
+                  <td className="px-4 py-3 text-xs">
+                    {lastLogin ? (
+                      <span title={lastLogin.toLocaleString()}>{relativeAgo(lastLogin)}</span>
+                    ) : (
+                      <span className="text-muted">Never</span>
                     )}
                   </td>
                   <td className="px-4 py-3">
