@@ -49,7 +49,11 @@ try {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en" className={rubik.variable}>
+    // suppressHydrationWarning: THEME_SCRIPT above intentionally adds `.dark`
+    // to <html> pre-hydration from per-client localStorage, which the server
+    // can't know — so this one element's class is EXPECTED to differ. The
+    // suppression is scoped to this element only; child mismatches still warn.
+    <html lang="en" className={rubik.variable} suppressHydrationWarning>
       <head>
         <script dangerouslySetInnerHTML={{ __html: THEME_SCRIPT }} />
       </head>
