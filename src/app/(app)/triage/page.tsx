@@ -1,9 +1,11 @@
 import Link from "next/link";
 import { eq } from "drizzle-orm";
 import { headers } from "next/headers";
+import { notFound } from "next/navigation";
 import { db } from "@/db";
 import { birdDogs, companies, deals } from "@/db/schema";
 import { auth } from "@/lib/auth";
+import { hasPermission } from "@/lib/has-permission";
 import { PageShell } from "../page-shell";
 import { GoogleMap } from "@/components/google-map";
 import { listQueue, listQueueCounts, listStatusOptions } from "./actions";
@@ -24,6 +26,9 @@ export default async function TriagePage({
 
   const session = await auth.api.getSession({ headers: await headers() });
   if (!session) return null;
+  // Same gate as the nav link (Company > Triage). Was session-only —
+  // any signed-in account (incl. BD tiers) could open the closer cockpit.
+  if (!(await hasPermission(session.user, "view_pipeline"))) notFound();
 
   const [queueRows, statusOptions, queueCounts] = await Promise.all([
     listQueue(queue, session.user.id),

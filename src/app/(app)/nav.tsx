@@ -52,10 +52,19 @@ type NavSection = {
 
 const SECTIONS: NavSection[] = [
   {
+    // Daily drivers — no header. Today is each role's work queue;
+    // Tasks/Issues are the shared work tools.
+    label: null,
+    items: [
+      { href: "/today",  label: "Today",  requires: "view_today" },
+      { href: "/tasks",  label: "Tasks",  requires: "view_tasks" },
+      { href: "/issues", label: "Issues", requires: "view_issues" },
+    ],
+  },
+  {
     label: "Dashboards",
     items: [
       { href: "/dashboards/company", label: "Company", requires: "view_today" },
-      { href: "/dashboards/personal", label: "Personal", requires: "view_today" },
     ],
   },
   {
@@ -65,6 +74,8 @@ const SECTIONS: NavSection[] = [
       { href: "/contacts",  label: "Buyers",  requires: "view_contacts" },
       { href: "/companies", label: "Sellers", requires: "view_contacts" },
       { href: "/deals",     label: "Deals",   requires: "view_contacts" },
+      // The closer cockpit — deal queue worked by closer/UW/DD/dispo/ops.
+      { href: "/triage",    label: "Triage",  requires: "view_pipeline" },
     ],
   },
   {
@@ -92,7 +103,6 @@ const SECTIONS: NavSection[] = [
       { href: "/acquisition/dashboard", label: "Dashboard",            requires: "view_mission_control" },
       { href: "/lead-work",             label: "Calling Leads Triage", requires: "view_lead_work" },
       { href: "/my-leads",              label: "My Leads",             requires: "view_my_leads" },
-      { href: "/acquisition/pipeline",  label: "Pipeline",             requires: "view_pipeline" },
     ],
   },
   {
@@ -100,39 +110,26 @@ const SECTIONS: NavSection[] = [
     accentColor: "text-indigo-700 dark:text-indigo-400",
     visibleToRoles: ["acquisitions_manager"],
     items: [
-      { href: "/acquisition/lead-dashboard", label: "Dashboard", requires: "view_mission_control" },
-      { href: "/bird-dogs",                  label: "Bird Dogs",  requires: "view_mission_control" },
-      { href: "/admin/leads",                label: "Lead Pool",  requires: "view_mission_control" },
-      { href: "/acquisition/new-hires",     label: "New Hires",  requires: "view_hires" },
+      { href: "/acquisition/lead-dashboard", label: "Dashboard",     requires: "view_mission_control" },
+      { href: "/bird-dogs",                  label: "Bird Dogs",     requires: "view_mission_control" },
+      { href: "/bd-team",                    label: "BD Team",       requires: "view_bd_team" },
+      { href: "/admin/leads",                label: "Lead Pool",     requires: "view_mission_control" },
+      // "BD" prefix distinguishes this queue from Leadership > New Hires
+      // in the admin's all-sections view.
+      { href: "/acquisition/new-hires",      label: "BD New Hires",  requires: "view_hires" },
     ],
   },
-  {
-    label: "Disposition",
-    accentColor: "text-lime-700 dark:text-lime-400",
-    visibleToRoles: ["dispo_manager"],
-    items: [
-      { href: "/disposition/due-diligence", label: "Due Diligence", requires: "view_pipeline", accent: "text-emerald-800 dark:text-emerald-400" },
-      { href: "/disposition/find-buyer",   label: "Find a Buyer",   requires: "view_pipeline", accent: "text-emerald-800 dark:text-emerald-400" },
-    ],
-  },
-  {
-    label: "Operation",
-    accentColor: "text-pink-700 dark:text-pink-400",
-    visibleToRoles: ["park_manager", "transaction_coord", "bird_dog_manager"],
-    items: [
-      { href: "/operation/site-visit",     label: "Site Visit",     requires: "view_pipeline" },
-      { href: "/operation/pre-setup",      label: "Pre-setup",      requires: "view_pipeline" },
-      { href: "/operation/setup",          label: "Setup",          requires: "view_pipeline" },
-      { href: "/operation/stabilize",      label: "Stabilize",      requires: "view_pipeline" },
-      { href: "/operation/purchase-order", label: "Purchase Order", requires: "view_mission_control" },
-    ],
-  },
+  // Disposition + Operation sections removed 2026-06-30: every item was an
+  // empty "coming soon" scaffold. Those roles reach the deal queue via
+  // Company > Triage. Re-add a section here the day its pages are real.
   {
     label: "Finance",
     accentColor: "text-emerald-800 dark:text-emerald-400",
     visibleToRoles: ["cfo"],
     items: [
-      { href: "/finance/park-performance", label: "Park Performance", requires: "view_revenue", accent: "text-emerald-800 dark:text-emerald-400" },
+      // Points at the real revenue page (was an empty scaffold at
+      // /finance/park-performance).
+      { href: "/admin/revenue", label: "Park Performance", requires: "view_revenue", accent: "text-emerald-800 dark:text-emerald-400" },
     ],
   },
 ];
