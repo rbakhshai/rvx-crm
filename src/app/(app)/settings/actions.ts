@@ -1,5 +1,6 @@
 "use server";
 
+import { randomInt } from "node:crypto";
 import { revalidatePath } from "next/cache";
 import { headers } from "next/headers";
 import { and, eq } from "drizzle-orm";
@@ -154,8 +155,10 @@ function generateTempPassword(): string {
     "sage","salt","sand","seed","shade","sky","slate","sparrow","spruce","starlight",
     "stone","stream","summit","sun","thistle","valley","vine","willow","wren",
   ];
-  const pick = () => words[Math.floor(Math.random() * words.length)];
-  const digits = String(Math.floor(1000 + Math.random() * 9000));
+  // crypto.randomInt (not Math.random) — temp passwords are credentials,
+  // so they must be unpredictable. randomInt is unbiased over its range.
+  const pick = () => words[randomInt(words.length)];
+  const digits = String(randomInt(1000, 10000));
   return `${pick()}-${pick()}-${pick()}-${digits}`;
 }
 
