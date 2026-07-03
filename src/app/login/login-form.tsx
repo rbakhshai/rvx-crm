@@ -3,6 +3,7 @@
 import { useState, useTransition } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { signIn } from "@/lib/auth-client";
+import { safeRedirectPath } from "@/lib/safe-url";
 
 /**
  * Sign-in only — the team is invite-only. Admins create accounts from
@@ -13,7 +14,9 @@ import { signIn } from "@/lib/auth-client";
 export function LoginForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const next = searchParams.get("next") ?? "/today";
+  // Validate the redirect target — an unchecked ?next= is an open-redirect
+  // / phishing vector (e.g. ?next=https://evil.com after login).
+  const next = safeRedirectPath(searchParams.get("next"), "/today");
   const reason = searchParams.get("reason");
 
   const [email, setEmail] = useState("");

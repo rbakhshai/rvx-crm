@@ -12,6 +12,7 @@
  *                      and deal flow continues.
  */
 import { getOpsBlocks } from "@/lib/ops-content";
+import { safeExternalUrl } from "@/lib/safe-url";
 
 export const metadata = {
   title: "Application received — RV Park Exchange",
@@ -37,7 +38,9 @@ export default async function BirdDogThankYouPage({
   const referral = params.path === "referral";
 
   const blocks = await getOpsBlocks("bd.").catch(() => new Map<string, string>());
-  const discoveryUrl = (blocks.get("bd.discovery_call_url") ?? "").trim();
+  // Sanitize before it lands in an href — this block is leadership-edited,
+  // so reject anything that isn't a real http(s) link (no javascript:).
+  const discoveryUrl = safeExternalUrl(blocks.get("bd.discovery_call_url"));
 
   if (referral) {
     return (
