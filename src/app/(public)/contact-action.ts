@@ -5,6 +5,7 @@ import { z } from "zod";
 import { db } from "@/db";
 import { contacts, notes } from "@/db/schema";
 import { sendNotification } from "@/lib/email";
+import { isPublicFormAbuse } from "@/lib/public-form-guard";
 
 const LEAD_NOTIFY_EMAIL = process.env.SELLER_LEAD_NOTIFY_EMAIL ?? "leads@rvparkexchange.com";
 
@@ -25,6 +26,9 @@ export async function submitContactAction(
   _prev: ContactFormState,
   formData: FormData,
 ): Promise<ContactFormState> {
+  if (await isPublicFormAbuse(formData)) {
+    return { ok: false, message: "Something went wrong. Please try again." };
+  }
   const raw = Object.fromEntries(formData.entries());
   const parsed = schema.safeParse(raw);
   if (!parsed.success) {

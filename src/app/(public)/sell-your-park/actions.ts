@@ -5,6 +5,7 @@ import { z } from "zod";
 import { db } from "@/db";
 import { companies, deals } from "@/db/schema";
 import { sendNotification } from "@/lib/email";
+import { isPublicFormAbuse } from "@/lib/public-form-guard";
 
 const SELLER_LEAD_NOTIFY_EMAIL = process.env.SELLER_LEAD_NOTIFY_EMAIL ?? "leads@rvparkexchange.com";
 
@@ -33,6 +34,9 @@ export async function submitSellerIntakeAction(
   _prev: IntakeFormState,
   formData: FormData,
 ): Promise<IntakeFormState> {
+  if (await isPublicFormAbuse(formData)) {
+    return { ok: false, message: "Something went wrong. Please try again." };
+  }
   const raw = Object.fromEntries(formData.entries());
   const parsed = sellerIntakeSchema.safeParse(raw);
   if (!parsed.success) {

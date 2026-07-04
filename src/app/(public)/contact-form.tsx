@@ -11,6 +11,8 @@ export function ContactForm() {
 
   return (
     <form action={formAction} className="space-y-4">
+      {/* Honeypot: hidden from people, bots fill it → submission dropped. */}
+      <input type="text" name="website" tabIndex={-1} autoComplete="off" aria-hidden="true" className="hidden" />
       <div className="grid sm:grid-cols-2 gap-3">
         <label className="block">
           <span className="text-xs font-medium text-foreground">Your name *</span>

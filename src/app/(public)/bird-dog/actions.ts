@@ -5,6 +5,7 @@ import { z } from "zod";
 import { db } from "@/db";
 import { birdDogs } from "@/db/schema";
 import { sendNotification } from "@/lib/email";
+import { isPublicFormAbuse } from "@/lib/public-form-guard";
 
 const BD_NOTIFY_EMAIL = process.env.BD_NOTIFY_EMAIL ?? "recruiting@rvparkexchange.com";
 
@@ -70,6 +71,9 @@ export async function submitBirdDogApplicationAction(
   _prev: IntakeFormState,
   formData: FormData,
 ): Promise<IntakeFormState> {
+  if (await isPublicFormAbuse(formData)) {
+    return { ok: false, message: "Something went wrong. Please try again." };
+  }
   const raw = Object.fromEntries(formData.entries());
   const parsed = applicationSchema.safeParse(raw);
   if (!parsed.success) {

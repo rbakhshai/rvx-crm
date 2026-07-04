@@ -6,6 +6,7 @@ import { z } from "zod";
 import { db } from "@/db";
 import { contacts } from "@/db/schema";
 import { sendNotification } from "@/lib/email";
+import { isPublicFormAbuse } from "@/lib/public-form-guard";
 
 const BUYER_LEAD_NOTIFY_EMAIL = process.env.BUYER_LEAD_NOTIFY_EMAIL ?? "buyers@rvparkexchange.com";
 
@@ -36,6 +37,9 @@ export async function submitIntakeStep1Action(
   _prev: IntakeFormState,
   formData: FormData,
 ): Promise<IntakeFormState> {
+  if (await isPublicFormAbuse(formData)) {
+    return { ok: false, message: "Something went wrong. Please try again." };
+  }
   const raw = Object.fromEntries(formData.entries());
   const parsed = step1Schema.safeParse(raw);
   if (!parsed.success) {

@@ -29,6 +29,8 @@ export function SellerIntakeForm() {
 
   return (
     <form action={formAction} className="space-y-5">
+      {/* Honeypot: hidden from people, bots fill it → submission dropped. */}
+      <input type="text" name="website" tabIndex={-1} autoComplete="off" aria-hidden="true" className="hidden" />
       {state.message && (
         <div className="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-800">
           {state.message}
