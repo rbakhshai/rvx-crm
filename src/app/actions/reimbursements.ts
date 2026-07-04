@@ -7,6 +7,7 @@ import { db } from "@/db";
 import { reimbursementRequests } from "@/db/schema";
 import { auth } from "@/lib/auth";
 import { hasPermission } from "@/lib/has-permission";
+import { getEffectiveRole } from "@/lib/view-as";
 
 async function requireUser() {
   const session = await auth.api.getSession({ headers: await headers() });
@@ -20,6 +21,24 @@ async function requireWrite() {
     throw new Error("You don't have permission to manage reimbursements");
   }
   return user;
+}
+
+/**
+ * Editing/deleting a request is owner-scoped: only the requester, or
+ * Finance/admin (who see and steward every request), may touch it. The
+ * approve/decline/advance workflow deliberately stays manager-gated — a
+ * manager acts on other people's requests by design.
+ */
+async function requireOwnerOrFinance(id: string, user: { id: string; role?: string | null }): Promise<void> {
+  const role = await getEffectiveRole(user.role ?? null);
+  if (role === "admin" || role === "cfo") return;
+  const [row] = await db
+    .select({ owner: reimbursementRequests.requestedById })
+    .from(reimbursementRequests)
+    .where(eq(reimbursementRequests.id, id));
+  if (!row || row.owner !== user.id) {
+    throw new Error("You can only modify your own reimbursement requests");
+  }
 }
 
 type Status = "pending" | "approved" | "purchased" | "fulfilled" | "declined";
@@ -82,7 +101,8 @@ export async function updateReimbursementAction(
     amountCents?: number | null;
   },
 ): Promise<{ ok: boolean; error?: string }> {
-  await requireWrite();
+  const user = await requireWrite();
+  await requireOwnerOrFinance(id, user);
   function coerce(s: string | null | undefined): string | null | undefined {
     if (s === undefined) return undefined;
     if (s === null) return null;
@@ -170,6 +190,7 @@ export async function declineReimbursementAction(id: string, reason: string): Pr
 /** Soft delete. Audit trail preserved. */
 export async function deleteReimbursementAction(id: string): Promise<{ ok: boolean }> {
   const user = await requireWrite();
+  await requireOwnerOrFinance(id, user);
   await db
     .update(reimbursementRequests)
     .set({ deletedAt: new Date(), deletedById: user.id, updatedAt: new Date() })

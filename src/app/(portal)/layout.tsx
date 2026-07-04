@@ -22,9 +22,16 @@ export default async function PortalLayout({ children }: { children: React.React
     .where(eq(birdDogs.userId, userId))
     .limit(1);
 
-  // Fallback: if no userId link yet but email matches a bird_dogs row, auto-link
+  // Fallback: if no userId link yet but email matches a bird_dogs row, auto-link.
+  // Guarded to accounts that SHOULD become bird dogs (a fresh invite is
+  // "viewer", or already bd-tier) — otherwise an internal user whose email
+  // happens to match a bird_dogs record would be silently demoted to
+  // bird_dog and locked into the portal.
   let linkedBd = bd ?? null;
-  if (!linkedBd && email) {
+  const currentRole = (session.user as { role?: string }).role ?? "viewer";
+  const eligibleForAutoLink =
+    currentRole === "viewer" || currentRole === "bird_dog" || currentRole.startsWith("bd_level_");
+  if (!linkedBd && email && eligibleForAutoLink) {
     const [byEmail] = await db
       .select({ id: birdDogs.id, firstName: birdDogs.firstName, lastName: birdDogs.lastName })
       .from(birdDogs)

@@ -1,6 +1,15 @@
 import { NextResponse, type NextRequest } from "next/server";
 
-const PROTECTED_PREFIXES = ["/today", "/dashboard", "/mission-control", "/contacts", "/deals", "/companies", "/bird-dogs", "/tasks", "/notifications", "/search", "/triage", "/admin", "/trash", "/settings"];
+// The (app) layout is the real auth gate (it re-checks the session on
+// every render); this list is defense-in-depth so unauthenticated
+// requests are bounced before rendering. Keep it in sync with (app) route
+// segments.
+const PROTECTED_PREFIXES = [
+  "/today", "/dashboard", "/mission-control", "/contacts", "/deals", "/companies",
+  "/bird-dogs", "/tasks", "/notifications", "/search", "/triage", "/admin", "/trash",
+  "/settings", "/reimbursements", "/hires", "/pool", "/leadership", "/acquisition",
+  "/lead-work", "/my-leads", "/ops", "/issues",
+];
 
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
