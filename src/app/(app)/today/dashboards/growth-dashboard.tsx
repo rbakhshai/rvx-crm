@@ -14,6 +14,7 @@ import { LocalGreeting } from "@/components/local-greeting";
 import { Avatar } from "@/components/avatar";
 import { cn } from "@/lib/cn";
 import { PortalHero, StatStrip, PortalStat, PortalSection, PortalCard, PortalEmpty, QueueRow, PortalCta } from "../portal-kit";
+import { NextActions } from "../next-actions";
 import { PortalFooter } from "./portal-common";
 
 const ACCENT = "blue" as const;
@@ -52,6 +53,8 @@ export async function GrowthDashboard({ userId, userName }: { userId: string; us
       >
         <PortalCta href="/bd-team" accent={ACCENT}>Open BD Team →</PortalCta>
       </PortalHero>
+
+      <NextActions userId={userId} role="acquisitions_manager" />
 
       {tiles && (
         <StatStrip>

@@ -17,6 +17,7 @@ import { StaleBadge, PriorityBadge } from "../../dashboard/widgets";
 import { fmtDateWithWeekday } from "@/lib/date-format";
 import { LocalGreeting } from "@/components/local-greeting";
 import { PortalHero, StatStrip, PortalStat, PortalSection, PortalCard, PortalEmpty, QueueRow, PortalCta } from "../portal-kit";
+import { NextActions } from "../next-actions";
 import { PortalFooter } from "./portal-common";
 
 const ACCENT = "green" as const;
@@ -46,6 +47,8 @@ export async function CloserDashboard({ userId, userName }: { userId: string; us
       >
         <PortalCta href="/triage" accent={ACCENT}>Open triage →</PortalCta>
       </PortalHero>
+
+      <NextActions userId={userId} role="closer" />
 
       <StatStrip>
         <PortalStat accent={ACCENT} emphasize value={closer?.myDealsCount ?? 0} label="My active deals" />

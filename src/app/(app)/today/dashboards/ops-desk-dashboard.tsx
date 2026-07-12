@@ -13,6 +13,7 @@ import { fmtDateWithWeekday } from "@/lib/date-format";
 import { LocalGreeting } from "@/components/local-greeting";
 import { portalFor, type AccentName } from "@/lib/role-portal";
 import { PortalHero, StatStrip, PortalStat, PortalSection, PortalCard, PortalEmpty, QueueRow, DeadlineBadge, PortalCta } from "../portal-kit";
+import { NextActions } from "../next-actions";
 import { PortalFooter } from "./portal-common";
 
 type DeskConfig = {
@@ -92,6 +93,8 @@ export async function OpsDeskDashboard({ userId, userName, role }: { userId: str
       >
         <PortalCta href={cfg.cta.href} accent={accent}>{cfg.cta.label}</PortalCta>
       </PortalHero>
+
+      <NextActions userId={userId} role={role} />
 
       <StatStrip>
         <PortalStat accent={accent} emphasize value={totalOnDesk} label="On your desk" hint="active deals" />

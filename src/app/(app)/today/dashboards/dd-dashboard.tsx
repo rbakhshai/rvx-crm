@@ -9,6 +9,7 @@ import { fetchDueDiligenceDashboard, fetchDealStatusLabels } from "@/lib/dashboa
 import { fmtDateWithWeekday, fmtDate } from "@/lib/date-format";
 import { LocalGreeting } from "@/components/local-greeting";
 import { PortalHero, StatStrip, PortalStat, PortalSection, PortalCard, PortalEmpty, QueueRow, DeadlineBadge, PortalCta } from "../portal-kit";
+import { NextActions } from "../next-actions";
 import { PortalFooter } from "./portal-common";
 
 const ACCENT = "gray" as const;
@@ -43,6 +44,8 @@ export async function DueDiligenceDashboard({ userId, userName }: { userId: stri
       >
         <PortalCta href="/deals?stage=contract" accent={ACCENT}>View deals →</PortalCta>
       </PortalHero>
+
+      <NextActions userId={userId} role="due_diligence" />
 
       <StatStrip>
         <PortalStat accent={ACCENT} emphasize value={inDd.length} label="In due diligence" />

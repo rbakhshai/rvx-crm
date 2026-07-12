@@ -11,6 +11,7 @@ import { moneyShort } from "../../dashboard/widgets";
 import { fmtDateWithWeekday } from "@/lib/date-format";
 import { LocalGreeting } from "@/components/local-greeting";
 import { PortalHero, StatStrip, PortalStat, PortalSection, PortalCard, PortalEmpty, QueueRow, DeadlineBadge, PortalCta } from "../portal-kit";
+import { NextActions } from "../next-actions";
 import { PortalFooter } from "./portal-common";
 
 const ACCENT = "emerald" as const;
@@ -36,6 +37,8 @@ export async function FinanceDashboard({ userId, userName, role }: { userId: str
       >
         <PortalCta href="/admin/revenue" accent={ACCENT}>Park Performance →</PortalCta>
       </PortalHero>
+
+      <NextActions userId={userId} role={role} />
 
       {cfo && (
         <StatStrip>

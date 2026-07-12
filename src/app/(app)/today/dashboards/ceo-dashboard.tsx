@@ -16,6 +16,7 @@ import { DealsMap } from "@/components/deals-map";
 import { fmtDateWithWeekday } from "@/lib/date-format";
 import { LocalGreeting } from "@/components/local-greeting";
 import { PortalHero, StatStrip, PortalStat, PortalSection, PortalCard, PortalEmpty, QueueRow, PortalCta } from "../portal-kit";
+import { NextActions } from "../next-actions";
 import { PortalFooter } from "./portal-common";
 
 const ACCENT = "amber" as const;
@@ -44,6 +45,8 @@ export async function CeoDashboard({ userId, userName, role }: { userId: string;
       >
         <PortalCta href="/ops/level10" accent={ACCENT}>Open RVX OS →</PortalCta>
       </PortalHero>
+
+      <NextActions userId={userId} role={role} />
 
       {tiles && (
         <StatStrip>

@@ -11,6 +11,7 @@ import { fmtDateWithWeekday } from "@/lib/date-format";
 import { LocalGreeting } from "@/components/local-greeting";
 import { StaleBadge, PriorityBadge } from "../../dashboard/widgets";
 import { PortalHero, StatStrip, PortalStat, PortalSection, PortalCard, PortalEmpty, QueueRow, DeadlineBadge, PortalCta } from "../portal-kit";
+import { NextActions } from "../next-actions";
 import { PortalFooter } from "./portal-common";
 
 const ACCENT = "pink" as const;
@@ -55,6 +56,8 @@ export async function OperationsDashboard({ userId, userName }: { userId: string
       >
         <PortalCta href="/deals/board" accent={ACCENT}>Pipeline board →</PortalCta>
       </PortalHero>
+
+      <NextActions userId={userId} role="bird_dog_manager" />
 
       <StatStrip>
         <PortalStat accent={ACCENT} emphasize value={totalActive} label="Active deals" hint="post-qualification" />

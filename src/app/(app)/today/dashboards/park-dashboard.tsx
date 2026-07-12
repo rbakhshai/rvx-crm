@@ -9,6 +9,7 @@ import { getMissionTiles } from "@/lib/mission-control";
 import { fmtDateWithWeekday } from "@/lib/date-format";
 import { LocalGreeting } from "@/components/local-greeting";
 import { PortalHero, StatStrip, PortalStat, PortalCta } from "../portal-kit";
+import { NextActions } from "../next-actions";
 import { PortalFooter } from "./portal-common";
 
 const ACCENT = "pink" as const;
@@ -29,6 +30,8 @@ export async function ParkManagerDashboard({ userId, userName }: { userId: strin
       >
         <PortalCta href="/admin/revenue" accent={ACCENT}>Park Performance →</PortalCta>
       </PortalHero>
+
+      <NextActions userId={userId} role="park_manager" />
 
       {tiles && (
         <StatStrip>

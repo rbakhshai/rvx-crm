@@ -34,6 +34,7 @@ import { OpsDeskDashboard } from "./dashboards/ops-desk-dashboard";
 import { DueDiligenceDashboard } from "./dashboards/dd-dashboard";
 import { ParkManagerDashboard } from "./dashboards/park-dashboard";
 import { PortalHero } from "./portal-kit";
+import { NextActions } from "./next-actions";
 import { portalFor } from "@/lib/role-portal";
 import { PortalFooter } from "./dashboards/portal-common";
 
@@ -100,6 +101,7 @@ function GenericDashboard({ userId, userName, role }: { userId: string; userName
         icon={identity.icon}
         accent={identity.accent}
       />
+      <NextActions userId={userId} role={role} />
       <PortalFooter userId={userId} />
     </>
   );
