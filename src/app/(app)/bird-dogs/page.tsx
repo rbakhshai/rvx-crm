@@ -17,7 +17,7 @@ import { auth } from "@/lib/auth";
 import { BD_ACQUISITION_LEVEL_OPTIONS } from "@/lib/options";
 import { fmtDate } from "@/lib/date-format";
 
-type Row = typeof birdDogs.$inferSelect & { ownerName?: string | null };
+type Row = typeof birdDogs.$inferSelect & { ownerName?: string | null; statusLabel?: string | null };
 
 const columns: Column<Row>[] = [
   {
@@ -42,7 +42,7 @@ const columns: Column<Row>[] = [
     sortKey: "level",
     render: (r) => (r.acquisitionLevel ? <Badge>{r.acquisitionLevel}</Badge> : <span className="text-muted">—</span>),
   },
-  { key: "status", header: "Status", sortKey: "status", className: "text-muted", render: (r) => r.statusCode ?? "—" },
+  { key: "status", header: "Status", sortKey: "status", className: "text-muted", render: (r) => r.statusLabel ?? "—" },
   { key: "discord", header: "Discord", render: (r) => (r.isInDiscord ? <Badge tone="success">In</Badge> : <span className="text-muted">—</span>) },
   {
     key: "owner",
@@ -96,9 +96,12 @@ export default async function BirdDogsListPage({ searchParams }: { searchParams:
   ]);
 
   const userMap = new Map(users.map((u) => [u.id, u.name]));
+  // Human-readable status labels — never show raw status codes in the UI.
+  const statusMap = new Map(statuses.map((s) => [s.code, s.label]));
   const rows: Row[] = rawRows.map((r) => ({
     ...r,
     ownerName: r.ownerId ? userMap.get(r.ownerId) ?? null : null,
+    statusLabel: r.statusCode ? statusMap.get(r.statusCode) ?? r.statusCode : null,
   }));
 
   const pathname = "/bird-dogs";

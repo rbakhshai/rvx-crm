@@ -24,7 +24,7 @@ import { DEAL_PHASE_ROLES, isDealPhaseRole, isPipelineStageKey, labelForStage, s
 import { buildColumnPreferences, buildSortHref } from "@/lib/list-prefs";
 import { ColumnButton } from "@/components/column-button";
 
-type Row = typeof deals.$inferSelect & { ownerName?: string | null };
+type Row = typeof deals.$inferSelect & { ownerName?: string | null; statusLabel?: string | null };
 
 const priorityTone = { hot: "danger", warm: "warning", cold: "info" } as const;
 
@@ -62,7 +62,7 @@ const columns: Column<Row>[] = [
         <span className="text-muted">—</span>
       ),
   },
-  { key: "status", header: "Stage", sortKey: "status", className: "text-muted", render: (r) => r.statusCode ?? <span className="text-muted">—</span> },
+  { key: "status", header: "Stage", sortKey: "status", className: "text-muted", render: (r) => r.statusLabel ?? <span className="text-muted">—</span> },
   {
     key: "owner",
     header: "Owner",
@@ -155,9 +155,12 @@ export default async function DealsListPage({ searchParams }: { searchParams: Se
   const phaseCountMap = new Map<string, number>(phaseCounts.map((p) => [p.role, p.n]));
 
   const userMap = new Map(users.map((u) => [u.id, u.name]));
+  // Human-readable stage labels — never show raw status codes in the UI.
+  const statusMap = new Map(statuses.map((s) => [s.code, s.label]));
   const rows: Row[] = rawRows.map((r) => ({
     ...r,
     ownerName: r.ownerId ? userMap.get(r.ownerId) ?? null : null,
+    statusLabel: r.statusCode ? statusMap.get(r.statusCode) ?? r.statusCode : null,
   }));
 
   const pathname = "/deals";
@@ -171,7 +174,6 @@ export default async function DealsListPage({ searchParams }: { searchParams: Se
     .map((p) => ({ value: p.value, label: `${p.label} · ${p.n}` }));
 
   // Grouped view buckets — by workflow stage or by owner.
-  const statusMap = new Map(statuses.map((s) => [s.code, s.label]));
   const dealGroups = isGroup
     ? groupBy === "owner"
       ? buildGroups(rows, (r) => r.ownerId ?? null, (id) => userMap.get(id) ?? "Unknown", users.map((u) => u.id), "Unassigned")

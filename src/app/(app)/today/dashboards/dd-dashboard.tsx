@@ -5,7 +5,7 @@
  * deals in escrow and how many days are left on each, then what just
  * opened and what's about to need a DD kickoff.
  */
-import { fetchDueDiligenceDashboard } from "@/lib/dashboard-queries";
+import { fetchDueDiligenceDashboard, fetchDealStatusLabels } from "@/lib/dashboard-queries";
 import { fmtDateWithWeekday, fmtDate } from "@/lib/date-format";
 import { LocalGreeting } from "@/components/local-greeting";
 import { PortalHero, StatStrip, PortalStat, PortalSection, PortalCard, PortalEmpty, QueueRow, DeadlineBadge, PortalCta } from "../portal-kit";
@@ -14,7 +14,10 @@ import { PortalFooter } from "./portal-common";
 const ACCENT = "gray" as const;
 
 export async function DueDiligenceDashboard({ userId, userName }: { userId: string; userName: string }) {
-  const dd = await fetchDueDiligenceDashboard().catch(() => null);
+  const [dd, statusLabels] = await Promise.all([
+    fetchDueDiligenceDashboard().catch(() => null),
+    fetchDealStatusLabels().catch(() => new Map<string, string>()),
+  ]);
 
   const inDd = dd?.inDd ?? [];
   const opened = dd?.escrowOpenedRecently ?? [];
@@ -102,7 +105,7 @@ export async function DueDiligenceDashboard({ userId, userName }: { userId: stri
                     key={d.id}
                     href={`/deals/${d.id}`}
                     primary={d.name || d.parkAddress || "(unnamed deal)"}
-                    secondary={d.statusCode ?? undefined}
+                    secondary={d.statusCode ? statusLabels.get(d.statusCode) ?? d.statusCode : undefined}
                   />
                 ))}
               </ul>
