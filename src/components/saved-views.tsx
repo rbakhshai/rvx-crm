@@ -9,6 +9,7 @@ import {
   deleteSavedViewAction,
   type ViewScope,
 } from "@/app/actions/saved-views";
+import { useConfirmDialog } from "@/components/confirm-dialog";
 import type { SavedView } from "@/db/schema";
 
 /**
@@ -72,20 +73,28 @@ export function SavedViewsBar({ scope, views }: { scope: ViewScope; views: Saved
     });
   }
 
+  const dialog = useConfirmDialog();
   function handleDelete(view: SavedView) {
-    if (!confirm(`Remove the saved view "${view.label}"?`)) return;
-    startTransition(async () => {
-      try {
-        await deleteSavedViewAction(view.id, scope);
-        toast.success(`Removed "${view.label}"`);
-      } catch (err) {
-        toast.error("Couldn't remove", { description: err instanceof Error ? err.message : "Try again." });
-      }
+    dialog.ask({
+      title: `Remove "${view.label}"?`,
+      body: "This saved view is removed for you only.",
+      confirmLabel: "Remove",
+      danger: true,
+      onConfirm: () =>
+        startTransition(async () => {
+          try {
+            await deleteSavedViewAction(view.id, scope);
+            toast.success(`Removed "${view.label}"`);
+          } catch (err) {
+            toast.error("Couldn't remove", { description: err instanceof Error ? err.message : "Try again." });
+          }
+        }),
     });
   }
 
   return (
     <div className="flex flex-wrap items-center gap-1.5 text-xs">
+      {dialog.node}
       <span className="text-muted mr-1">Views:</span>
 
       {/* "All" chip — clears every filter */}

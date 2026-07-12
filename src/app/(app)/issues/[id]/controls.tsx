@@ -11,6 +11,7 @@ import {
   setIssuePriorityAction,
   solveIssueAction,
 } from "@/app/actions/issues";
+import { useConfirmDialog } from "@/components/confirm-dialog";
 
 type Teammate = { id: string; name: string; firstName: string };
 type Priority = "red" | "orange" | "green";
@@ -84,26 +85,39 @@ export function IssueDetailControls({
     });
   }
 
+  const dialog = useConfirmDialog();
   function reopen() {
-    if (!confirm("Reopen this issue? The solution summary will be cleared.")) return;
-    startTransition(async () => {
-      await reopenIssueAction(issueId);
-      toast.success("Reopened");
-      router.refresh();
+    dialog.ask({
+      title: "Reopen this issue?",
+      body: "The solution summary will be cleared.",
+      confirmLabel: "Reopen",
+      onConfirm: () =>
+        startTransition(async () => {
+          await reopenIssueAction(issueId);
+          toast.success("Reopened");
+          router.refresh();
+        }),
     });
   }
 
   function del() {
-    if (!confirm("Delete this issue? It can be restored from trash.")) return;
-    startTransition(async () => {
-      await deleteIssueAction(issueId);
-      toast.success("Deleted");
-      router.push("/issues" as never);
+    dialog.ask({
+      title: "Delete this issue?",
+      body: "It can be restored from trash.",
+      confirmLabel: "Delete",
+      danger: true,
+      onConfirm: () =>
+        startTransition(async () => {
+          await deleteIssueAction(issueId);
+          toast.success("Deleted");
+          router.push("/issues" as never);
+        }),
     });
   }
 
   return (
     <div className="rounded-lg border border-border p-4 bg-background space-y-3">
+      {dialog.node}
       <div className="grid sm:grid-cols-2 gap-3">
         {/* Priority */}
         <div>

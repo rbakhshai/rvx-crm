@@ -8,6 +8,7 @@ import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { postAnnouncementAction, deleteAnnouncementAction } from "@/app/actions/announcements";
+import { useConfirmDialog } from "@/components/confirm-dialog";
 import { fmtRelative } from "@/lib/date-format";
 
 export function AnnouncementsManager({
@@ -32,21 +33,29 @@ export function AnnouncementsManager({
     });
   }
 
+  const dialog = useConfirmDialog();
   function remove(id: string) {
-    if (!confirm("Remove this announcement for everyone?")) return;
-    startTransition(async () => {
-      const r = await deleteAnnouncementAction(id);
-      if (!r.ok) {
-        toast.error(r.error ?? "Couldn't remove");
-        return;
-      }
-      toast.success("Removed");
-      router.refresh();
+    dialog.ask({
+      title: "Remove this announcement?",
+      body: "It disappears from every BD's Today feed.",
+      confirmLabel: "Remove",
+      danger: true,
+      onConfirm: () =>
+        startTransition(async () => {
+          const r = await deleteAnnouncementAction(id);
+          if (!r.ok) {
+            toast.error(r.error ?? "Couldn't remove");
+            return;
+          }
+          toast.success("Removed");
+          router.refresh();
+        }),
     });
   }
 
   return (
     <section className="rounded-xl border border-border bg-background p-4 mb-6">
+      {dialog.node}
       <div className="text-[10px] uppercase tracking-widest text-muted font-semibold mb-2">
         📣 Announcements — visible to every BD on their Today page
       </div>

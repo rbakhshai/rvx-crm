@@ -4,6 +4,7 @@ import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { cn } from "@/lib/cn";
+import { useConfirmDialog } from "@/components/confirm-dialog";
 import {
   updateReimbursementAction,
   advanceReimbursementAction,
@@ -41,6 +42,7 @@ const STEP_META: Record<(typeof FLOW)[number], { label: string; nextLabel: strin
 export function ReimbursementDetailClient({ row, canManage }: { row: Row; canManage: boolean }) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
+  const dialog = useConfirmDialog();
 
   const isDeclined = row.status === "declined";
   const isFulfilled = row.status === "fulfilled";
@@ -67,17 +69,24 @@ export function ReimbursementDetailClient({ row, canManage }: { row: Row; canMan
   }
 
   function decline() {
-    const reason = prompt("Reason for declining? (Saved on the record.)") ?? "";
-    if (reason === "") return;
-    startTransition(async () => {
-      await declineReimbursementAction(row.id, reason);
-      toast.success("Declined");
-      router.refresh();
+    dialog.ask({
+      title: "Decline this request?",
+      body: "The reason is saved on the record.",
+      confirmLabel: "Decline",
+      danger: true,
+      input: { label: "Reason", placeholder: "Why is this being declined?", required: true },
+      onConfirm: (reason) =>
+        startTransition(async () => {
+          await declineReimbursementAction(row.id, reason);
+          toast.success("Declined");
+          router.refresh();
+        }),
     });
   }
 
   return (
     <div className="space-y-6">
+      {dialog.node}
       {/* Stepper */}
       {!isDeclined && (
         <ol className="flex items-center gap-2 flex-wrap rounded-xl border border-border bg-foreground/[0.02] p-3">

@@ -4,6 +4,7 @@ import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { cn } from "@/lib/cn";
 import { completeTaskAction, uncompleteTaskAction, deleteTaskAction } from "@/app/actions/tasks";
+import { useConfirmDialog } from "@/components/confirm-dialog";
 import { fmtDate } from "@/lib/date-format";
 
 const typeBadge: Record<string, string> = {
@@ -65,16 +66,23 @@ export function TaskRow({
     });
   }
 
+  const dialog = useConfirmDialog();
   function del() {
-    if (!confirm("Delete this task?")) return;
-    startTransition(async () => {
-      await deleteTaskAction(task.id, task.parentTable, task.parentId);
-      router.refresh();
+    dialog.ask({
+      title: "Delete this task?",
+      confirmLabel: "Delete",
+      danger: true,
+      onConfirm: () =>
+        startTransition(async () => {
+          await deleteTaskAction(task.id, task.parentTable, task.parentId);
+          router.refresh();
+        }),
     });
   }
 
   return (
     <div className={cn("rounded-lg border p-3 bg-background", done ? "border-border opacity-60" : "border-border")}>
+      {dialog.node}
       <div className="flex items-start gap-3">
         <button
           type="button"

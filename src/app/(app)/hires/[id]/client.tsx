@@ -10,6 +10,7 @@ import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { cn } from "@/lib/cn";
+import { useConfirmDialog } from "@/components/confirm-dialog";
 import {
   updateHireRequestAction,
   advanceHireStatusAction,
@@ -55,6 +56,7 @@ const TYPE_LABEL: Record<string, string> = {
 export function HireDetailClient({ row, canManage }: { row: Row; canManage: boolean }) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
+  const dialog = useConfirmDialog();
 
   const stepIdx = (FLOW as readonly string[]).indexOf(row.status);
   const isWithdrawn = row.status === "withdrawn";
@@ -84,30 +86,42 @@ export function HireDetailClient({ row, canManage }: { row: Row; canManage: bool
   }
 
   function sendBack() {
-    if (!confirm("Send back one step? The previous reviewer will see this in their queue.")) return;
-    startTransition(async () => {
-      const r = await reverseHireStatusAction(row.id);
-      if (!r.ok) {
-        toast.error(r.error ?? "Couldn't reverse");
-        return;
-      }
-      toast.success("Sent back");
-      router.refresh();
+    dialog.ask({
+      title: "Send back one step?",
+      body: "The previous reviewer will see this in their queue.",
+      confirmLabel: "Send back",
+      onConfirm: () =>
+        startTransition(async () => {
+          const r = await reverseHireStatusAction(row.id);
+          if (!r.ok) {
+            toast.error(r.error ?? "Couldn't reverse");
+            return;
+          }
+          toast.success("Sent back");
+          router.refresh();
+        }),
     });
   }
 
   function withdraw() {
-    const reason = prompt("Why are we withdrawing this request? (Saved on the record.)") ?? "";
-    if (reason === "") return;
-    startTransition(async () => {
-      await withdrawHireAction(row.id, reason);
-      toast.success("Withdrawn");
-      router.refresh();
+    dialog.ask({
+      title: "Withdraw this request?",
+      body: "The reason is saved on the record.",
+      confirmLabel: "Withdraw",
+      danger: true,
+      input: { label: "Reason", placeholder: "Why are we withdrawing?", required: true },
+      onConfirm: (reason) =>
+        startTransition(async () => {
+          await withdrawHireAction(row.id, reason);
+          toast.success("Withdrawn");
+          router.refresh();
+        }),
     });
   }
 
   return (
     <div className="space-y-6">
+      {dialog.node}
       {/* Stepper */}
       {!isWithdrawn && (
         <ol className="flex items-center gap-2 flex-wrap rounded-xl border border-border bg-foreground/[0.02] p-3">

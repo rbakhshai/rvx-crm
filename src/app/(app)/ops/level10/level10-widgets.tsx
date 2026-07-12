@@ -17,6 +17,7 @@ import {
   carryForwardActionItemAction,
 } from "@/app/actions/level10";
 import { toast } from "sonner";
+import { useConfirmDialog } from "@/components/confirm-dialog";
 
 /**
  * Multi-line editor bound to a single (meetingDate, field) pair.
@@ -397,11 +398,17 @@ function ActionRow({ item, teammates }: { item: ActionItem; teammates: Teammate[
     });
   }
 
+  const dialog = useConfirmDialog();
   function del() {
-    if (!confirm("Delete this action item?")) return;
-    startTransition(async () => {
-      await deleteActionItemAction(item.id);
-      router.refresh();
+    dialog.ask({
+      title: "Delete this action item?",
+      confirmLabel: "Delete",
+      danger: true,
+      onConfirm: () =>
+        startTransition(async () => {
+          await deleteActionItemAction(item.id);
+          router.refresh();
+        }),
     });
   }
 
@@ -439,6 +446,7 @@ function ActionRow({ item, teammates }: { item: ActionItem; teammates: Teammate[
 
   return (
     <li className={cn("flex items-center gap-2 rounded-md hover:bg-foreground/[0.02] px-1.5 py-1", completed && "opacity-60")}>
+      {dialog.node}
       <button
         type="button"
         onClick={toggle}

@@ -19,6 +19,7 @@ import {
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import { cn } from "@/lib/cn";
+import { useConfirmDialog } from "@/components/confirm-dialog";
 import {
   reorderFeedbackAction,
   setFeedbackStatusAction,
@@ -195,16 +196,23 @@ function Row({
     });
   }
 
+  const dialog = useConfirmDialog();
   function remove() {
-    if (!confirm("Delete this feedback item? Cannot be undone.")) return;
-    startTransition(async () => {
-      try {
-        await deleteFeedbackAction(item.id);
-        toast.success("Deleted");
-        onChange();
-      } catch {
-        toast.error("Couldn't delete");
-      }
+    dialog.ask({
+      title: "Delete this feedback item?",
+      body: "This cannot be undone.",
+      confirmLabel: "Delete",
+      danger: true,
+      onConfirm: () =>
+        startTransition(async () => {
+          try {
+            await deleteFeedbackAction(item.id);
+            toast.success("Deleted");
+            onChange();
+          } catch {
+            toast.error("Couldn't delete");
+          }
+        }),
     });
   }
 
@@ -215,6 +223,7 @@ function Row({
 
   return (
     <div className="rounded-xl border border-border bg-background hover:border-foreground/30 transition">
+      {dialog.node}
       <div className="flex items-start gap-3 p-3">
         {dragHandle}
         <div className="flex-1 min-w-0">
