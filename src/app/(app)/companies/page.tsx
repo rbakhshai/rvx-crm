@@ -10,6 +10,7 @@ import { Badge } from "@/components/badge";
 import { SearchInput } from "@/components/search-input";
 import { FilterChips } from "@/components/filter-chips";
 import { Avatar } from "@/components/avatar";
+import { ContactLink } from "@/components/contact-link";
 import { StaleDot } from "@/components/stale-dot";
 import { SavedViewsBar } from "@/components/saved-views";
 import { listSavedViews } from "@/app/actions/saved-views";
@@ -50,8 +51,8 @@ const columns: Column<Row>[] = [
     sortKey: "seller",
     render: (r) => [r.sellerFirstName, r.sellerLastName].filter(Boolean).join(" ") || <span className="text-muted">—</span>,
   },
-  { key: "email", header: "Email", sortKey: "email", className: "text-muted", render: (r) => r.email ?? "—" },
-  { key: "phone", header: "Phone", sortKey: "phone", className: "text-muted", render: (r) => r.phone ?? "—" },
+  { key: "email", header: "Email", sortKey: "email", className: "text-muted", interactive: true, render: (r) => <ContactLink kind="email" value={r.email} /> },
+  { key: "phone", header: "Phone", sortKey: "phone", className: "text-muted", interactive: true, render: (r) => <ContactLink kind="phone" value={r.phone} /> },
   { key: "state", header: "State", sortKey: "state", render: (r) => r.state ?? <span className="text-muted">—</span> },
   {
     key: "owner",

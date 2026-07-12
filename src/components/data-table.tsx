@@ -11,6 +11,13 @@ export type Column<T> = {
    * The value is what the page's URL `?sort=` will be set to.
    */
   sortKey?: string;
+  /**
+   * The cell renders its own interactive element (a tel:/mailto: link,
+   * a button…). In rowHref mode the cell is NOT wrapped in the row's
+   * <Link> — nested anchors are invalid HTML — so clicks hit the cell's
+   * own control instead of navigating to the record.
+   */
+  interactive?: boolean;
 };
 
 export type SortConfig = {
@@ -110,12 +117,16 @@ export function DataTable<T extends { id: string }>({
               <tr key={row.id} className="border-t border-border hover:bg-foreground/[0.02] cursor-pointer">
                 {columns.map((col) => (
                   <td key={col.key} className={cn("p-0 align-middle", col.className)}>
-                    <Link
-                      href={rowHref(row) as never}
-                      className="block px-3.5 py-2.5"
-                    >
-                      {col.render(row)}
-                    </Link>
+                    {col.interactive ? (
+                      <div className="px-3.5 py-2.5">{col.render(row)}</div>
+                    ) : (
+                      <Link
+                        href={rowHref(row) as never}
+                        className="block px-3.5 py-2.5"
+                      >
+                        {col.render(row)}
+                      </Link>
+                    )}
                   </td>
                 ))}
               </tr>

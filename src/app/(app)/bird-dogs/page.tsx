@@ -9,6 +9,7 @@ import { Badge } from "@/components/badge";
 import { SearchInput } from "@/components/search-input";
 import { FilterChips } from "@/components/filter-chips";
 import { Avatar } from "@/components/avatar";
+import { ContactLink } from "@/components/contact-link";
 import { StaleDot } from "@/components/stale-dot";
 import { SavedViewsBar } from "@/components/saved-views";
 import { listSavedViews } from "@/app/actions/saved-views";
@@ -35,7 +36,7 @@ const columns: Column<Row>[] = [
     className: "font-medium",
     render: (r) => [r.firstName, r.lastName].filter(Boolean).join(" ") || "(unnamed)",
   },
-  { key: "email", header: "Email", sortKey: "email", className: "text-muted", render: (r) => r.email ?? "—" },
+  { key: "email", header: "Email", sortKey: "email", className: "text-muted", interactive: true, render: (r) => <ContactLink kind="email" value={r.email} /> },
   {
     key: "level",
     header: "Level",
