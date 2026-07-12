@@ -220,6 +220,10 @@ export const deals = pgTable(
     updatedCoeDate2: date("updated_coe_date_2"),
     updatedCoeDate3: date("updated_coe_date_3"),
     closerLastTouch: timestamp("closer_last_touch"),
+    /** When statusCode last changed — drives "time in stage" aging in
+     *  lists/boards. Stamped by every status-writing action; defaults to
+     *  row creation for new deals. */
+    statusChangedAt: timestamp("status_changed_at").notNull().defaultNow(),
 
     // FEE RESPONSIBILITY
     escrowFeeResponsibility: escrowFeeResponsibility("escrow_fee_responsibility"),

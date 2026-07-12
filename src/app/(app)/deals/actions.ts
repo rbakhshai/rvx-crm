@@ -172,14 +172,19 @@ export async function updateDealAction(id: string, _prev: FormState, formData: F
   }
   const values = toValues(parsed.data);
 
-  // Detect false → true transition on readyForReview
+  // Detect false → true transition on readyForReview + stage changes
   const [existing] = await db
-    .select({ readyForReview: deals.readyForReview })
+    .select({ readyForReview: deals.readyForReview, statusCode: deals.statusCode })
     .from(deals)
     .where(eq(deals.id, id))
     .limit(1);
 
-  await db.update(deals).set({ ...values, updatedAt: new Date() }).where(eq(deals.id, id));
+  // Reset the stage clock only when the edit actually changes the stage.
+  const stageChanged = !!values.statusCode && values.statusCode !== existing?.statusCode;
+  await db
+    .update(deals)
+    .set({ ...values, updatedAt: new Date(), ...(stageChanged ? { statusChangedAt: new Date() } : {}) })
+    .where(eq(deals.id, id));
 
   if (values.readyForReview && !existing?.readyForReview) {
     const [row] = await db
@@ -266,12 +271,22 @@ export async function updateDealStatusByRoleAction(
     return { ok: false, error: `No active statuses found for role "${newRole}"` };
   }
 
-  const [existing] = await db.select({ readyForReview: deals.readyForReview }).from(deals).where(eq(deals.id, dealId)).limit(1);
+  const [existing] = await db
+    .select({ readyForReview: deals.readyForReview, statusCode: deals.statusCode })
+    .from(deals)
+    .where(eq(deals.id, dealId))
+    .limit(1);
   const previousReady = existing?.readyForReview ?? false;
 
   await db
     .update(deals)
-    .set({ statusCode: target.code, closerLastTouch: new Date(), updatedAt: new Date() })
+    .set({
+      statusCode: target.code,
+      closerLastTouch: new Date(),
+      updatedAt: new Date(),
+      // Reset the stage clock only on a real stage change.
+      ...(target.code !== existing?.statusCode ? { statusChangedAt: new Date() } : {}),
+    })
     .where(eq(deals.id, dealId));
 
   // If moving INTO underwriting lane and not already flagged, also fire UW notification

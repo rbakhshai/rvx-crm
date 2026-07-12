@@ -15,6 +15,7 @@ import { SearchInput } from "@/components/search-input";
 import { FilterChips } from "@/components/filter-chips";
 import { Avatar } from "@/components/avatar";
 import { StaleDot } from "@/components/stale-dot";
+import { StageAge } from "@/components/stage-age";
 import { SavedViewsBar } from "@/components/saved-views";
 import { listSavedViews } from "@/app/actions/saved-views";
 import { headers } from "next/headers";
@@ -64,6 +65,13 @@ const columns: Column<Row>[] = [
   },
   { key: "status", header: "Stage", sortKey: "status", className: "text-muted", render: (r) => r.statusLabel ?? <span className="text-muted">—</span> },
   {
+    key: "in_stage",
+    header: "In stage",
+    sortKey: "in_stage",
+    className: "text-right tabular-nums whitespace-nowrap",
+    render: (r) => <StageAge since={r.statusChangedAt ?? r.createdAt} />,
+  },
+  {
     key: "owner",
     header: "Owner",
     className: "w-12",
@@ -83,6 +91,7 @@ const SORT_COLUMNS: Record<string, SQLWrapper> = {
   price: deals.listPrice,
   priority: deals.dealPriority,
   status: deals.statusCode,
+  in_stage: deals.statusChangedAt,
 };
 
 type SearchParams = Promise<{ q?: string; status?: string; phase?: string; priority?: string; state?: string; owner?: string; stage?: string; bird_dog?: string; sort?: string; dir?: string; view?: string; groupBy?: string; page?: string }>;

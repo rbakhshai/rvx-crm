@@ -143,7 +143,11 @@ export async function triageDealAction(formData: FormData): Promise<void> {
     updatedAt: new Date(),
   };
   if (callOutcome) updates.callDisposition = callOutcome as never;
-  if (newStatusCode) updates.statusCode = newStatusCode;
+  if (newStatusCode) {
+    updates.statusCode = newStatusCode;
+    // Reset the stage clock only on a real stage change.
+    if (newStatusCode !== deal.statusCode) updates.statusChangedAt = new Date();
+  }
   if (updateToBirdDog) updates.updateToBirdDog = updateToBirdDog;
   if (noteBody) updates.lastNote = noteBody.slice(0, 500);
 
