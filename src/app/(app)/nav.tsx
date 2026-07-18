@@ -86,7 +86,10 @@ const SECTIONS: NavSection[] = [
       { href: "/leadership/l10",    label: "L10 Meeting",            requires: "view_mission_control" },
       { href: "/hires",             label: "New Hires",              requires: "view_hires" },
       { href: "/reimbursements",    label: "Reimbursements",         requires: "view_reimbursements" },
-      { href: "/pool",              label: "Pathway to Partnership", requires: "view_pool", accent: "text-emerald-800 dark:text-emerald-400" },
+      // Pathway to Partnership (/pool) hidden from the nav for everyone
+      // (Reza, 2026-07-12). Page still exists at /pool for admins who
+      // know the URL; restore this line to bring the tab back.
+      // { href: "/pool",           label: "Pathway to Partnership", requires: "view_pool", accent: "text-emerald-800 dark:text-emerald-400" },
     ],
   },
   {
