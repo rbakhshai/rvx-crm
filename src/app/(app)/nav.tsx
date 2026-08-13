@@ -125,16 +125,9 @@ const SECTIONS: NavSection[] = [
   // Disposition + Operation sections removed 2026-06-30: every item was an
   // empty "coming soon" scaffold. Those roles reach the deal queue via
   // Company > Triage. Re-add a section here the day its pages are real.
-  {
-    label: "Finance",
-    accentColor: "text-emerald-800 dark:text-emerald-400",
-    visibleToRoles: ["cfo"],
-    items: [
-      // Points at the real revenue page (was an empty scaffold at
-      // /finance/park-performance).
-      { href: "/admin/revenue", label: "Park Performance", requires: "view_revenue", accent: "text-emerald-800 dark:text-emerald-400" },
-    ],
-  },
+  // Finance section removed 2026-07-12 — Park Performance lives in
+  // QuickBooks (Reza). The /admin/revenue page still exists by direct
+  // URL for view_revenue holders; restore from git history if needed.
 ];
 
 const ADMIN_GROUPS: NavItem[] = [

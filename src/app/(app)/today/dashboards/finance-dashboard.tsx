@@ -10,7 +10,7 @@ import { getLeadershipQueueForUser } from "@/lib/leadership-queue";
 import { moneyShort } from "../../dashboard/widgets";
 import { fmtDateWithWeekday } from "@/lib/date-format";
 import { LocalGreeting } from "@/components/local-greeting";
-import { PortalHero, StatStrip, PortalStat, PortalSection, PortalCard, PortalEmpty, QueueRow, DeadlineBadge, PortalCta } from "../portal-kit";
+import { PortalHero, StatStrip, PortalStat, PortalSection, PortalCard, PortalEmpty, QueueRow, DeadlineBadge } from "../portal-kit";
 import { NextActions } from "../next-actions";
 import { PortalFooter } from "./portal-common";
 
@@ -34,9 +34,7 @@ export async function FinanceDashboard({ userId, userName, role }: { userId: str
         tagline="Pipeline dollars, deals in escrow, closings, and the books."
         icon="💵"
         accent={ACCENT}
-      >
-        <PortalCta href="/admin/revenue" accent={ACCENT}>Park Performance →</PortalCta>
-      </PortalHero>
+      ></PortalHero>
 
       <NextActions userId={userId} role={role} />
 

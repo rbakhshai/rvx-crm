@@ -8,7 +8,7 @@
 import { getMissionTiles } from "@/lib/mission-control";
 import { fmtDateWithWeekday } from "@/lib/date-format";
 import { LocalGreeting } from "@/components/local-greeting";
-import { PortalHero, StatStrip, PortalStat, PortalCta } from "../portal-kit";
+import { PortalHero, StatStrip, PortalStat } from "../portal-kit";
 import { NextActions } from "../next-actions";
 import { PortalFooter } from "./portal-common";
 
@@ -27,9 +27,7 @@ export async function ParkManagerDashboard({ userId, userName }: { userId: strin
         tagline="Your parks, performance, and what needs attention on-site."
         icon="🏕️"
         accent={ACCENT}
-      >
-        <PortalCta href="/admin/revenue" accent={ACCENT}>Park Performance →</PortalCta>
-      </PortalHero>
+      ></PortalHero>
 
       <NextActions userId={userId} role="park_manager" />
 
