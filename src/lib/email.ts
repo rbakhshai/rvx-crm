@@ -71,6 +71,16 @@ async function sendViaResend(args: SendArgs): Promise<{ id?: string }> {
   return { id: data.id };
 }
 
+/**
+ * Kinds whose bodies contain credentials (temp passwords). The real
+ * body goes to the provider only — the queue row stores a redacted
+ * placeholder so credentials never sit readable in the database or on
+ * the /notifications page. (Kevin's beta finding #1, 2026-07-12.)
+ */
+const SENSITIVE_KINDS = new Set<NewNotification["kind"]>(["team_invite", "password_reset"]);
+
+const REDACTED_BODY = "[credential email — body withheld for security]";
+
 export async function sendNotification(
   args: SendArgs,
 ): Promise<{ status: "sent" | "logged_only" | "failed"; id: string }> {
@@ -78,7 +88,7 @@ export async function sendNotification(
     kind: args.kind,
     recipientEmail: args.to,
     subject: args.subject,
-    bodyMd: args.bodyMd,
+    bodyMd: SENSITIVE_KINDS.has(args.kind) ? REDACTED_BODY : args.bodyMd,
     payload: args.payload ?? {},
     status: "pending",
   };

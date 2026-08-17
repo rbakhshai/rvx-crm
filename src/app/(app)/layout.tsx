@@ -1,4 +1,5 @@
 import Image from "next/image";
+import Link from "next/link";
 import { redirect } from "next/navigation";
 import { headers } from "next/headers";
 import { eq } from "drizzle-orm";
@@ -99,8 +100,10 @@ export default async function AppLayout(props: {
             <ViewAsPicker roles={[...VIEWABLE_ROLES]} active={viewAs} />
           )}
           <div className="text-xs">
-            <div className="font-medium text-foreground">{session.user.name}</div>
-            <div className="text-muted truncate">{session.user.email}</div>
+            <Link href={"/account" as never} className="group block" title="Account settings">
+              <div className="font-medium text-foreground group-hover:underline underline-offset-2">{session.user.name}</div>
+              <div className="text-muted truncate">{session.user.email}</div>
+            </Link>
             <div className="mt-1 inline-flex items-center gap-1.5">
               <span className={viewAs ? "size-1.5 rounded-full bg-amber-500" : "size-1.5 rounded-full bg-green-500"} />
               <span className="text-muted">{roleLabelOf(role)}</span>

@@ -1,7 +1,11 @@
 import { desc, sql, eq } from "drizzle-orm";
 import Link from "next/link";
+import { notFound } from "next/navigation";
+import { headers } from "next/headers";
 import { db } from "@/db";
 import { notifications } from "@/db/schema";
+import { auth } from "@/lib/auth";
+import { hasPermission } from "@/lib/has-permission";
 import { PageShell } from "../page-shell";
 import { Badge } from "@/components/badge";
 import { EmptyState } from "@/components/empty-state";
@@ -30,6 +34,14 @@ const kindLabel: Record<string, string> = {
 };
 
 export default async function NotificationsPage({ searchParams }: { searchParams: SearchParams }) {
+  // Admin-only: the outbound queue can reference workflow details that
+  // aren't for every role, and it had no gate at all before (Kevin's
+  // beta finding #1 — temp passwords were readable here by any login;
+  // bodies are now also redacted at write time in lib/email.ts).
+  const session = await auth.api.getSession({ headers: await headers() });
+  if (!session) notFound();
+  if (!(await hasPermission(session.user, "manage_users"))) notFound();
+
   const { status } = await searchParams;
 
   const where = status ? eq(notifications.status, status as never) : undefined;
