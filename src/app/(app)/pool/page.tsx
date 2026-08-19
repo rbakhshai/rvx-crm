@@ -16,6 +16,8 @@
 import { notFound } from "next/navigation";
 import { headers } from "next/headers";
 import { auth } from "@/lib/auth";
+import { POOL_LAUNCHED } from "@/lib/pool-visibility";
+import { hasPermission } from "@/lib/has-permission";
 import { getEffectiveRole } from "@/lib/view-as";
 import { PageShell } from "../page-shell";
 import { getPoolData, getPoolDistributions, getEligibleUsers, fmtUsd, type PoolMemberRow } from "@/lib/pool";
@@ -31,7 +33,9 @@ const ROLE_LABEL = new Map(ROLES.map((r) => [r.value as string, r.label]));
 export default async function PoolPage() {
   const session = await auth.api.getSession({ headers: await headers() });
   if (!session) notFound();
-  if ((session.user as { role?: string }).role !== "admin") notFound();
+  const realRole = (session.user as { role?: string }).role;
+  const launchedAndAllowed = POOL_LAUNCHED && (await hasPermission(session.user, "view_pool"));
+  if (realRole !== "admin" && !launchedAndAllowed) notFound();
 
   const role = await getEffectiveRole(session.user.role);
   // Only the CEO (admin) can adjust the pool — not Finance, not anyone else.

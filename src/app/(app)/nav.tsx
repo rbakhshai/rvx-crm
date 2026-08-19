@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import type { PermissionKey } from "@/lib/permissions";
+import { POOL_LAUNCHED } from "@/lib/pool-visibility";
 
 type NavChild = {
   href: string;
@@ -25,6 +26,8 @@ type NavItem = {
   requires?: PermissionKey;
   /** Optional Tailwind text-color classes to tint this item's link. */
   accent?: string;
+  /** When true, only the admin role sees this item regardless of permissions. */
+  adminOnly?: boolean;
 };
 
 /**
@@ -86,10 +89,10 @@ const SECTIONS: NavSection[] = [
       { href: "/leadership/l10",    label: "L10 Meeting",            requires: "view_mission_control" },
       { href: "/hires",             label: "New Hires",              requires: "view_hires" },
       { href: "/reimbursements",    label: "Reimbursements",         requires: "view_reimbursements" },
-      // Pathway to Partnership (/pool) hidden from the nav for everyone
-      // (Reza, 2026-07-12). Page still exists at /pool for admins who
-      // know the URL; restore this line to bring the tab back.
-      // { href: "/pool",           label: "Pathway to Partnership", requires: "view_pool", accent: "text-emerald-800 dark:text-emerald-400" },
+      // Pathway to Partnership: admin-only until POOL_LAUNCHED is flipped
+      // (lib/pool-visibility.ts) — then it opens to leadership via
+      // view_pool like any other item.
+      { href: "/pool", label: "Pathway to Partnership", requires: "view_pool", adminOnly: !POOL_LAUNCHED, accent: "text-emerald-800 dark:text-emerald-400" },
     ],
   },
   {
@@ -175,7 +178,7 @@ export function Nav({
 
   const visibleSections = SECTIONS
     .filter(sectionVisible)
-    .map((s) => ({ ...s, items: s.items.filter((g) => allowed(g.requires)) }))
+    .map((s) => ({ ...s, items: s.items.filter((g) => allowed(g.requires) && (!g.adminOnly || role === "admin")) }))
     .filter((s) => s.items.length > 0);
   const visibleAdmin = ADMIN_GROUPS.filter((g) => allowed(g.requires));
 
