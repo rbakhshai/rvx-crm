@@ -135,12 +135,12 @@ export default async function MissionControlPage({
           <Tile value={tiles.closerQualifiedWeek} label="Closer-qualified · 7d" hint="connected + open to selling" />
           <Tile value={tiles.loisOut} label="LOIs out" />
           <Tile value={tiles.inEscrow} label="In escrow" />
-          <Link href="/pool" className="rounded-xl border border-amber-300/60 bg-amber-50/50 dark:border-amber-500/30 dark:bg-amber-500/[0.06] px-3 py-2.5 hover:bg-amber-50 dark:hover:bg-amber-500/[0.1] transition">
+          <div className="rounded-xl border border-amber-300/60 bg-amber-50/50 dark:border-amber-500/30 dark:bg-amber-500/[0.06] px-3 py-2.5">
             <div className="text-2xl font-bold tabular-nums leading-none">
               {tiles.parksOwned}<span className="text-sm text-muted font-medium">/{tiles.targetParks}</span>
             </div>
             <div className="text-[10px] uppercase tracking-widest text-muted font-semibold mt-1">Parks owned</div>
-          </Link>
+          </div>
           <Link href="/bd-team" className="rounded-xl border border-border bg-foreground/[0.02] px-3 py-2.5 hover:bg-foreground/[0.04] transition">
             <div className="text-2xl font-bold tabular-nums leading-none">{tiles.bdAppsPending}</div>
             <div className="text-[10px] uppercase tracking-widest text-muted font-semibold mt-1">BD applications</div>

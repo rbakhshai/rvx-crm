@@ -9,12 +9,13 @@
  * progress, a live pool estimate from real revenue, each member's
  * countdown to their seat at the table, and the payout ledger.
  *
- * Visible to leadership (view_pool); only the CEO (Reza) can adjust it.
+ * Admin-only (Reza, 2026-07-12) — the profit-share terms are not for
+ * general leadership viewing during beta. Gate is the REAL role, so
+ * view-as previews don't lock the CEO out.
  */
 import { notFound } from "next/navigation";
 import { headers } from "next/headers";
 import { auth } from "@/lib/auth";
-import { hasPermission } from "@/lib/has-permission";
 import { getEffectiveRole } from "@/lib/view-as";
 import { PageShell } from "../page-shell";
 import { getPoolData, getPoolDistributions, getEligibleUsers, fmtUsd, type PoolMemberRow } from "@/lib/pool";
@@ -30,7 +31,7 @@ const ROLE_LABEL = new Map(ROLES.map((r) => [r.value as string, r.label]));
 export default async function PoolPage() {
   const session = await auth.api.getSession({ headers: await headers() });
   if (!session) notFound();
-  if (!(await hasPermission(session.user, "view_pool"))) notFound();
+  if ((session.user as { role?: string }).role !== "admin") notFound();
 
   const role = await getEffectiveRole(session.user.role);
   // Only the CEO (admin) can adjust the pool — not Finance, not anyone else.

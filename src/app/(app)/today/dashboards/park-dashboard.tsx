@@ -33,7 +33,7 @@ export async function ParkManagerDashboard({ userId, userName }: { userId: strin
 
       {tiles && (
         <StatStrip>
-          <PortalStat accent={ACCENT} emphasize href="/pool"
+          <PortalStat accent={ACCENT} emphasize
             value={<>{tiles.parksOwned}<span className="text-sm text-muted font-medium">/{tiles.targetParks}</span></>}
             label="Parks owned" hint="the 5×4 plan" />
           <PortalStat accent={ACCENT} value={tiles.inEscrow} label="Coming in (escrow)" />
