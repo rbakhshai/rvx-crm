@@ -9,10 +9,13 @@
  *                                open to selling, touched in last 7d
  *   5. LOIs out                — currently outstanding (snapshot)
  *   6. In escrow               — snapshot
- *   +  Parks owned X/target    — the 10-in-10 mission
+ *   +  Parks owned X/target    — the 5×4 mission (20 parks)
  *   +  BD applications pending — recruiting funnel
  */
 import { sql } from "drizzle-orm";
+
+/** Company parks goal — 5 parks/yr × 4 years (matches the Partnership plan). */
+export const PARKS_TARGET = 20;
 import { db } from "@/db";
 
 export type MissionTiles = {
@@ -43,7 +46,7 @@ const IN_ESCROW = ["tc_dd_in_escrow", "dd_completed_in_escrow"];
 
 const lit = (codes: string[]) => `ARRAY[${codes.map((c) => `'${c}'`).join(",")}]`;
 
-export async function getMissionTiles(targetParks = 10): Promise<MissionTiles> {
+export async function getMissionTiles(targetParks = PARKS_TARGET): Promise<MissionTiles> {
   const result = await db.execute(sql`
     SELECT
       (SELECT COUNT(*)::int FROM raw_lead_dispositions

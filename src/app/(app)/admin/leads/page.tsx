@@ -42,10 +42,10 @@ export default async function LeadsPoolPage({
 }) {
   const session = await auth.api.getSession({ headers: await headers() });
   if (!session) notFound();
-  if (!(await hasPermission(session.user, "manage_users"))) {
+  if (!(await hasPermission(session.user, "view_mission_control"))) {
     return (
       <PageShell title="Lead Pool" subtitle="You don't have permission to view the pool.">
-        <p className="text-sm text-muted">Ask an admin to grant you the &quot;Manage users&quot; capability.</p>
+        <p className="text-sm text-muted">Ask an admin to grant you the &quot;Mission Control&quot; capability.</p>
       </PageShell>
     );
   }

@@ -5,7 +5,7 @@
  */
 import { notFound } from "next/navigation";
 import { headers } from "next/headers";
-import { desc, inArray, isNotNull } from "drizzle-orm";
+import { and, desc, inArray, isNotNull, lt } from "drizzle-orm";
 import { db } from "@/db";
 import { deals, contacts, companies, birdDogs, user as userTable } from "@/db/schema";
 import { auth } from "@/lib/auth";
@@ -72,6 +72,18 @@ export default async function TrashPage() {
       </PageShell>
     );
   }
+
+  // Enforce the 30-day promise in the header comment: hard-delete
+  // anything past the window whenever the page loads. There's no cron in
+  // this deployment, so the page is the purge trigger (Kevin's beta
+  // finding #10 — a 60-day-old item sat at "auto-purges in 0d" forever).
+  const cutoff = new Date(Date.now() - PURGE_AFTER_DAYS * DAY_MS);
+  await Promise.all([
+    db.delete(deals).where(and(isNotNull(deals.deletedAt), lt(deals.deletedAt, cutoff))),
+    db.delete(contacts).where(and(isNotNull(contacts.deletedAt), lt(contacts.deletedAt, cutoff))),
+    db.delete(companies).where(and(isNotNull(companies.deletedAt), lt(companies.deletedAt, cutoff))),
+    db.delete(birdDogs).where(and(isNotNull(birdDogs.deletedAt), lt(birdDogs.deletedAt, cutoff))),
+  ]);
 
   const [deletedDeals, deletedContacts, deletedCompanies, deletedBirdDogs] = await Promise.all([
     db.select().from(deals).where(isNotNull(deals.deletedAt)).orderBy(desc(deals.deletedAt)),

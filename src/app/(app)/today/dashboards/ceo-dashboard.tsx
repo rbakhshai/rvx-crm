@@ -58,7 +58,7 @@ export async function CeoDashboard({ userId, userName, role }: { userId: string;
           <PortalStat accent={ACCENT} value={tiles.inEscrow} label="In escrow" />
           <PortalStat accent={ACCENT} emphasize href="/pool"
             value={<>{tiles.parksOwned}<span className="text-sm text-muted font-medium">/{tiles.targetParks}</span></>}
-            label="Parks owned" hint="the 10-in-10" />
+            label="Parks owned" hint="the 5×4 plan" />
         </StatStrip>
       )}
 

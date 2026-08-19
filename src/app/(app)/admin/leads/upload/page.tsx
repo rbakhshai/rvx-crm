@@ -1,7 +1,7 @@
 /**
  * /admin/leads/upload — bulk-upload a CSV of raw leads to the BD pool.
  *
- * Permission: admin / acquisitions_manager only (re-uses manage_users).
+ * Permission: leadership (view_mission_control).
  */
 import Link from "next/link";
 import { notFound } from "next/navigation";
@@ -14,10 +14,10 @@ import { CsvUploadForm } from "./upload-form";
 export default async function UploadLeadsPage() {
   const session = await auth.api.getSession({ headers: await headers() });
   if (!session) notFound();
-  if (!(await hasPermission(session.user, "manage_users"))) {
+  if (!(await hasPermission(session.user, "view_mission_control"))) {
     return (
       <PageShell title="Upload Leads" subtitle="You don't have permission to upload leads.">
-        <p className="text-sm text-muted">Ask an admin to grant you the &quot;Manage users&quot; capability.</p>
+        <p className="text-sm text-muted">Ask an admin to grant you the &quot;Mission Control&quot; capability.</p>
       </PageShell>
     );
   }

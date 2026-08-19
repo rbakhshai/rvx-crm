@@ -5,7 +5,7 @@
  * what closed this month, the buyer network's proof-of-funds, and the
  * reimbursement approvals sitting on his desk.
  */
-import { fetchCfoDashboard } from "@/lib/dashboard-queries";
+import { fetchCfoDashboard, fetchPipelineFunnel } from "@/lib/dashboard-queries";
 import { getLeadershipQueueForUser } from "@/lib/leadership-queue";
 import { moneyShort } from "../../dashboard/widgets";
 import { fmtDateWithWeekday } from "@/lib/date-format";
@@ -17,8 +17,11 @@ import { PortalFooter } from "./portal-common";
 const ACCENT = "emerald" as const;
 
 export async function FinanceDashboard({ userId, userName, role }: { userId: string; userName: string; role: string }) {
-  const [cfo, desk] = await Promise.all([
+  const [cfo, funnel, desk] = await Promise.all([
     fetchCfoDashboard().catch(() => null),
+    // Same source as Mission Control's funnel so "pipeline value" is one
+    // number everywhere (Kevin's beta finding #9: $56M here vs $96.1M there).
+    fetchPipelineFunnel().catch(() => null),
     getLeadershipQueueForUser(userId, role).catch(() => []),
   ]);
 
@@ -40,7 +43,7 @@ export async function FinanceDashboard({ userId, userName, role }: { userId: str
 
       {cfo && (
         <StatStrip>
-          <PortalStat accent={ACCENT} emphasize value={moneyShort(cfo.pipelineValue)} label="Pipeline value" hint="agreed prices" />
+          <PortalStat accent={ACCENT} emphasize value={moneyShort((funnel?.activeValueCents ?? 0) / 100)} label="Pipeline value" hint="active deals · agreed or list price" />
           <PortalStat accent={ACCENT} value={moneyShort(escrowValue)} label="In escrow $" hint={`${cfo.dealsInEscrow.length} deals`} />
           <PortalStat accent={ACCENT} value={moneyShort(cfo.closedThisMonth.total)} label="Closed · 30d" />
           <PortalStat accent={ACCENT} value={cfo.closedThisMonth.count} label="Closings · 30d" />

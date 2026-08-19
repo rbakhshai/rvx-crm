@@ -29,7 +29,6 @@ const STATIC_ITEMS: StaticItem[] = [
   { id: "p_bd", group: "Pages", title: "Bird dogs", subtitle: "Bird dog roster", icon: "🦅", href: "/bird-dogs", keywords: "bird dogs bd" },
   { id: "p_tasks", group: "Pages", title: "Tasks", subtitle: "Your queue", icon: "✓", href: "/tasks", keywords: "tasks queue" },
   { id: "p_notifs", group: "Pages", title: "Notifications", subtitle: "Sent / queued / failed", icon: "🔔", href: "/notifications", keywords: "notifications" },
-  { id: "p_revenue", group: "Pages", title: "Revenue", subtitle: "Owned-park Stripe revenue (admin)", icon: "💰", href: "/admin/revenue", keywords: "revenue stripe admin" },
   { id: "a_new_deal", group: "Actions", title: "New deal", icon: "+", href: "/deals/new", keywords: "new deal create add" },
   { id: "a_new_buyer", group: "Actions", title: "New buyer", icon: "+", href: "/contacts/new", keywords: "new buyer contact create" },
   { id: "a_new_seller", group: "Actions", title: "New seller / company", icon: "+", href: "/companies/new", keywords: "new seller company create" },

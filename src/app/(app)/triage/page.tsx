@@ -137,6 +137,7 @@ export default async function TriagePage({
             createdAt: current.createdAt.toISOString(),
           }}
           birdDog={birdDog}
+          emailWired={!!((process.env.GMAIL_USER && process.env.GMAIL_APP_PASSWORD) || process.env.RESEND_API_KEY)}
           seller={seller}
           statusOptions={statusOptions}
           mapSlot={

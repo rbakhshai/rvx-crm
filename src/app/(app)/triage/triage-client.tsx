@@ -80,6 +80,7 @@ function telHref(phone: string | null | undefined): string | null {
 }
 
 export function TriageClient({
+  emailWired,
   queue,
   queueLength,
   position,
@@ -90,6 +91,7 @@ export function TriageClient({
   queueRows,
   mapSlot,
 }: {
+  emailWired: boolean;
   queue: Queue;
   queueLength: number;
   position: number;
@@ -105,7 +107,7 @@ export function TriageClient({
   const [note, setNote] = useState("");
   const [bdMessage, setBdMessage] = useState(deal.updateToBirdDog ?? "");
   const [statusCode, setStatusCode] = useState<string>(deal.statusCode ?? "");
-  const [notifyBd, setNotifyBd] = useState(true);
+  const [notifyBd, setNotifyBd] = useState(false);
   const [showShortcuts, setShowShortcuts] = useState(false);
   const [isPending, startTransition] = useTransition();
   const noteRef = useRef<HTMLTextAreaElement>(null);
@@ -360,18 +362,25 @@ export function TriageClient({
                   className="mt-1 w-full rounded-md border border-border bg-background px-3 py-1.5 text-sm"
                 />
               </label>
-              <label className="flex items-center gap-2 text-xs text-foreground/80">
-                <input
-                  type="checkbox"
-                  name="notifyBirdDog"
-                  checked={notifyBd}
-                  onChange={(e) => setNotifyBd(e.target.checked)}
-                  className="size-3.5"
-                  disabled={!birdDog?.email || !bdMessage.trim()}
-                />
-                Email bird dog when I save{" "}
-                {!birdDog?.email && <span className="text-foreground/50">(no email on file)</span>}
-              </label>
+              {emailWired ? (
+                <label className="flex items-center gap-2 text-xs text-foreground/80">
+                  <input
+                    type="checkbox"
+                    name="notifyBirdDog"
+                    checked={notifyBd && !!birdDog?.email && !!bdMessage.trim()}
+                    onChange={(e) => setNotifyBd(e.target.checked)}
+                    className="size-3.5"
+                    disabled={!birdDog?.email || !bdMessage.trim()}
+                  />
+                  Email bird dog when I save{" "}
+                  {!birdDog?.email && <span className="text-foreground/50">(no email on file)</span>}
+                </label>
+              ) : (
+                <p className="text-[11px] text-muted">
+                  ✉️ Email sending isn&apos;t connected yet — your update is saved on the deal
+                  and logged, but the bird dog will <b>not</b> be emailed.
+                </p>
+              )}
             </div>
           )}
 

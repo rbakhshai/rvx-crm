@@ -68,20 +68,10 @@ export function PipelineFunnel({
       <div className="mt-6 space-y-3">
         {stages.map((s, i) => {
           const pct = (s.valueCents / maxValueCents) * 100;
-          const conversion =
-            i > 0 && stages[i - 1].count > 0
-              ? Math.round((s.count / stages[i - 1].count) * 100)
-              : null;
           const tone = STAGE_TONE[s.key];
           const href = `/deals?stage=${s.key}`;
           return (
             <div key={s.key}>
-              {conversion !== null && (
-                <div className="ml-2 mb-1 flex items-center gap-1.5 text-[10px] text-muted">
-                  <span className="inline-block w-px h-3 bg-border" />
-                  <span>{conversion}% advance to {s.label.toLowerCase()}</span>
-                </div>
-              )}
               <Link
                 href={href as never}
                 className="flex items-center gap-3 group rounded-md hover:bg-foreground/[0.02] -mx-1 px-1 py-0.5 transition"
