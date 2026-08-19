@@ -18,6 +18,7 @@ import { AgendaTimer, type AgendaSection } from "./agenda-timer";
 import { ScorecardActualsButton } from "./scorecard-actuals-modal";
 import { mondayOf } from "@/lib/level10-week";
 import { fmtDate } from "@/lib/date-format";
+import { requirePagePermission } from "@/lib/page-guard";
 import {
   SCORECARD_DEFINITIONS,
   computeScorecardActuals,
@@ -98,6 +99,7 @@ export default async function Level10Page({
 }: {
   searchParams: Promise<{ w?: string }>;
 }) {
+  await requirePagePermission("view_mission_control");
   const params = await searchParams;
   const weekMonday = safeWeekParam(params.w);
   const thisMonday = mondayOf(new Date());

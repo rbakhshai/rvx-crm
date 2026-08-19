@@ -11,6 +11,7 @@ import { user, birdDogs } from "@/db/schema";
 import { getOpsBlocks } from "@/lib/ops-content";
 import { OpsHeader, StatusPill } from "../ops-primitives";
 import { EditableBlock } from "@/components/editable-block";
+import { requirePagePermission } from "@/lib/page-guard";
 
 const REVALIDATE = "/ops/team";
 
@@ -49,6 +50,7 @@ export default async function TeamPage({
 }: {
   searchParams: Promise<{ view?: string }>;
 }) {
+  await requirePagePermission("view_mission_control");
   const params = await searchParams;
   const view = params.view === "capacity" ? "capacity" : "scorecard";
 

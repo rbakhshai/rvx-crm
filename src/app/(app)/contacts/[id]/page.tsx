@@ -15,6 +15,7 @@ import { MatchingDeals } from "@/components/matching-deals";
 import { deleteContactAction } from "../actions";
 import { Badge } from "@/components/badge";
 import { Section } from "@/components/section";
+import { requirePagePermission } from "@/lib/page-guard";
 import {
   BUYER_STATUS_OPTIONS,
   QUALIFICATION_TIER_OPTIONS,
@@ -87,6 +88,7 @@ function bool(v: boolean | null | undefined) {
 }
 
 export default async function ContactDetailPage({ params }: { params: Promise<{ id: string }> }) {
+  await requirePagePermission("view_contacts");
   const { id } = await params;
   const [contact] = await db.select().from(contacts).where(eq(contacts.id, id)).limit(1);
   if (!contact) notFound();

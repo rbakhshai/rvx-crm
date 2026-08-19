@@ -14,6 +14,7 @@ import { TaskList } from "@/components/task-list";
 import { deleteCompanyAction } from "../actions";
 import { Badge } from "@/components/badge";
 import { Section } from "@/components/section";
+import { requirePagePermission } from "@/lib/page-guard";
 import {
   COMPANY_RELATIONSHIP_OPTIONS,
   COMPANY_REVENUE_OPTIONS,
@@ -36,6 +37,7 @@ function Field({ label, value }: { label: string; value: React.ReactNode }) {
 }
 
 export default async function CompanyDetailPage({ params }: { params: Promise<{ id: string }> }) {
+  await requirePagePermission("view_contacts");
   const { id } = await params;
   const [company] = await db.select().from(companies).where(eq(companies.id, id)).limit(1);
   if (!company) notFound();

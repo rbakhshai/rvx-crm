@@ -13,6 +13,7 @@ import { Avatar } from "@/components/avatar";
 import { HardNavButton } from "@/components/hard-nav-button";
 import { ActivityTimeline } from "@/components/activity-timeline";
 import { TaskList } from "@/components/task-list";
+import { requirePagePermission } from "@/lib/page-guard";
 
 function Field({ label, value }: { label: string; value: React.ReactNode }) {
   return (
@@ -26,6 +27,7 @@ function Field({ label, value }: { label: string; value: React.ReactNode }) {
 }
 
 export default async function BirdDogDrawerPage({ params }: { params: Promise<{ id: string }> }) {
+  await requirePagePermission("view_bird_dogs_directory");
   const { id } = await params;
   if (RESERVED_SUB_ROUTES.has(id)) {
     return <HardRedirect to={`/bird-dogs/${id}`} />;

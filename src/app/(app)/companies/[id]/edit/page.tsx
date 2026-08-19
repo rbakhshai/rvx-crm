@@ -6,8 +6,10 @@ import { PageShell } from "../../../page-shell";
 import { CompanyForm } from "../../company-form";
 import { updateCompanyAction } from "../../actions";
 import { getUserOptions } from "@/lib/validation/shared";
+import { requirePagePermission } from "@/lib/page-guard";
 
 export default async function EditCompanyPage({ params }: { params: Promise<{ id: string }> }) {
+  await requirePagePermission("view_contacts");
   const { id } = await params;
   const [company] = await db.select().from(companies).where(eq(companies.id, id)).limit(1);
   if (!company) notFound();

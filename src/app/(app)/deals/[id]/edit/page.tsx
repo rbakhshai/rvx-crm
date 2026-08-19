@@ -6,12 +6,14 @@ import { PageShell } from "../../../page-shell";
 import { DealForm } from "../../deal-form";
 import { updateDealAction } from "../../actions";
 import { getUserOptions } from "@/lib/validation/shared";
+import { requirePagePermission } from "@/lib/page-guard";
 
 function nameOf(first: string | null, last: string | null) {
   return [first, last].filter(Boolean).join(" ") || "(unnamed)";
 }
 
 export default async function EditDealPage({ params }: { params: Promise<{ id: string }> }) {
+  await requirePagePermission("view_contacts");
   const { id } = await params;
   const [deal] = await db.select().from(deals).where(eq(deals.id, id)).limit(1);
   if (!deal) notFound();

@@ -16,6 +16,7 @@ import { deleteDealAction } from "../actions";
 import { Badge } from "@/components/badge";
 import { Section } from "@/components/section";
 import { GoogleMap } from "@/components/google-map";
+import { requirePagePermission } from "@/lib/page-guard";
 import {
   DEAL_PRIORITY_OPTIONS,
   PARK_TYPE_DEAL_OPTIONS,
@@ -63,6 +64,7 @@ function bool(v: boolean | null | undefined) {
 }
 
 export default async function DealDetailPage({ params }: { params: Promise<{ id: string }> }) {
+  await requirePagePermission("view_contacts");
   const { id } = await params;
   const [deal] = await db.select().from(deals).where(eq(deals.id, id)).limit(1);
   if (!deal) notFound();

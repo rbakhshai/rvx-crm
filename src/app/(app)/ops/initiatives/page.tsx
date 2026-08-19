@@ -6,6 +6,7 @@
 import { getOpsBlocks } from "@/lib/ops-content";
 import { OpsHeader, SectionLabel, TimeToggle, StatusPill, AccentCard, parsePeriod } from "../ops-primitives";
 import { EditableBlock } from "@/components/editable-block";
+import { requirePagePermission } from "@/lib/page-guard";
 
 const REVALIDATE = "/ops/initiatives";
 const PATHNAME = "/ops/initiatives";
@@ -138,6 +139,7 @@ export default async function InitiativesPage({
 }: {
   searchParams: Promise<{ period?: string }>;
 }) {
+  await requirePagePermission("view_mission_control");
   const params = await searchParams;
   const rawPeriod = parsePeriod(params.period);
   // Same as Command Center — month is hidden, so coerce stale URLs.

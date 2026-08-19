@@ -5,8 +5,10 @@ import { PageShell } from "../../page-shell";
 import { BirdDogForm } from "../bird-dog-form";
 import { createBirdDogAction } from "../actions";
 import { getUserOptions } from "@/lib/validation/shared";
+import { requirePagePermission } from "@/lib/page-guard";
 
 export default async function NewBirdDogPage() {
+  await requirePagePermission("view_bird_dogs_directory");
   const [statuses, ownerOptions] = await Promise.all([
     db.select().from(birdDogStatuses).orderBy(asc(birdDogStatuses.sortOrder)),
     getUserOptions(),

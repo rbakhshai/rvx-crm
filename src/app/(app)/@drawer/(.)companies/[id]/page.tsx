@@ -13,6 +13,7 @@ import { Avatar } from "@/components/avatar";
 import { HardNavButton } from "@/components/hard-nav-button";
 import { ActivityTimeline } from "@/components/activity-timeline";
 import { TaskList } from "@/components/task-list";
+import { requirePagePermission } from "@/lib/page-guard";
 
 const relationshipLabel: Record<string, string> = {
   realtor: "Realtor",
@@ -32,6 +33,7 @@ function Field({ label, value }: { label: string; value: React.ReactNode }) {
 }
 
 export default async function CompanyDrawerPage({ params }: { params: Promise<{ id: string }> }) {
+  await requirePagePermission("view_contacts");
   const { id } = await params;
   if (RESERVED_SUB_ROUTES.has(id)) {
     return <HardRedirect to={`/companies/${id}`} />;

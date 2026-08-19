@@ -8,6 +8,7 @@ import { getOpsBlocks } from "@/lib/ops-content";
 import { OpsHeader } from "../ops-primitives";
 import { EditableBlock } from "@/components/editable-block";
 import { cn } from "@/lib/cn";
+import { requirePagePermission } from "@/lib/page-guard";
 
 const REVALIDATE = "/ops/vision";
 
@@ -46,6 +47,7 @@ export default async function VisionPage({
 }: {
   searchParams: Promise<{ v?: string }>;
 }) {
+  await requirePagePermission("view_mission_control");
   const params = await searchParams;
   const active = params.v === "brand" ? "brand" : "team";
   const blocks = await getOpsBlocks("vision.");

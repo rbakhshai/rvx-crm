@@ -4,10 +4,12 @@
 import { getOpsBlocks } from "@/lib/ops-content";
 import { OpsHeader, SectionLabel } from "../ops-primitives";
 import { EditableBlock } from "@/components/editable-block";
+import { requirePagePermission } from "@/lib/page-guard";
 
 const REVALIDATE = "/ops/strategy";
 
 export default async function StrategyPage() {
+  await requirePagePermission("view_mission_control");
   const blocks = await getOpsBlocks("strategy.");
 
   return (

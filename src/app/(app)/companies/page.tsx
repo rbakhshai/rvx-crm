@@ -20,6 +20,7 @@ import { ColumnButton } from "@/components/column-button";
 import { auth } from "@/lib/auth";
 import { COMPANY_RELATIONSHIP_OPTIONS, US_STATES } from "@/lib/options";
 import { fmtDate } from "@/lib/date-format";
+import { requirePagePermission } from "@/lib/page-guard";
 
 type Row = typeof companies.$inferSelect & { ownerName?: string | null };
 
@@ -75,6 +76,7 @@ const SORT_COLUMNS: Record<string, SQLWrapper> = {
 type SearchParams = Promise<{ q?: string; relationship?: string; state?: string; owner?: string; sort?: string; dir?: string; page?: string }>;
 
 export default async function CompaniesListPage({ searchParams }: { searchParams: SearchParams }) {
+  await requirePagePermission("view_contacts");
   const params = await searchParams;
   const { q, relationship, state, owner } = params;
   const page = parsePage(params.page);

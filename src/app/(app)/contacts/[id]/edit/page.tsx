@@ -6,8 +6,10 @@ import { PageShell } from "../../../page-shell";
 import { ContactForm } from "../../contact-form";
 import { updateContactAction } from "../../actions";
 import { getUserOptions } from "@/lib/validation/shared";
+import { requirePagePermission } from "@/lib/page-guard";
 
 export default async function EditContactPage({ params }: { params: Promise<{ id: string }> }) {
+  await requirePagePermission("view_contacts");
   const { id } = await params;
   const [contact] = await db.select().from(contacts).where(eq(contacts.id, id)).limit(1);
   if (!contact) notFound();

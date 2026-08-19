@@ -4,6 +4,7 @@ import { db } from "@/db";
 import { contacts, deals, companies, birdDogs } from "@/db/schema";
 import { PageShell } from "../page-shell";
 import { EmptyState } from "@/components/empty-state";
+import { requirePagePermission } from "@/lib/page-guard";
 
 type SearchParams = Promise<{ q?: string }>;
 
@@ -12,6 +13,7 @@ function nameOf(first: string | null, last: string | null) {
 }
 
 export default async function SearchPage({ searchParams }: { searchParams: SearchParams }) {
+  await requirePagePermission("view_contacts");
   const { q: rawQ } = await searchParams;
   const q = rawQ?.trim() ?? "";
 

@@ -6,6 +6,7 @@
 import { getOpsBlocks } from "@/lib/ops-content";
 import { OpsHeader } from "../ops-primitives";
 import { EditableBlock } from "@/components/editable-block";
+import { requirePagePermission } from "@/lib/page-guard";
 
 const REVALIDATE = "/ops/flywheel";
 
@@ -38,6 +39,7 @@ const SPOKES = [
 ];
 
 export default async function FlywheelPage() {
+  await requirePagePermission("view_mission_control");
   const blocks = await getOpsBlocks("flywheel.");
 
   return (

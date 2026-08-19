@@ -13,6 +13,7 @@ import { getOpsBlocks } from "@/lib/ops-content";
 import { OpsHeader, SectionLabel, AccentCard } from "../ops-primitives";
 import { EditableBlock } from "@/components/editable-block";
 import { fmtDate } from "@/lib/date-format";
+import { requirePagePermission } from "@/lib/page-guard";
 
 const REVALIDATE = "/ops/success";
 
@@ -49,6 +50,7 @@ async function fetchByStages(stages: string[], limit = 6) {
 }
 
 export default async function SuccessPage() {
+  await requirePagePermission("view_mission_control");
   const [blocks, recentLois, recentPsas, recentCloses] = await Promise.all([
     getOpsBlocks("success."),
     fetchByStages(LOI_STAGES),

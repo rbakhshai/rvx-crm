@@ -34,6 +34,7 @@ import { LinkButton } from "@/components/button";
 import { Badge } from "@/components/badge";
 import { Avatar } from "@/components/avatar";
 import { DD_SECTION_LABELS } from "@/lib/dd-checklist-template";
+import { requirePagePermission } from "@/lib/page-guard";
 import {
   ensureDdChecklistAction,
   toggleDdChecklistItemAction,
@@ -196,6 +197,7 @@ export default async function DueDiligencePage({
   params: Promise<{ id: string }>;
   searchParams: Promise<{ tab?: string }>;
 }) {
+  await requirePagePermission("view_contacts");
   const { id } = await params;
   const { tab: rawTab } = await searchParams;
   const tab: TabKey = isTabKey(rawTab) ? rawTab : "overview";

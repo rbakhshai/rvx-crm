@@ -19,6 +19,7 @@ import {
   TRAINING_STATUS_OPTIONS,
 } from "@/lib/options";
 import { groupForStatus, type StageGroup } from "@/lib/portal-stage-groups";
+import { requirePagePermission } from "@/lib/page-guard";
 
 const levelLabel = new Map(BD_ACQUISITION_LEVEL_OPTIONS.map((o) => [o.value, o.label]));
 const trainingLabel = new Map(TRAINING_STATUS_OPTIONS.map((o) => [o.value, o.label]));
@@ -88,6 +89,7 @@ function fmtRelative(d: Date | null | undefined): string {
 }
 
 export default async function BirdDogDetailPage({ params }: { params: Promise<{ id: string }> }) {
+  await requirePagePermission("view_bird_dogs_directory");
   const { id } = await params;
   const [bd] = await db.select().from(birdDogs).where(eq(birdDogs.id, id)).limit(1);
   if (!bd) notFound();

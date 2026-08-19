@@ -11,6 +11,7 @@ import { getOpsBlocks } from "@/lib/ops-content";
 import { OpsHeader } from "../ops-primitives";
 import { EditableBlock } from "@/components/editable-block";
 import { cn } from "@/lib/cn";
+import { requirePagePermission } from "@/lib/page-guard";
 
 const REVALIDATE = "/ops/journey";
 
@@ -100,6 +101,7 @@ export default async function JourneyPage({
 }: {
   searchParams: Promise<{ t?: string }>;
 }) {
+  await requirePagePermission("view_mission_control");
   const params = await searchParams;
   const activeKey: Team = (TEAMS.find((t) => t.key === params.t)?.key ?? "acquisitions") as Team;
   const blocks = await getOpsBlocks(`journey.${activeKey}.`);

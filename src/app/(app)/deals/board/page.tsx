@@ -6,6 +6,7 @@ import { PageShell } from "../../page-shell";
 import { LinkButton } from "@/components/button";
 import { EmptyState } from "@/components/empty-state";
 import { DndBoard, type DealCard, type Lane } from "./board-client";
+import { requirePagePermission } from "@/lib/page-guard";
 
 type SearchParams = Promise<{ owner?: string }>;
 
@@ -25,6 +26,7 @@ const LANES: Lane[] = [
 ];
 
 export default async function DealsBoardPage({ searchParams }: { searchParams: SearchParams }) {
+  await requirePagePermission("view_contacts");
   const { owner: ownerFilter } = await searchParams;
   const ownerWhere = ownerFilter
     ? and(eq(deals.ownerId, ownerFilter), isNull(deals.deletedAt))

@@ -27,6 +27,7 @@ import {
   US_STATES,
 } from "@/lib/options";
 import { fmtDate } from "@/lib/date-format";
+import { requirePagePermission } from "@/lib/page-guard";
 
 const statusLabel = new Map(BUYER_STATUS_OPTIONS.map((o) => [o.value, o.label]));
 const tierLabel = new Map(QUALIFICATION_TIER_OPTIONS.map((o) => [o.value, o.label.replace(/^\[\d\] /, "")]));
@@ -97,6 +98,7 @@ const SORT_COLUMNS: Record<string, SQLWrapper> = {
 type SearchParams = Promise<{ q?: string; status?: string; tier?: string; state?: string; owner?: string; sort?: string; dir?: string; view?: string; groupBy?: string; page?: string }>;
 
 export default async function ContactsListPage({ searchParams }: { searchParams: SearchParams }) {
+  await requirePagePermission("view_contacts");
   const params = await searchParams;
   const { q, status, tier, state, owner } = params;
   const isGroup = params.view === "group";

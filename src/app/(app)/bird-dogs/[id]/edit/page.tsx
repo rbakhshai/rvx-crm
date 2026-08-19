@@ -6,8 +6,10 @@ import { PageShell } from "../../../page-shell";
 import { BirdDogForm } from "../../bird-dog-form";
 import { updateBirdDogAction } from "../../actions";
 import { getUserOptions } from "@/lib/validation/shared";
+import { requirePagePermission } from "@/lib/page-guard";
 
 export default async function EditBirdDogPage({ params }: { params: Promise<{ id: string }> }) {
+  await requirePagePermission("view_bird_dogs_directory");
   const { id } = await params;
   const [bd] = await db.select().from(birdDogs).where(eq(birdDogs.id, id)).limit(1);
   if (!bd) notFound();

@@ -17,6 +17,7 @@ import { headers } from "next/headers";
 import { auth } from "@/lib/auth";
 import { BD_ACQUISITION_LEVEL_OPTIONS } from "@/lib/options";
 import { fmtDate } from "@/lib/date-format";
+import { requirePagePermission } from "@/lib/page-guard";
 
 type Row = typeof birdDogs.$inferSelect & { ownerName?: string | null; statusLabel?: string | null };
 
@@ -64,6 +65,7 @@ const SORT_COLUMNS: Record<string, SQLWrapper> = {
 type SearchParams = Promise<{ q?: string; status?: string; level?: string; owner?: string; sort?: string; dir?: string }>;
 
 export default async function BirdDogsListPage({ searchParams }: { searchParams: SearchParams }) {
+  await requirePagePermission("view_bird_dogs_directory");
   const params = await searchParams;
   const { q, status, level, owner } = params;
 

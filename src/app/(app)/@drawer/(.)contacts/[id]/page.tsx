@@ -18,6 +18,7 @@ import { HardNavButton } from "@/components/hard-nav-button";
 import { ActivityTimeline } from "@/components/activity-timeline";
 import { TaskList } from "@/components/task-list";
 import { MatchingDeals } from "@/components/matching-deals";
+import { requirePagePermission } from "@/lib/page-guard";
 import {
   BUYER_STATUS_OPTIONS,
   QUALIFICATION_TIER_OPTIONS,
@@ -42,6 +43,7 @@ function Field({ label, value }: { label: string; value: React.ReactNode }) {
 }
 
 export default async function ContactDrawerPage({ params }: { params: Promise<{ id: string }> }) {
+  await requirePagePermission("view_contacts");
   const { id } = await params;
   if (RESERVED_SUB_ROUTES.has(id)) {
     return <HardRedirect to={`/contacts/${id}`} />;

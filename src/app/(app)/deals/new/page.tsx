@@ -5,12 +5,14 @@ import { PageShell } from "../../page-shell";
 import { DealForm } from "../deal-form";
 import { createDealAction } from "../actions";
 import { getUserOptions } from "@/lib/validation/shared";
+import { requirePagePermission } from "@/lib/page-guard";
 
 function nameOf(first: string | null, last: string | null) {
   return [first, last].filter(Boolean).join(" ") || "(unnamed)";
 }
 
 export default async function NewDealPage() {
+  await requirePagePermission("view_contacts");
   const [statuses, contactRows, companyRows, birdDogRows, ownerOptions] = await Promise.all([
     db.select().from(dealStatuses).orderBy(asc(dealStatuses.sortOrder)),
     db.select({ id: contacts.id, firstName: contacts.firstName, lastName: contacts.lastName, email: contacts.email }).from(contacts).orderBy(asc(contacts.lastName)),

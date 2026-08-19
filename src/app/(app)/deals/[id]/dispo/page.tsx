@@ -8,8 +8,10 @@ import { auth } from "@/lib/auth";
 import { rankBuyersForDeal } from "@/lib/matching";
 import { PageShell } from "../../../page-shell";
 import { DispoClient } from "./dispo-client";
+import { requirePagePermission } from "@/lib/page-guard";
 
 export default async function DispoPage({ params }: { params: Promise<{ id: string }> }) {
+  await requirePagePermission("view_contacts");
   const { id } = await params;
 
   const [deal] = await db.select().from(deals).where(eq(deals.id, id)).limit(1);

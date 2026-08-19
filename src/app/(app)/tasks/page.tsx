@@ -7,6 +7,7 @@ import { auth } from "@/lib/auth";
 import { PageShell } from "../page-shell";
 import { TaskRow } from "@/components/task-row";
 import { EmptyState } from "@/components/empty-state";
+import { requirePagePermission } from "@/lib/page-guard";
 
 type SearchParams = Promise<{ view?: string }>;
 
@@ -29,6 +30,7 @@ function parentPath(table: string, id: string): string {
 }
 
 export default async function TasksPage({ searchParams }: { searchParams: SearchParams }) {
+  await requirePagePermission("view_tasks");
   const { view: rawView } = await searchParams;
   const view = (VIEWS.find((v) => v.key === rawView)?.key ?? "mine_open") as typeof VIEWS[number]["key"];
 

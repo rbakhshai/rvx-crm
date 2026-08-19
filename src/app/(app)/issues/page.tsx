@@ -17,6 +17,7 @@ import { issues, user } from "@/db/schema";
 import { auth } from "@/lib/auth";
 import { PageShell } from "../page-shell";
 import { IssuesBoard } from "./issues-board";
+import { requirePagePermission } from "@/lib/page-guard";
 
 type View = "priority" | "owner";
 
@@ -29,6 +30,7 @@ export default async function IssuesPage({
 }: {
   searchParams: Promise<{ view?: string; show_solved?: string }>;
 }) {
+  await requirePagePermission("view_issues");
   const params = await searchParams;
   const view: View = isView(params.view) ? params.view : "priority";
   const showSolved = params.show_solved === "1";

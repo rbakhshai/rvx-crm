@@ -16,12 +16,14 @@ import { ActivityTimeline } from "@/components/activity-timeline";
 import { Avatar } from "@/components/avatar";
 import { fmtDate } from "@/lib/date-format";
 import { IssueDetailControls } from "./controls";
+import { requirePagePermission } from "@/lib/page-guard";
 
 export default async function IssueDetailPage({
   params,
 }: {
   params: Promise<{ id: string }>;
 }) {
+  await requirePagePermission("view_issues");
   const { id } = await params;
   const session = await auth.api.getSession({ headers: await headers() });
   if (!session) notFound();

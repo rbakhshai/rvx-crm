@@ -24,6 +24,7 @@ import { DEAL_PRIORITY_OPTIONS, US_STATES } from "@/lib/options";
 import { DEAL_PHASE_ROLES, isDealPhaseRole, isPipelineStageKey, labelForStage, statusesForStage } from "@/lib/pipeline-stages";
 import { buildColumnPreferences, buildSortHref } from "@/lib/list-prefs";
 import { ColumnButton } from "@/components/column-button";
+import { requirePagePermission } from "@/lib/page-guard";
 
 type Row = typeof deals.$inferSelect & { ownerName?: string | null; statusLabel?: string | null };
 
@@ -97,6 +98,7 @@ const SORT_COLUMNS: Record<string, SQLWrapper> = {
 type SearchParams = Promise<{ q?: string; status?: string; phase?: string; priority?: string; state?: string; owner?: string; stage?: string; bird_dog?: string; sort?: string; dir?: string; view?: string; groupBy?: string; page?: string }>;
 
 export default async function DealsListPage({ searchParams }: { searchParams: SearchParams }) {
+  await requirePagePermission("view_contacts");
   const params = await searchParams;
   const { q, status, priority, state, owner, stage, phase } = params;
   const birdDogId = params.bird_dog;

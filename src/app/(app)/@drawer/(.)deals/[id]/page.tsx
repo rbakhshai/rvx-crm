@@ -27,6 +27,7 @@ import { GoogleMap } from "@/components/google-map";
 import { ActivityTimeline } from "@/components/activity-timeline";
 import { TaskList } from "@/components/task-list";
 import { MatchedBuyers } from "@/components/matched-buyers";
+import { requirePagePermission } from "@/lib/page-guard";
 import {
   DEAL_PRIORITY_OPTIONS,
   PARK_TYPE_DEAL_OPTIONS,
@@ -53,6 +54,7 @@ function Field({ label, value }: { label: string; value: React.ReactNode }) {
 }
 
 export default async function DealDrawerPage({ params }: { params: Promise<{ id: string }> }) {
+  await requirePagePermission("view_contacts");
   const { id } = await params;
   // /deals/board and /deals/new look like dynamic [id] paths and the
   // intercept caught them by mistake. Force a hard browser navigation so
