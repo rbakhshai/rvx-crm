@@ -21,6 +21,7 @@ import { auth } from "@/lib/auth";
 import { COMPANY_RELATIONSHIP_OPTIONS, US_STATES } from "@/lib/options";
 import { fmtDate } from "@/lib/date-format";
 import { requirePagePermission } from "@/lib/page-guard";
+import { ExportCsvButton } from "@/components/export-csv-button";
 
 type Row = typeof companies.$inferSelect & { ownerName?: string | null };
 
@@ -129,6 +130,7 @@ export default async function CompaniesListPage({ searchParams }: { searchParams
       width="wide"
       action={
         <div className="flex gap-2 items-center">
+          <ExportCsvButton scope="companies" />
           <ColumnButton scope="companies" allColumns={allColumnConfigs} selectedColumns={selectedColumnConfigs} />
           <LinkButton href="/companies/new" size="sm">+ New seller</LinkButton>
         </div>

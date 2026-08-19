@@ -18,6 +18,7 @@ import { auth } from "@/lib/auth";
 import { BD_ACQUISITION_LEVEL_OPTIONS } from "@/lib/options";
 import { fmtDate } from "@/lib/date-format";
 import { requirePagePermission } from "@/lib/page-guard";
+import { ExportCsvButton } from "@/components/export-csv-button";
 
 type Row = typeof birdDogs.$inferSelect & { ownerName?: string | null; statusLabel?: string | null };
 
@@ -127,7 +128,12 @@ export default async function BirdDogsListPage({ searchParams }: { searchParams:
       title="Bird Dogs"
       subtitle={`${count} scout${count === 1 ? "" : "s"}${q || status || level || owner ? " (filtered)" : ""}`}
       width="wide"
-      action={<LinkButton href="/bird-dogs/new" size="sm">+ New bird dog</LinkButton>}
+      action={
+        <div className="flex gap-2 items-center">
+          <ExportCsvButton scope="bird-dogs" />
+          <LinkButton href="/bird-dogs/new" size="sm">+ New bird dog</LinkButton>
+        </div>
+      }
     >
       <div className="space-y-3 mb-5">
         <SavedViewsBar scope="bird_dogs" views={savedViews} />

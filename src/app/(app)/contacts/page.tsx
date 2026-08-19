@@ -28,6 +28,7 @@ import {
 } from "@/lib/options";
 import { fmtDate } from "@/lib/date-format";
 import { requirePagePermission } from "@/lib/page-guard";
+import { ExportCsvButton } from "@/components/export-csv-button";
 
 const statusLabel = new Map(BUYER_STATUS_OPTIONS.map((o) => [o.value, o.label]));
 const tierLabel = new Map(QUALIFICATION_TIER_OPTIONS.map((o) => [o.value, o.label.replace(/^\[\d\] /, "")]));
@@ -164,6 +165,7 @@ export default async function ContactsListPage({ searchParams }: { searchParams:
       width="wide"
       action={
         <div className="flex gap-2 items-center">
+          <ExportCsvButton scope="contacts" />
           <ColumnButton scope="contacts" allColumns={allColumnConfigs} selectedColumns={selectedColumnConfigs} />
           <ViewToggle current={params.view} pathname={pathname} searchParams={params} />
           <LinkButton href="/contacts/new" size="sm">+ New buyer</LinkButton>

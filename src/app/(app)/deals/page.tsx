@@ -25,6 +25,7 @@ import { DEAL_PHASE_ROLES, isDealPhaseRole, isPipelineStageKey, labelForStage, s
 import { buildColumnPreferences, buildSortHref } from "@/lib/list-prefs";
 import { ColumnButton } from "@/components/column-button";
 import { requirePagePermission } from "@/lib/page-guard";
+import { ExportCsvButton } from "@/components/export-csv-button";
 
 type Row = typeof deals.$inferSelect & { ownerName?: string | null; statusLabel?: string | null };
 
@@ -198,6 +199,7 @@ export default async function DealsListPage({ searchParams }: { searchParams: Se
       width="wide"
       action={
         <div className="flex gap-2 items-center">
+          <ExportCsvButton scope="deals" />
           <ColumnButton scope="deals" allColumns={allColumnConfigs} selectedColumns={selectedColumnConfigs} />
           <ViewToggle current={params.view} pathname={pathname} searchParams={params} />
           <LinkButton href="/deals/board" variant="secondary" size="sm">Board view</LinkButton>
