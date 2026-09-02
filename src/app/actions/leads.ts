@@ -13,7 +13,7 @@ import {
   FOLLOW_UP_OUTCOMES,
   isFollowUpOutcome,
 } from "@/lib/follow-up";
-import { requirePermission } from "@/lib/has-permission";
+import { hasPermission, requirePermission } from "@/lib/has-permission";
 import { getOpsBlocks } from "@/lib/ops-content";
 
 /**
@@ -41,6 +41,8 @@ export type UploadResult = {
   skipped: number;
   dupes: number;
   unmappedHeaders: string[];
+  /** Non-blocking data-quality notes, e.g. park names that look like street addresses. */
+  warnings?: string[];
 };
 
 /**
@@ -57,9 +59,13 @@ export type UploadResult = {
  */
 export async function uploadLeadsCsvAction(formData: FormData): Promise<UploadResult> {
   const user = await requireUser();
-  // /admin/leads is gated on manage_users — enforce the same here so a
-  // BD can't pump arbitrary rows into the pool via a raw POST.
-  await requirePermission(user, "manage_users");
+  // Same capability as the /admin/leads pages (leadership). RETURNED, not
+  // thrown: the old manage_users assert threw after the pages were opened
+  // to leadership, 500ing every upload with no message before the file
+  // was even read (Kevin's beta report, 2026-08-31, digest 3972663435).
+  if (!(await hasPermission(user, "view_mission_control"))) {
+    return { ok: false, error: "You need leadership access (Mission Control) to upload leads.", inserted: 0, skipped: 0, dupes: 0, unmappedHeaders: [] };
+  }
   const file = formData.get("file") as File | null;
   if (!file) return { ok: false, error: "Pick a CSV file first", inserted: 0, skipped: 0, dupes: 0, unmappedHeaders: [] };
 
@@ -101,6 +107,9 @@ export async function uploadLeadsCsvAction(formData: FormData): Promise<UploadRe
   const batchId = crypto.randomUUID();
   const inserts: Array<typeof rawLeads.$inferInsert> = [];
   let dupes = 0;
+  // Google-Maps-shaped junk: a "park name" that's really a street address
+  // ("6791 S Sauty Rd"). Import it anyway — but tell the uploader.
+  const addressLikeNames: string[] = [];
   for (const r of parsed.rows) {
     const key = addressKey(r.street, r.city, r.state);
     if (key && (existingKeys.has(key) || seenInBatch.has(key))) {
@@ -108,6 +117,8 @@ export async function uploadLeadsCsvAction(formData: FormData): Promise<UploadRe
       continue;
     }
     if (key) seenInBatch.add(key);
+
+    if (r.parkName && /^\d+\s/.test(r.parkName.trim())) addressLikeNames.push(r.parkName.trim());
 
     inserts.push({
       parkName: r.parkName,
@@ -139,12 +150,21 @@ export async function uploadLeadsCsvAction(formData: FormData): Promise<UploadRe
   revalidatePath("/admin/leads");
   revalidatePath("/admin/leads/upload");
 
+  const warnings: string[] = [];
+  if (addressLikeNames.length > 0) {
+    const examples = addressLikeNames.slice(0, 3).map((n) => `"${n}"`).join(", ");
+    warnings.push(
+      `${addressLikeNames.length} park name${addressLikeNames.length === 1 ? " looks" : "s look"} like a street address (${examples}) — imported anyway, worth fixing in the source list.`,
+    );
+  }
+
   return {
     ok: true,
     batchId,
     inserted: inserts.length,
     skipped: parsed.skipped,
     dupes,
+    warnings,
     unmappedHeaders: parsed.unmappedHeaders,
   };
 }
@@ -156,7 +176,7 @@ export async function uploadLeadsCsvAction(formData: FormData): Promise<UploadRe
  */
 export async function deleteUploadBatchAction(batchId: string): Promise<{ ok: boolean; removed: number }> {
   const user = await requireUser();
-  await requirePermission(user, "manage_users");
+  await requirePermission(user, "view_mission_control");
   const result = await db
     .update(rawLeads)
     .set({ deletedAt: new Date(), deletedById: user.id })
@@ -176,7 +196,7 @@ export async function deleteUploadBatchAction(batchId: string): Promise<{ ok: bo
 /** Hard-delete by id list — used by the admin pool view's bulk delete. */
 export async function softDeleteLeadsAction(ids: string[]): Promise<void> {
   const user = await requireUser();
-  await requirePermission(user, "manage_users");
+  await requirePermission(user, "view_mission_control");
   if (ids.length === 0) return;
   await db
     .update(rawLeads)

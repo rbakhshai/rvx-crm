@@ -65,14 +65,14 @@ export function CsvUploadForm() {
           <p className="mt-3 text-xs text-muted">
             Selected: <span className="text-foreground font-medium">{file.name}</span>
             {" · "}
-            {Math.round(file.size / 1024)} KB
+            {file.size === 0 ? "empty file — pick a real CSV" : `${Math.round(file.size / 1024)} KB`}
           </p>
         )}
         <div className="mt-4 flex items-center gap-2">
           <button
             type="button"
             onClick={submit}
-            disabled={!file || isPending}
+            disabled={!file || file.size === 0 || isPending}
             className="rounded-md bg-primary text-primary-foreground px-3 py-1.5 text-sm font-medium hover:opacity-90 disabled:opacity-50 transition"
           >
             {isPending ? "Importing…" : "Import CSV"}
@@ -111,6 +111,9 @@ export function CsvUploadForm() {
               <li>
                 ✓ <strong>{result.inserted}</strong> new lead{result.inserted === 1 ? "" : "s"} added to the pool.
               </li>
+              {(result.warnings ?? []).map((w) => (
+                <li key={w} className="text-amber-800 dark:text-amber-300">⚠ {w}</li>
+              ))}
               {result.dupes > 0 && (
                 <li>
                   ⚠ <strong>{result.dupes}</strong> duplicate{result.dupes === 1 ? "" : "s"} skipped (already in the pool — matched on street + city + state).
