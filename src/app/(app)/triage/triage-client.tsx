@@ -80,6 +80,7 @@ function telHref(phone: string | null | undefined): string | null {
 }
 
 export function TriageClient({
+  canWork,
   emailWired,
   queue,
   queueLength,
@@ -91,6 +92,8 @@ export function TriageClient({
   queueRows,
   mapSlot,
 }: {
+  /** Has use_triage_cockpit — without it the queue is view-only. */
+  canWork: boolean;
   emailWired: boolean;
   queue: Queue;
   queueLength: number;
@@ -294,6 +297,12 @@ export function TriageClient({
         </div>
 
         {/* Action form */}
+        !canWork ? (
+        <div className="rounded-xl border border-border bg-foreground/[0.02] p-5 text-sm text-muted">
+          👀 <b className="text-foreground">Read-only.</b> You can review the queue, but logging calls and
+          advancing deals needs the &quot;Use triage cockpit&quot; capability — ask Reza if your role should have it.
+        </div>
+        ) : (
         <form ref={formRef} action={triageDealAction} className="rounded-xl border border-border p-5 space-y-4">
           <input type="hidden" name="dealId" value={deal.id} />
           <input type="hidden" name="queue" value={queue} />
@@ -428,6 +437,7 @@ export function TriageClient({
             </div>
           </div>
         </form>
+        )
       </section>
 
       {/* SIDE: queue list */}

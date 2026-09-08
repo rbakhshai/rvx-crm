@@ -115,6 +115,7 @@ export default async function TriagePage({
         <div className="text-sm text-muted">Deal not found.</div>
       ) : (
         <TriageClient
+          canWork={await hasPermission(session.user, "use_triage_cockpit")}
           queue={queue}
           queueLength={queueRows.length}
           position={position}
