@@ -14,6 +14,8 @@ import { hasPermission } from "@/lib/has-permission";
 import { PageShell } from "../../page-shell";
 import { fmtDate } from "@/lib/date-format";
 import { cn } from "@/lib/cn";
+import { ConfirmButton } from "@/components/confirm-button";
+import { undoUploadBatchAction } from "@/app/actions/leads";
 
 type StatusFilter = "all" | "pool" | "claimed" | "converted" | "dead";
 
@@ -62,7 +64,7 @@ export default async function LeadsPoolPage({
     selectedStates.length > 0 ? inArray(rawLeads.state, selectedStates) : undefined,
   );
 
-  const [rows, counts, claimants, stateCounts] = await Promise.all([
+  const [rows, counts, claimants, batches, stateCounts] = await Promise.all([
     db.select().from(rawLeads).where(where).orderBy(desc(rawLeads.createdAt)).limit(100),
     db
       .select({
@@ -73,6 +75,21 @@ export default async function LeadsPoolPage({
       .where(isNull(rawLeads.deletedAt))
       .groupBy(rawLeads.status),
     db.select({ id: user.id, name: user.name }).from(user).orderBy(asc(user.name)),
+    // Recent upload batches — powers the "Undo batch" strip the upload
+    // page has promised since day one (Kevin's launch finding: the
+    // button never existed anywhere).
+    db
+      .select({
+        batchId: rawLeads.uploadBatchId,
+        n: sql<number>`COUNT(*)::int`,
+        uploadedAt: sql<string>`MIN(${rawLeads.uploadedAt})`,
+        uploadedById: sql<string | null>`MIN(${rawLeads.uploadedById})`,
+      })
+      .from(rawLeads)
+      .where(and(isNull(rawLeads.deletedAt), sql`${rawLeads.uploadBatchId} IS NOT NULL`))
+      .groupBy(rawLeads.uploadBatchId)
+      .orderBy(desc(sql`MIN(${rawLeads.uploadedAt})`))
+      .limit(5),
     // Per-state counts respect the status filter so Kevin can drill
     // "show me POOL leads by state" or "CONVERTED leads by state".
     // State filter itself NOT applied so the chip row always shows
@@ -142,6 +159,32 @@ export default async function LeadsPoolPage({
           >
             Clear
           </Link>
+        </div>
+      )}
+
+      {/* Recent uploads — one-click batch undo (removes untouched rows only) */}
+      {batches.length > 0 && (
+        <div className="mb-4 rounded-xl border border-border bg-background p-3.5">
+          <div className="text-[10px] uppercase tracking-widest text-muted font-semibold mb-2">Recent uploads</div>
+          <ul className="divide-y divide-border">
+            {batches.map((b) => (
+              <li key={b.batchId} className="py-2 flex flex-wrap items-center justify-between gap-2 text-xs">
+                <span>
+                  <span className="font-mono text-muted">{(b.batchId ?? "").slice(0, 8)}</span>
+                  {" · "}<strong>{b.n}</strong> lead{b.n === 1 ? "" : "s"}
+                  {b.uploadedAt && <> · {fmtDate(new Date(b.uploadedAt))}</>}
+                  {b.uploadedById && <> · {claimantMap.get(b.uploadedById) ?? "?"}</>}
+                </span>
+                <ConfirmButton
+                  action={undoUploadBatchAction.bind(null, b.batchId!)}
+                  label="Undo batch"
+                  confirmText={`Undo this upload? Every untouched lead from batch ${(b.batchId ?? "").slice(0, 8)} (still in the pool, zero calls) will be removed. Worked leads stay.`}
+                  toastMessage="Batch removed"
+                  toastDescription="Untouched leads from that upload are out of the pool."
+                />
+              </li>
+            ))}
+          </ul>
         </div>
       )}
 

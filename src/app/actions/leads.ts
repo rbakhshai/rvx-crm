@@ -193,6 +193,11 @@ export async function deleteUploadBatchAction(batchId: string): Promise<{ ok: bo
   return { ok: true, removed: result.length };
 }
 
+/** Void wrapper so ConfirmButton (action: () => Promise<void>) can bind it. */
+export async function undoUploadBatchAction(batchId: string): Promise<void> {
+  await deleteUploadBatchAction(batchId);
+}
+
 /** Hard-delete by id list — used by the admin pool view's bulk delete. */
 export async function softDeleteLeadsAction(ids: string[]): Promise<void> {
   const user = await requireUser();
